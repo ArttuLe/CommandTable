@@ -70,9 +70,16 @@ CSS Grid bug, not just a size problem: `.sidebar` had a definite row but an auto
 and the grid placement algorithm resolves definite-row items *before* fully-automatic ones —
 so the sidebar silently claimed the wide column and `.opponents` got squeezed into the narrow
 one, the opposite of the intended layout. Card tiles are 30% larger than the original
-(104×145px) on top of that fix. Opponents wrap onto multiple rows (capped at 46vh with their
-own scroll) rather than forcing a horizontal scroll, so 1–3 opponents typically fit without
-scrolling at all — verified live with a 4-player game.
+(104×145px) on top of that fix. Opponents wrap onto multiple rows (capped, own scroll) rather
+than forcing a horizontal scroll, so 1–3 opponents typically fit without scrolling at all —
+verified live with a 4-player game.
+
+Opponents render at a compact card size (50×70px, `.opponents .card-tile` — a CSS-only
+override) so your own board, interacted with almost every turn, gets most of the vertical
+space (opponents capped at 28vh). A ⤢ button next to each opponent's name opens
+`ExpandedPlayerModal`, which renders that same player's `PlayerArea` — unchanged, same data,
+same handlers — in a large modal outside `.opponents`, so it falls back to full card size with
+no separate rendering path to keep in sync.
 
 This is the doc's "playable, ugly game" milestone (Phase 2) plus enough of Phase 3 that most
 interactions no longer need a workaround, plus Phase 4's referee: misclicks are now survivable

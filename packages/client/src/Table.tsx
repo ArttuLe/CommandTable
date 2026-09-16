@@ -26,6 +26,7 @@ export function Table() {
   };
 
   const [logOpen, setLogOpen] = useState(false);
+  const [expandedPlayerId, setExpandedPlayerId] = useState<PlayerId | null>(null);
 
   // §16.2 keyboard shortcuts for the high-frequency actions. Gated on not-typing-in-an-input so
   // it doesn't fire while the chat box (or a browser-native prompt) has focus.
@@ -81,6 +82,25 @@ export function Table() {
   const allCommanders = tableState.players.flatMap((owner) =>
     owner.commanderIds.map((id) => ({ id, ownerName: owner.displayName, obj: tableState.objects[id] }))
   );
+
+  // Built once and shared between the compact opponents row and the expanded-view modal, so
+  // "expand" shows exactly the same live board, just at full card size instead of the shrunk
+  // opponents-row size (a pure CSS scoping difference, not a different component or data path).
+  const opponentAreaProps = opponents.map((p) => ({
+    player: p,
+    handCount: tableState.handCounts[p.id],
+    libraryCount: tableState.libraryCounts[p.id],
+    battlefield: battlefieldOf(p.id),
+    commandZone: commandZoneOf(p.id),
+    allCommanders,
+    onLifeDelta: (delta: number) => act({ t: 'SET_LIFE', playerIds: [p.id], update: { mode: 'delta', amount: delta } }),
+    onPoisonDelta: (delta: number) => act({ t: 'SET_PLAYER_COUNTER', playerId: p.id, key: 'poison', update: { mode: 'delta', amount: delta } }),
+    onTapToggle: (obj: { id: string; tapped: boolean }) => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id }),
+    onCommanderDamageDelta: (fromCommanderObjectId: ObjectId, delta: number) =>
+      act({ t: 'SET_COMMANDER_DAMAGE', toPlayerId: p.id, fromCommanderObjectId, update: { mode: 'delta', amount: delta } }),
+    onObjectContextMenu: openMenu,
+  }));
+  const expandedOpponent = opponentAreaProps.find((o) => o.player.id === expandedPlayerId);
 
   return (
     <div className="table">
@@ -168,23 +188,8 @@ export function Table() {
       )}
 
       <div className="opponents">
-        {opponents.map((p) => (
-          <PlayerArea
-            key={p.id}
-            player={p}
-            handCount={tableState.handCounts[p.id]}
-            libraryCount={tableState.libraryCounts[p.id]}
-            battlefield={battlefieldOf(p.id)}
-            commandZone={commandZoneOf(p.id)}
-            allCommanders={allCommanders}
-            onLifeDelta={(delta) => act({ t: 'SET_LIFE', playerIds: [p.id], update: { mode: 'delta', amount: delta } })}
-            onPoisonDelta={(delta) => act({ t: 'SET_PLAYER_COUNTER', playerId: p.id, key: 'poison', update: { mode: 'delta', amount: delta } })}
-            onTapToggle={(obj) => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id })}
-            onCommanderDamageDelta={(fromCommanderObjectId, delta) =>
-              act({ t: 'SET_COMMANDER_DAMAGE', toPlayerId: p.id, fromCommanderObjectId, update: { mode: 'delta', amount: delta } })
-            }
-            onObjectContextMenu={openMenu}
-          />
+        {opponentAreaProps.map(({ player, ...props }) => (
+          <PlayerArea key={player.id} player={player} {...props} onExpand={() => setExpandedPlayerId(player.id)} />
         ))}
       </div>
 
@@ -242,6 +247,9 @@ export function Table() {
       </div>
 
       {menu && <ContextMenu obj={menu.obj} x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
+      {expandedOpponent && (
+        <ExpandedPlayerModal {...expandedOpponent} onClose={() => setExpandedPlayerId(null)} />
+      )}
       {logOpen && (
         <LogChatModal
           log={tableState.log}
@@ -274,15 +282,21 @@ interface PlayerAreaProps {
   onCommanderDamageDelta: (fromCommanderObjectId: ObjectId, delta: number) => void;
   onCastCommander?: (obj: GameObject) => void;
   onObjectContextMenu: (obj: ProjectedObject) => (e: React.MouseEvent) => void;
+  onExpand?: () => void;
 }
 
-function PlayerArea({ player, handCount, libraryCount, battlefield, commandZone, allCommanders, onLifeDelta, onPoisonDelta, onTapToggle, onGraveyard, onCommanderDamageDelta, onCastCommander, onObjectContextMenu }: PlayerAreaProps) {
+function PlayerArea({ player, handCount, libraryCount, battlefield, commandZone, allCommanders, onLifeDelta, onPoisonDelta, onTapToggle, onGraveyard, onCommanderDamageDelta, onCastCommander, onObjectContextMenu, onExpand }: PlayerAreaProps) {
   const poison = player.counters.poison ?? 0;
   return (
     <div className={`player-area ${player.status !== 'active' ? 'inactive' : ''}`}>
       <div className="player-header">
         <span className="player-name">
           {player.displayName} {!player.connected && '(disconnected)'} {player.status !== 'active' && `— ${player.status}`}
+          {onExpand && (
+            <button className="expand-button" onClick={onExpand} title="Expand to full size">
+              ⤢
+            </button>
+          )}
         </span>
         <span className={`life ${player.life <= 0 ? 'lethal' : ''}`}>
           <button onClick={() => onLifeDelta(-1)}>-1</button>
@@ -482,6 +496,26 @@ function SelectionBar() {
       <button onClick={graveyardAll}>To graveyard</button>
       <button onClick={clearSelection}>Clear</button>
     </div>
+  );
+}
+
+// Opponents render compact (small card-tiles, a pure CSS override scoped to `.opponents`) so
+// your own board — what you interact with almost every turn — gets most of the screen. This
+// reuses PlayerArea completely unchanged: outside `.opponents`, CardTile falls back to its
+// normal full size, so "expand" is just "render the same board somewhere the compact CSS
+// doesn't reach," not a second board-rendering code path to keep in sync.
+function ExpandedPlayerModal({ onClose, ...playerAreaProps }: PlayerAreaProps & { onClose: () => void }) {
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="modal expanded-player-modal">
+        <div className="modal-header">
+          <span>{playerAreaProps.player.displayName}</span>
+          <button onClick={onClose}>×</button>
+        </div>
+        <PlayerArea {...playerAreaProps} />
+      </div>
+    </>
   );
 }
 
