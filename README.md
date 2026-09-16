@@ -12,7 +12,8 @@ Phases 1 through 4 (§17 of the design doc) are implemented:
 - **Phase 2 — table core:** the `GameObject` model, zones, the `MOVE_OBJECT` primitive, the
   hidden-information projection boundary (§9), `SHUFFLE_LIBRARY`/`DRAW`, and per-player
   full-state broadcast. The host's `start` builds the table from each seat's resolved decklist
-  (commanders → command zone, deck → shuffled library) with randomized turn order.
+  (commanders → command zone, deck → shuffled library, opening hand of 7 per §14.1 step 5) with
+  randomized turn order.
 - **Phase 3 — action catalog:** the rest of §8 except `ROLL_DICE`/`FLIP_COIN`/`CONCEDE`/`SAY`
   (deferred to Phase 4 alongside the log they depend on). Tap/untap (incl. `UNTAP_ALL`),
   arbitrary object/player counters, attach/unattach, markers, transform/face-down/face-up,

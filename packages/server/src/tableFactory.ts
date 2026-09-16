@@ -1,6 +1,7 @@
 // Builds the initial TableState when the host starts the game, per design doc §12.1 (commanders
-// start in the command zone), §12.5 (life 40, turn order randomized), and §13 (server-side RNG).
-// Sideboard/maybeboard lines are reference-only and never make it to the table.
+// start in the command zone), §12.5 (life 40, turn order randomized), §13 (server-side RNG), and
+// §14.1 step 5 (opening hand of 7). Sideboard/maybeboard lines are reference-only and never make
+// it to the table.
 
 import { randomInt as cryptoRandomInt, randomUUID } from 'node:crypto';
 import type { Card, GameObject, PlayerId, PlayerState, ResolvedDeckLine, ResolvedDecklist, TableState } from '@command-table/common';
@@ -23,6 +24,7 @@ interface CreateTableDeps {
 }
 
 const defaultDeps: CreateTableDeps = { randomInt: cryptoRandomInt };
+const OPENING_HAND_SIZE = 7;
 
 export function createTableState(params: CreateTableParams, deps: CreateTableDeps = defaultDeps): TableState {
   const objects: Record<string, GameObject> = {};
@@ -37,11 +39,21 @@ export function createTableState(params: CreateTableParams, deps: CreateTableDep
       makeObject(card, seat.playerId, { playerId: seat.playerId, zone: 'library' }, { kind: 'none' })
     );
     const shuffledLibrary = fisherYatesShuffle(libraryObjects, deps.randomInt);
+
+    // §14.1 step 5: "Opening hands: each player draws 7." A too-small deck just deals what's
+    // there, same as DRAW does mid-game rather than erroring.
+    const handSize = Math.min(OPENING_HAND_SIZE, shuffledLibrary.length);
+    const hand = shuffledLibrary.splice(0, handSize).map((obj) => ({
+      ...obj,
+      zone: { playerId: seat.playerId, zone: 'hand' as const },
+      faceVisibility: { kind: 'players' as const, ids: [seat.playerId] },
+      position: 0,
+    }));
     shuffledLibrary.forEach((obj, index) => {
       obj.position = index;
     });
 
-    for (const obj of [...commanderObjects, ...shuffledLibrary]) {
+    for (const obj of [...commanderObjects, ...hand, ...shuffledLibrary]) {
       objects[obj.id] = obj;
     }
 
