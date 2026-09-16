@@ -61,6 +61,13 @@ amount or across all players at once (not just ±1 per player), "clear all marke
 one-click sidebar action, and the two most common counter types (+1/+1, -1/-1) are one click
 from the context menu rather than two sequential prompts.
 
+The layout is deliberately weighted toward the table itself: card tiles are 30% larger
+(104×145px) so opponents' boards are actually readable at a glance, the sidebar shrank to just
+the mana pad/selection bar/action buttons (280px → 200px), and the log + chat — read rarely,
+compared to the board — moved out of a permanent sidebar slot into a popup opened via a "Log &
+chat" button, rather than competing for space with the cards every player is actually looking
+at.
+
 This is the doc's "playable, ugly game" milestone (Phase 2) plus enough of Phase 3 that most
 interactions no longer need a workaround, plus Phase 4's referee: misclicks are now survivable
 and disputes have a paper trail. Verified against live multi-client sessions at both the
