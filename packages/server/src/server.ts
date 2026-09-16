@@ -266,12 +266,31 @@ function requireRoom(socket: WebSocket, state: ConnectionState): Room | undefine
 }
 
 const httpServer = createServer((req, res) => {
+  // Permissive CORS: per design doc §2 this is a private, non-commercial, known-friend-group
+  // tool with no auth anywhere else in the stack either — locking this down buys no real
+  // protection while making the dev client (a separate Vite origin) fail every fetch.
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
   if (req.method === 'POST' && req.url === '/api/rooms') {
     const room = roomManager.createRoom();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ roomId: room.roomId }));
     return;
   }
+
+  const cardMatch = req.method === 'GET' && req.url?.match(/^\/api\/cards\/([^/]+)$/);
+  if (cardMatch) {
+    const card = cardIndex.findByScryfallId(decodeURIComponent(cardMatch[1]));
+    if (!card) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(card));
+    return;
+  }
+
   res.writeHead(404);
   res.end();
 });

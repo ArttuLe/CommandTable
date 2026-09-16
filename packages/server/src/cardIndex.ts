@@ -139,6 +139,11 @@ export class CardIndex {
     return this.findByName(name);
   }
 
+  findByScryfallId(scryfallId: string): Card | undefined {
+    const row = this.db.prepare<[string], CardRow>('SELECT * FROM cards WHERE scryfall_id = ? LIMIT 1').get(scryfallId);
+    return row ? fromRow(row) : undefined;
+  }
+
   suggestNames(query: string, limit: number): string[] {
     const rows = this.db.prepare<[], { name: string }>('SELECT DISTINCT name FROM cards').all();
     const q = query.toLowerCase();

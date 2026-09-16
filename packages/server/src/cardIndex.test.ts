@@ -49,6 +49,12 @@ describe('CardIndex', () => {
     expect(index.findByName('Not A Real Card')).toBeUndefined();
   });
 
+  it('finds a card by scryfallId, for clients rendering a GameObject\'s source', () => {
+    index.upsert(makeCard({ scryfallId: 'scryfall-sol-ring-lea' }));
+    expect(index.findByScryfallId('scryfall-sol-ring-lea')?.name).toBe('Sol Ring');
+    expect(index.findByScryfallId('nonexistent')).toBeUndefined();
+  });
+
   it('finds a card by set and collector number', () => {
     index.upsert(makeCard({ scryfallId: 'a', set: 'ltc', collectorNumber: '284' }));
     index.upsert(makeCard({ scryfallId: 'b', set: 'lea', collectorNumber: '1' }));
