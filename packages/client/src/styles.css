@@ -50,8 +50,18 @@ textarea { font-family: monospace; }
 .log { flex: 1; overflow-y: auto; font-size: 0.8rem; }
 .log p { margin: 0.2rem 0; }
 .undo-request { background: #442; padding: 0.5rem; border-radius: 4px; }
+.library-viewer { border-top: 1px solid #444; padding-top: 0.4rem; }
+.library-viewer-label { font-size: 0.7rem; color: #aaa; margin: 0 0 0.3rem; }
+.chat-box { display: flex; gap: 0.3rem; }
+.chat-box input { flex: 1; }
 
 .error-toast { position: fixed; top: 0.5rem; left: 50%; transform: translateX(-50%); background: #822; color: #fff; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; z-index: 10; }
 
 .zoom-preview { position: fixed; bottom: 1rem; right: 1rem; width: 260px; pointer-events: none; z-index: 20; box-shadow: 0 4px 16px rgba(0,0,0,0.6); border-radius: 12px; overflow: hidden; }
 .zoom-preview img { width: 100%; display: block; }
+
+.context-menu-backdrop { position: fixed; inset: 0; z-index: 30; }
+.context-menu { position: fixed; z-index: 31; background: #2a2a2a; border: 1px solid #555; border-radius: 6px; display: flex; flex-direction: column; min-width: 180px; box-shadow: 0 4px 16px rgba(0,0,0,0.6); overflow: hidden; }
+.context-menu button { text-align: left; background: none; border: none; color: #eee; padding: 0.4rem 0.7rem; cursor: pointer; font-size: 0.8rem; }
+.context-menu button:hover { background: #3a3a3a; }
+.context-menu hr { border: none; border-top: 1px solid #444; margin: 0; width: 100%; }

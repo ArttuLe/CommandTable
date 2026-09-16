@@ -34,15 +34,16 @@ Also implemented: **Phase 5's commander affordances** (§12) — commander tax t
 `+N` badge on the commander tile), a per-player commander damage grid (§12.3, one row per
 commander in play, editable, highlighted past 21 lethal), and life/poison lethal-threshold
 highlighting (≤0 life, ≥10 poison) — plus a **minimal client** (early Phase 6 — React +
-TypeScript + Vite + Zustand, per §4). It's deliberately ugly otherwise: a lobby screen and a
-single-column-per-player table view with no drag-and-drop, no lands/nonlands split, no context
-menus, no multi-select — click a hand card to play it, click a command-zone commander to cast
-it (through the stack, so tax tracking fires — see the deviation note), click a battlefield card
-to tap/untap it, buttons for the rest. Hover-zoom made the cut despite being "later polish" in
-spirit, since the doc calls it "non-negotiable" (§16.1) rather than optional. Covers enough of
-the §16.3 tedium checklist (draw, untap all, life ±1 on any player including bulk, move to
-graveyard, search + shuffle, pass turn) to actually play a rough game in a browser, which is
-what "playable, ugly game" means once there's a client at all.
+TypeScript + Vite + Zustand, per §4) that now covers most of the action catalog, not just the
+headline ones. Beyond click-to-play/click-to-tap: a right-click context menu on any object
+(§16.2 — tap/untap, transform, face down/up, move to any zone, add a counter or marker, remove
+an existing marker, set an annotation, change controller), sidebar buttons for search library +
+peek top N (with a "revealed library" panel that renders whatever `SEARCH_LIBRARY`/`PEEK_TOP`
+made visible, right-clickable like anything else), roll dice / flip a coin, create tokens
+(name/type/power/toughness/quantity via prompts), and a chat box for `SAY`. Hover-zoom made the
+cut despite being "later polish" in spirit, since the doc calls it "non-negotiable" (§16.1)
+rather than optional. Still missing: drag-and-drop, multi-select, keyboard shortcuts, and the
+lands/nonlands split — see the Phase 6/7 note below.
 
 This is the doc's "playable, ugly game" milestone (Phase 2) plus enough of Phase 3 that most
 interactions no longer need a workaround, plus Phase 4's referee: misclicks are now survivable
@@ -53,9 +54,12 @@ violation against real Scryfall data), starting a game, drawing, playing a card 
 battlefield, tapping it (with a real card image and CSS rotation), casting a commander through
 the stack, adjusting life/poison and commander damage (including triggering and visually
 confirming the 21-damage lethal highlight), hovering a card to see a full-size, fully-readable
-zoom preview, and the log and commander-damage grid updating live across both clients — plus, at
-the protocol level, a real self-leak catch (a player who drew a card and could see it, then
-undid the draw, correctly got flagged as still "knowing" what they saw).
+zoom preview, opening the right-click context menu on another player's object, sending a chat
+message and flipping a coin (both showed up live in the log), searching a library and seeing
+all of it rendered with real card art in the revealed-library panel, and the log/commander-
+damage grid updating live across both clients — plus, at the protocol level, a real self-leak
+catch (a player who drew a card and could see it, then undid the draw, correctly got flagged as
+still "knowing" what they saw).
 
 Not yet implemented: Phase 6/7's remaining polish (drag-and-drop, multi-select, keyboard
 shortcuts, lands/nonlands split, mobile support, MDFC/saga layout handling, a real stack view).
@@ -209,3 +213,16 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
   fetch failed) yet:** the commander-damage grid's rows are keyed by object id, not by a
   pre-fetched name, since `useCard` resolves asynchronously per §4's "thin client" approach — no
   client-side cache warm-up step exists yet.
+- **The context menu and several sidebar buttons use `window.prompt()`** for free-text/numeric
+  input (counter key+amount, marker name, annotation, change-controller target, dice sides,
+  peek count, token fields) rather than a custom modal. This is a real, if minor, UX compromise
+  — native prompts are blunt and block the page — but building N one-off modal components for an
+  "ugly by design" MVP client wasn't worth it. The one place this matters beyond taste: automated
+  browser testing can't drive these paths (a JS prompt blocks further extension commands), so
+  they're verified by code review and manual play rather than the live-session testing the rest
+  of the client got.
+- **Right-clicking any object works regardless of who controls it:** the context menu's zone
+  moves target the object's `controllerId` (visible even on a redacted object) rather than
+  requiring you to control it first — consistent with §10's "anyone can take any action at any
+  time," which the doc frames as correct specifically because there's no priority system to
+  violate.
