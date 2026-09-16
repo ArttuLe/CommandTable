@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { projectFor } from './projection.js';
-import type { GameObject, TableState } from '@command-table/common';
+import type { GameObject, LogEntry, TableState } from '@command-table/common';
 import { isRedacted } from '@command-table/common';
 
 const ALICE = 'alice';
@@ -31,7 +31,7 @@ function card(overrides: Partial<GameObject>): GameObject {
   };
 }
 
-function makeState(objects: GameObject[]): TableState {
+function makeState(objects: GameObject[], log: LogEntry[] = []): TableState {
   return {
     roomId: 'ROOM1',
     objects: Object.fromEntries(objects.map((o) => [o.id, o])),
@@ -40,9 +40,14 @@ function makeState(objects: GameObject[]): TableState {
       { id: BOB, displayName: 'Bob', seat: 1, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
     ],
     turn: { turnNumber: 1, activePlayerId: ALICE, phase: 'main' },
+    log,
     revision: 1,
     createdAt: 0,
   };
+}
+
+function logEntry(overrides: Partial<LogEntry>): LogEntry {
+  return { revision: 1, timestamp: 0, actorId: ALICE, text: 'did something', visibility: { kind: 'all' }, undoable: true, ...overrides };
 }
 
 describe('projectFor', () => {
@@ -163,5 +168,21 @@ describe('projectFor', () => {
         }
       }
     }
+  });
+
+  it('filters log entries by visibility just like objects (§15.1: private entries are projected)', () => {
+    const state = makeState(
+      [],
+      [
+        logEntry({ text: 'public event', visibility: { kind: 'all' } }),
+        logEntry({ text: 'alice-only event', visibility: { kind: 'players', ids: [ALICE] } }),
+      ]
+    );
+
+    const forAlice = projectFor(state, ALICE);
+    const forBob = projectFor(state, BOB);
+
+    expect(forAlice.log.map((e) => e.text)).toEqual(['public event', 'alice-only event']);
+    expect(forBob.log.map((e) => e.text)).toEqual(['public event']);
   });
 });

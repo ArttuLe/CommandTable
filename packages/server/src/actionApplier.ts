@@ -5,12 +5,14 @@
 // DRAW/PASS_TURN (Phase 2) stay here since they predate that split.
 
 import { randomInt as cryptoRandomInt } from 'node:crypto';
-import type { Action, GameObject, TableState } from '@command-table/common';
+import type { Action, GameObject, LogEntry, PlayerId, TableState } from '@command-table/common';
 import { fisherYatesShuffle } from './shuffle.js';
 import { bumpRevision, defaultVisibilityFor, err, ok, requireObject, requirePlayer, withObject, type ApplyResult } from './actions/helpers.js';
 import * as objectActions from './actions/objectActions.js';
 import * as zoneActions from './actions/zoneActions.js';
 import * as playerActions from './actions/playerActions.js';
+import * as metaActions from './actions/metaActions.js';
+import { describeAction } from './actionDescriptions.js';
 
 export type { ApplyResult } from './actions/helpers.js';
 
@@ -20,7 +22,35 @@ interface ApplyDeps {
 
 const defaultDeps: ApplyDeps = { randomInt: cryptoRandomInt };
 
-export function applyAction(state: TableState, action: Action, deps: ApplyDeps = defaultDeps): ApplyResult {
+// Public entry point: applies the action, then appends a LogEntry describing it (§15.1 — every
+// action produces one). `actorId` only affects the log; structural validation doesn't care who's
+// acting (§10: "anyone can take any action at any time"). Defaults to a placeholder so tests
+// that don't care about log authorship don't need to supply one — server.ts always passes the
+// real connection's playerId.
+export function applyAction(
+  state: TableState,
+  action: Action,
+  actorId: PlayerId = 'system',
+  deps: ApplyDeps = defaultDeps
+): ApplyResult {
+  const result = dispatch(state, action, deps);
+  if (!result.ok) {
+    return result;
+  }
+
+  const { text, visibility } = result.log ?? { text: describeAction(action), visibility: undefined };
+  const entry: LogEntry = {
+    revision: result.state.revision,
+    timestamp: Date.now(),
+    actorId,
+    text,
+    visibility: visibility ?? { kind: 'all' },
+    undoable: true,
+  };
+  return { ok: true, state: { ...result.state, log: [...result.state.log, entry] } };
+}
+
+function dispatch(state: TableState, action: Action, deps: ApplyDeps): ApplyResult {
   switch (action.t) {
     case 'MOVE_OBJECT':
       return moveObject(state, action);
@@ -87,6 +117,15 @@ export function applyAction(state: TableState, action: Action, deps: ApplyDeps =
       return playerActions.setCommanderDamage(state, action);
     case 'MULLIGAN':
       return playerActions.mulligan(state, action, deps.randomInt);
+
+    case 'ROLL_DICE':
+      return metaActions.rollDice(state, action, deps.randomInt);
+    case 'FLIP_COIN':
+      return metaActions.flipCoin(state, action, deps.randomInt);
+    case 'CONCEDE':
+      return metaActions.concede(state, action);
+    case 'SAY':
+      return metaActions.say(state, action);
   }
 }
 

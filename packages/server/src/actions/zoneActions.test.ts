@@ -35,6 +35,7 @@ function makeState(objects: GameObject[]): TableState {
       { id: BOB, displayName: 'Bob', seat: 1, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
     ],
     turn: { turnNumber: 1, activePlayerId: ALICE, phase: 'main' },
+    log: [],
     revision: 0,
     createdAt: 0,
   };
@@ -100,7 +101,7 @@ describe('SEARCH_LIBRARY', () => {
   it('a later SHUFFLE_LIBRARY re-hides everything searched', () => {
     let state = makeState([card({ id: 'a', position: 0 }), card({ id: 'b', position: 1 })]);
     state = unwrap(state, { t: 'SEARCH_LIBRARY', playerId: ALICE });
-    const result = applyAction(state, { t: 'SHUFFLE_LIBRARY', playerId: ALICE }, { randomInt: () => 0 });
+    const result = applyAction(state, { t: 'SHUFFLE_LIBRARY', playerId: ALICE }, ALICE, { randomInt: () => 0 });
     if (!result.ok) throw new Error('unreachable');
     expect(result.state.objects['a'].faceVisibility).toEqual({ kind: 'none' });
     expect(result.state.objects['b'].faceVisibility).toEqual({ kind: 'none' });

@@ -64,6 +64,7 @@ export function projectFor(state: TableState, viewer: PlayerId): ClientTableStat
     handCounts,
     players: state.players,
     turn: state.turn,
+    log: state.log.filter((entry) => isVisibleTo(entry.visibility, viewer)),
     revision: state.revision,
   };
 }

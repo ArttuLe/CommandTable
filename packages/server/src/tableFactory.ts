@@ -66,6 +66,7 @@ export function createTableState(params: CreateTableParams, deps: CreateTableDep
     objects,
     players: turnOrder,
     turn: { turnNumber: 1, activePlayerId: turnOrder[0].id, phase: 'main' },
+    log: [],
     revision: 0,
     createdAt: Date.now(),
   };

@@ -37,6 +37,7 @@ function makeState(objects: GameObject[]): TableState {
       { id: CAROL, displayName: 'Carol', seat: 2, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
     ],
     turn: { turnNumber: 1, activePlayerId: ALICE, phase: 'main' },
+    log: [],
     revision: 0,
     createdAt: 0,
   };

@@ -1,6 +1,7 @@
 // Player action catalog, per design doc §8 and §10. Phase 2 covered MOVE_OBJECT/SHUFFLE_LIBRARY/
-// DRAW/PASS_TURN. Phase 3 adds the rest of §8 except ROLL_DICE/FLIP_COIN/CONCEDE/SAY, which the
-// doc ties to the game log ("results go into the public log") — deferred to Phase 4 alongside it.
+// DRAW/PASS_TURN, Phase 3 the rest of §8 except ROLL_DICE/FLIP_COIN/CONCEDE/SAY (the doc ties
+// their output to the game log, "results go into the public log", so they wait for Phase 4's
+// log system, added alongside them here).
 //
 // Two doc actions are deliberately collapsed here rather than given one type each:
 // - SCRY/SURVEIL/PEEK_TOP (§8.2) are the same server primitive (reveal top N to the owner);
@@ -52,4 +53,8 @@ export type Action =
   | { t: 'SET_LIFE'; playerIds: PlayerId[]; update: CounterUpdate }
   | { t: 'SET_PLAYER_COUNTER'; playerId: PlayerId; key: string; update: CounterUpdate }
   | { t: 'SET_COMMANDER_DAMAGE'; toPlayerId: PlayerId; fromCommanderObjectId: ObjectId; update: CounterUpdate }
-  | { t: 'MULLIGAN'; playerId: PlayerId };
+  | { t: 'MULLIGAN'; playerId: PlayerId }
+  | { t: 'ROLL_DICE'; playerId: PlayerId; sides: number }
+  | { t: 'FLIP_COIN'; playerId: PlayerId }
+  | { t: 'CONCEDE'; playerId: PlayerId }
+  | { t: 'SAY'; playerId: PlayerId; text: string };

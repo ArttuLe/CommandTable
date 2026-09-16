@@ -35,6 +35,7 @@ function makeState(objects: GameObject[]): TableState {
       { id: BOB, displayName: 'Bob', seat: 1, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
     ],
     turn: { turnNumber: 1, activePlayerId: ALICE, phase: 'main' },
+    log: [],
     revision: 0,
     createdAt: 0,
   };
@@ -103,7 +104,7 @@ describe('applyAction: SHUFFLE_LIBRARY', () => {
       card({ id: 'l3', position: 2 }),
     ]);
 
-    const result = applyAction(state, { t: 'SHUFFLE_LIBRARY', playerId: ALICE }, { randomInt: () => 0 });
+    const result = applyAction(state, { t: 'SHUFFLE_LIBRARY', playerId: ALICE }, ALICE, { randomInt: () => 0 });
 
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('unreachable');
@@ -181,3 +182,41 @@ describe('applyAction: PASS_TURN', () => {
     expect(result.state.turn.activePlayerId).toBe('carol');
   });
 });
+
+describe('log entries (§15.1: every action produces one)', () => {
+  it('appends a public log entry attributed to the given actor, at the new revision', () => {
+    const state = makeState([card({ id: 'c1' })]);
+    const result = applyAction(state, { t: 'TAP', objectId: 'c1' }, BOB);
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.log).toHaveLength(1);
+    expect(result.state.log[0]).toMatchObject({ actorId: BOB, revision: 1, visibility: { kind: 'all' } });
+    expect(result.state.log[0].text.length).toBeGreaterThan(0);
+  });
+
+  it('does not append a log entry when the action is rejected', () => {
+    const state = makeState([]);
+    const result = applyAction(state, { t: 'TAP', objectId: 'ghost' }, ALICE);
+    expect(result.ok).toBe(false);
+  });
+
+  it('preserves prior log entries and appends rather than replaces', () => {
+    let state = makeState([card({ id: 'c1' })]);
+    state = unwrap(applyAction(state, { t: 'TAP', objectId: 'c1' }, ALICE));
+    state = unwrap(applyAction(state, { t: 'UNTAP', objectId: 'c1' }, BOB));
+    expect(state.log).toHaveLength(2);
+    expect(state.log.map((e) => e.actorId)).toEqual([ALICE, BOB]);
+  });
+
+  it('defaults the actor to a placeholder when none is given', () => {
+    const state = makeState([card({ id: 'c1' })]);
+    const result = applyAction(state, { t: 'TAP', objectId: 'c1' });
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.log[0].actorId).toBe('system');
+  });
+});
+
+function unwrap(result: ReturnType<typeof applyAction>) {
+  if (!result.ok) throw new Error(`expected ok, got: ${result.reason}`);
+  return result.state;
+}

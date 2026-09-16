@@ -13,6 +13,8 @@ import { Room, RoomManager } from './roomManager.js';
 import { createTableState } from './tableFactory.js';
 import { applyAction } from './actionApplier.js';
 import { projectFor } from './projection.js';
+import { TableHistory } from './tableHistory.js';
+import { applyUndo } from './undo.js';
 
 const PORT = Number(process.env.PORT ?? 8080);
 const DB_PATH = process.env.CARD_DB_PATH ?? './data/cards.sqlite3';
@@ -21,6 +23,17 @@ const cardIndex = new CardIndex(new Database(DB_PATH, { readonly: true }));
 const roomManager = new RoomManager();
 const socketsByRoom = new Map<RoomId, Map<PlayerId, WebSocket>>();
 const tablesByRoom = new Map<RoomId, TableState>();
+const historiesByRoom = new Map<RoomId, TableHistory>();
+
+// A rewind (§15.2: rolling back further, or after others have acted) needs majority consent of
+// connected players. The doc specifies the requester-facing `undoRequest` broadcast but not how
+// players vote — `votes` fills that gap (see protocol.ts's `undoVote`/`undoResolved`).
+interface PendingUndo {
+  targetRevision: number;
+  requesterId: PlayerId;
+  votes: Map<PlayerId, boolean>;
+}
+const pendingUndosByRoom = new Map<RoomId, PendingUndo>();
 
 interface ConnectionState {
   roomId: RoomId | null;
@@ -121,6 +134,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       }
       const table = createTableState({ roomId: room.roomId, seats: room.buildSeatSetups() });
       tablesByRoom.set(room.roomId, table);
+      historiesByRoom.set(room.roomId, new TableHistory(table));
       room.start();
       broadcastRoomState(room);
       broadcastTableState(room.roomId);
@@ -131,17 +145,87 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       const room = requireRoom(socket, state);
       if (!room || !state.playerId) return;
       const table = tablesByRoom.get(room.roomId);
-      if (!table) {
+      const history = historiesByRoom.get(room.roomId);
+      if (!table || !history) {
         send(socket, { t: 'rejected', clientSeq: raw.clientSeq, reason: 'game has not started' });
         return;
       }
-      const result = applyAction(table, raw.action);
+      const result = applyAction(table, raw.action, state.playerId);
       if (!result.ok) {
         send(socket, { t: 'rejected', clientSeq: raw.clientSeq, reason: result.reason });
         return;
       }
       tablesByRoom.set(room.roomId, result.state);
+      history.record(state.playerId, result.state);
       broadcastTableState(room.roomId);
+      return;
+    }
+
+    case 'undo': {
+      const room = requireRoom(socket, state);
+      if (!room || !state.playerId) return;
+      const table = tablesByRoom.get(room.roomId);
+      const history = historiesByRoom.get(room.roomId);
+      if (!table || !history) {
+        send(socket, { t: 'error', message: 'game has not started' });
+        return;
+      }
+      const target = history.snapshotAt(raw.targetRevision);
+      if (!target) {
+        send(socket, { t: 'error', message: 'that revision is no longer in history' });
+        return;
+      }
+
+      const isSelfUndo = raw.targetRevision === history.currentRevision() - 1 && history.canSelfUndo(state.playerId);
+      if (isSelfUndo) {
+        performUndo(room, table, target, state.playerId);
+        return;
+      }
+
+      pendingUndosByRoom.set(room.roomId, {
+        targetRevision: raw.targetRevision,
+        requesterId: state.playerId,
+        votes: new Map([[state.playerId, true]]),
+      });
+      const sockets = socketsByRoom.get(room.roomId);
+      if (sockets) {
+        for (const [playerId, otherSocket] of sockets) {
+          if (playerId !== state.playerId) {
+            send(otherSocket, {
+              t: 'undoRequest',
+              requesterId: state.playerId,
+              targetRevision: raw.targetRevision,
+              describes: `revert the table to revision ${raw.targetRevision}`,
+            });
+          }
+        }
+      }
+      return;
+    }
+
+    case 'undoVote': {
+      const room = requireRoom(socket, state);
+      if (!room || !state.playerId) return;
+      const pending = pendingUndosByRoom.get(room.roomId);
+      if (!pending || pending.targetRevision !== raw.targetRevision) return;
+
+      pending.votes.set(state.playerId, raw.approve);
+      const connectedCount = room.toState().seats.filter((s) => s.connected && s.playerId).length;
+      const approvals = [...pending.votes.values()].filter(Boolean).length;
+      const rejections = [...pending.votes.values()].filter((v) => !v).length;
+
+      if (approvals * 2 > connectedCount) {
+        const table = tablesByRoom.get(room.roomId);
+        const history = historiesByRoom.get(room.roomId);
+        const target = history?.snapshotAt(pending.targetRevision);
+        pendingUndosByRoom.delete(room.roomId);
+        if (table && history && target) {
+          performUndo(room, table, target, pending.requesterId);
+        }
+      } else if (rejections * 2 >= connectedCount) {
+        pendingUndosByRoom.delete(room.roomId);
+        broadcastToRoom(room.roomId, { t: 'undoResolved', targetRevision: pending.targetRevision, applied: false });
+      }
       return;
     }
 
@@ -149,6 +233,22 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       send(socket, { t: 'pong' });
       return;
     }
+  }
+}
+
+function performUndo(room: Room, current: TableState, target: TableState, actorId: PlayerId): void {
+  const outcome = applyUndo(current, target, actorId);
+  tablesByRoom.set(room.roomId, outcome.state);
+  historiesByRoom.get(room.roomId)?.record(actorId, outcome.state);
+  broadcastTableState(room.roomId);
+  broadcastToRoom(room.roomId, { t: 'undoResolved', targetRevision: target.revision, applied: true });
+}
+
+function broadcastToRoom(roomId: RoomId, message: ServerMessage): void {
+  const sockets = socketsByRoom.get(roomId);
+  if (!sockets) return;
+  for (const socket of sockets.values()) {
+    send(socket, message);
   }
 }
 

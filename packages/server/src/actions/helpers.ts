@@ -3,10 +3,17 @@
 
 import type { CounterUpdate, GameObject, PlayerId, TableState, Visibility, ZoneRef } from '@command-table/common';
 
-export type ApplyResult = { ok: true; state: TableState } | { ok: false; reason: string };
+// `log` lets an action override the generic, action-type-derived log description from
+// actionDescriptions.ts — needed when the log text depends on the *outcome*, not just the
+// action's input (ROLL_DICE/FLIP_COIN's result, CONCEDE's life total at the time). The central
+// applyAction wrapper in actionApplier.ts consumes this and turns it into a LogEntry; it never
+// reaches callers of applyAction.
+export type ApplyResult =
+  | { ok: true; state: TableState; log?: { text: string; visibility?: Visibility } }
+  | { ok: false; reason: string };
 
-export function ok(state: TableState): ApplyResult {
-  return { ok: true, state };
+export function ok(state: TableState, log?: { text: string; visibility?: Visibility }): ApplyResult {
+  return { ok: true, state, log };
 }
 
 export function err(reason: string): ApplyResult {

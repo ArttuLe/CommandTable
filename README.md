@@ -5,7 +5,7 @@ Commander-only MTG web client. Freeform digital tabletop (no rules enforcement) 
 
 ## Status
 
-Phase 1, 2, and most of Phase 3 (§17 of the design doc) are implemented:
+Phases 1 through 4 (§17 of the design doc) are implemented:
 
 - **Phase 1 — lobby:** room/lobby, WebSocket plumbing, seat claiming with rejoin tokens,
   Scryfall card ingestion, decklist parsing/resolution.
@@ -14,31 +14,40 @@ Phase 1, 2, and most of Phase 3 (§17 of the design doc) are implemented:
   full-state broadcast. The host's `start` builds the table from each seat's resolved decklist
   (commanders → command zone, deck → shuffled library) with randomized turn order.
 - **Phase 3 — action catalog:** the rest of §8 except `ROLL_DICE`/`FLIP_COIN`/`CONCEDE`/`SAY`
-  (deferred to Phase 4 — see below). Tap/untap (incl. `UNTAP_ALL`), arbitrary object/player
-  counters, attach/unattach, markers, transform/face-down/face-up, annotations, control
-  changes, token/copy creation, deletion, mill, scry-style peeking, reveal/hide, library
-  search, bulk zone moves, bulk life changes, commander damage tracking, and mulligans.
+  (deferred to Phase 4 alongside the log they depend on). Tap/untap (incl. `UNTAP_ALL`),
+  arbitrary object/player counters, attach/unattach, markers, transform/face-down/face-up,
+  annotations, control changes, token/copy creation, deletion, mill, scry-style peeking,
+  reveal/hide, library search, bulk zone moves, bulk life changes, commander damage tracking,
+  and mulligans.
+- **Phase 4 — log and undo:** every action appends a human-readable `LogEntry` (§15.1),
+  filtered per-viewer by the same projection boundary as objects. A bounded 50-snapshot ring
+  buffer (§15.2) backs undo: a player's own uncontested last action reverts instantly, anything
+  further back or after someone else has acted requires majority consent from connected players
+  (a `undoRequest`/`undoVote` round the doc specifies the shape of but not the voting mechanics
+  — see the deviation note below). Undo also detects when a revert would re-hide something a
+  player already saw, and says so in the log rather than pretending the leak didn't happen
+  (§15.2). `ROLL_DICE`/`FLIP_COIN`/`CONCEDE`/`SAY` land here too, now that there's a log for
+  their results to go into.
 
 This is the doc's "playable, ugly game" milestone (Phase 2) plus enough of Phase 3 that most
-interactions no longer need a workaround. Verified against live multi-client WebSocket
-sessions, not just unit tests: hand/library contents stay genuinely hidden across players after
-draws, token creation, and bulk life swings.
+interactions no longer need a workaround, plus Phase 4's referee: misclicks are now survivable
+and disputes have a paper trail. Verified against live multi-client WebSocket sessions, not
+just unit tests — including a real self-leak catch (a player who drew a card and could see it,
+then undid the draw, correctly got flagged as still "knowing" what they saw).
 
-Not yet implemented: `ROLL_DICE`/`FLIP_COIN`/`CONCEDE`/`SAY` and the log/undo system (Phase 4 —
-see the deviation note below on why these are bundled together), commander-specific affordances
-like the damage grid UI and tax display (Phase 5, though the underlying data — commander
-damage, cast count — already exists in `PlayerState`), and any client UI at all (Phases 6-7).
-Right now this is a server with no frontend — interact with it via raw WebSocket messages (see
-`packages/common/src/protocol.ts`).
+Not yet implemented: commander-specific affordances like the damage grid UI and tax display
+(Phase 5, though the underlying data — commander damage, cast count — already exists in
+`PlayerState`), and any client UI at all (Phases 6-7). Right now this is a server with no
+frontend — interact with it via raw WebSocket messages (see `packages/common/src/protocol.ts`).
 
 ## Structure
 
 ```
 packages/
-  common/   Shared TypeScript types (cards, decklists, lobby/table state, wire protocol, actions)
+  common/   Shared TypeScript types (cards, decklists, lobby/table state, wire protocol, actions, log)
   server/   Node WebSocket server: room manager, card index, decklist parser/resolver, ingestion,
-            table factory, action applier (dispatch + actions/{object,zone,player}Actions.ts),
-            projection boundary
+            table factory, action applier (dispatch + actions/{object,zone,player,meta}Actions.ts),
+            projection boundary, table history + undo
 ```
 
 ## Setup
@@ -63,9 +72,9 @@ Listens on `:8080` (override with `PORT`). Two entry points:
 - `POST /api/rooms` — creates a room, returns `{ roomId }`.
 - `ws://localhost:8080/ws` — join with `{ t: 'join', roomId, displayName }`, submit a deck with
   `{ t: 'deck', list }`, and once the host sends `{ t: 'start' }` (2+ seated players required),
-  act on the table with `{ t: 'action', clientSeq, action }`. See
-  `packages/common/src/protocol.ts` and `packages/common/src/actions.ts` for the full `Action`
-  union and message set.
+  act on the table with `{ t: 'action', clientSeq, action }` or roll back with
+  `{ t: 'undo', targetRevision }`. See `packages/common/src/protocol.ts` and
+  `packages/common/src/actions.ts` for the full `Action` union and message set.
 
 ## Testing
 
@@ -119,3 +128,23 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
   `PEEK_TOP` exist — otherwise cards revealed by a search/peek would stay revealed forever after
   the very shuffle that's supposed to scramble them back into secrecy. Not explicitly stated in
   §9/§13, but a direct consequence of combining them.
+- **Log text never names a specific card:** `GameObject` only carries a `scryfallId` — display
+  names live in the DB-backed `CardIndex`, deliberately kept out of the pure, DB-free action-
+  application layer (`actionApplier.ts` and friends), which is what makes that layer trivially
+  unit-testable per §18. So log entries read "moved a card" / "drew 2 cards" rather than naming
+  Sol Ring — a real loss of the doc's own example fidelity ("Alice untapped 6 permanents"), but
+  one that avoids wiring a database dependency through the reducer for the sake of prettier
+  strings. If this ever matters enough, the fix is client-side (join the log's `scryfallId`-
+  bearing object references against the already-fetched card data), not a change to this layer.
+- **`undoVote`/`undoResolved` fill a protocol gap:** §11.1/§15.2 specify `undoRequest` (the
+  broadcast asking for consent) but never say how players respond or how "majority of connected
+  players" gets tallied. Implemented as: the requester's own vote counts as an implicit yes,
+  each connected player sends one `undoVote`, and it resolves the moment a strict majority of
+  currently-connected seats votes either way (ties, e.g. 2-2 in a 4-player game, never resolve
+  from votes alone under this rule — a disconnect changes the denominator, which is the doc's
+  own get-out clause: "majority of *connected* players").
+- **Undo's information-leak check is a heuristic, not exhaustive:** it flags a player who could
+  see a specific object in the state being discarded but can't see that same object (by id)
+  after the revert. It won't catch every conceivable leak (e.g. a player inferring information
+  from a count changing) — the doc only asks that the honest fact be surfaced, not that leakage
+  be perfectly modeled, and this catches the common, concrete case (a peek/reveal being undone).

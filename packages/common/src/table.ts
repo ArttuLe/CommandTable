@@ -3,6 +3,7 @@
 
 import type { PlayerId } from './ids.js';
 import type { GameObject, ObjectId, Visibility } from './objects.js';
+import type { LogEntry } from './log.js';
 
 export type Phase = 'main' | 'combat' | 'end';
 
@@ -33,6 +34,7 @@ export interface TableState {
   objects: Record<ObjectId, GameObject>;
   players: PlayerState[];
   turn: TurnTracker;
+  log: LogEntry[];
   revision: number;
   createdAt: number;
 }
@@ -59,6 +61,7 @@ export interface ClientTableState {
   handCounts: Record<PlayerId, number>;
   players: PlayerState[];
   turn: TurnTracker;
+  log: LogEntry[];
   revision: number;
 }
 

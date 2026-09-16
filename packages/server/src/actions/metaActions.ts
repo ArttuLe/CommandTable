@@ -1,0 +1,55 @@
+// ROLL_DICE/FLIP_COIN/CONCEDE/SAY — deferred from Phase 3 because the doc routes all four
+// through the game log. Each supplies its own outcome-dependent log text via ApplyResult.log
+// rather than the generic actionDescriptions.ts table.
+
+import type { Action, TableState } from '@command-table/common';
+import { bumpRevision, err, ok, requirePlayer, withObject, type ApplyResult } from './helpers.js';
+
+export function rollDice(
+  state: TableState,
+  action: Extract<Action, { t: 'ROLL_DICE' }>,
+  randomInt: (exclusiveMax: number) => number
+): ApplyResult {
+  if (!requirePlayer(state, action.playerId)) return err(`no such player: ${action.playerId}`);
+  if (action.sides < 2) return err('a die needs at least 2 sides');
+  const result = randomInt(action.sides) + 1;
+  return ok(bumpRevision(state), { text: `rolled a d${action.sides}: ${result}` });
+}
+
+export function flipCoin(
+  state: TableState,
+  action: Extract<Action, { t: 'FLIP_COIN' }>,
+  randomInt: (exclusiveMax: number) => number
+): ApplyResult {
+  if (!requirePlayer(state, action.playerId)) return err(`no such player: ${action.playerId}`);
+  const result = randomInt(2) === 0 ? 'heads' : 'tails';
+  return ok(bumpRevision(state), { text: `flipped a coin: ${result}` });
+}
+
+export function say(state: TableState, action: Extract<Action, { t: 'SAY' }>): ApplyResult {
+  if (!requirePlayer(state, action.playerId)) return err(`no such player: ${action.playerId}`);
+  return ok(bumpRevision(state), { text: action.text });
+}
+
+export function concede(state: TableState, action: Extract<Action, { t: 'CONCEDE' }>): ApplyResult {
+  const player = requirePlayer(state, action.playerId);
+  if (!player) return err(`no such player: ${action.playerId}`);
+
+  let next = state;
+  let revertedCount = 0;
+  for (const obj of Object.values(state.objects)) {
+    if (obj.ownerId === action.playerId) {
+      next = withObject(next, { ...obj, zone: { zone: 'limbo' }, faceVisibility: { kind: 'none' } }, false);
+    } else if (obj.controllerId === action.playerId) {
+      // Owner regains control by default (CR 800.4a); flagged in the log rather than silently
+      // assumed correct, per §14.3's "prompt rather than guess" — there's no prompt UI yet.
+      next = withObject(next, { ...obj, controllerId: obj.ownerId }, false);
+      revertedCount++;
+    }
+  }
+
+  const players = next.players.map((p) => (p.id === action.playerId ? { ...p, status: 'conceded' as const } : p));
+  const note = revertedCount > 0 ? ` (control of ${revertedCount} object(s) reverted to their owners — please review)` : '';
+
+  return ok(bumpRevision({ ...next, players }), { text: `conceded at ${player.life} life${note}` });
+}
