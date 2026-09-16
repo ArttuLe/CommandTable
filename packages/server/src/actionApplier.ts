@@ -1,13 +1,18 @@
-// Applies a Phase 2 Action to a TableState, per design doc §3 ("the server validates only
-// structural legality... never rules legality") and §8. Pure and immutable: returns a new
-// state rather than mutating the one it's given, which keeps undo (§15.2, later) a matter of
-// swapping snapshots.
+// Applies an Action to a TableState, per design doc §3 ("the server validates only structural
+// legality... never rules legality") and §8. Pure and immutable: returns a new state rather
+// than mutating the one it's given, which keeps undo (§15.2, later) a matter of swapping
+// snapshots. Dispatches to per-§8-subsection modules in ./actions/; MOVE_OBJECT/SHUFFLE_LIBRARY/
+// DRAW/PASS_TURN (Phase 2) stay here since they predate that split.
 
 import { randomInt as cryptoRandomInt } from 'node:crypto';
-import type { Action, GameObject, TableState, Visibility, ZoneRef } from '@command-table/common';
+import type { Action, GameObject, TableState } from '@command-table/common';
 import { fisherYatesShuffle } from './shuffle.js';
+import { bumpRevision, defaultVisibilityFor, err, ok, requireObject, requirePlayer, withObject, type ApplyResult } from './actions/helpers.js';
+import * as objectActions from './actions/objectActions.js';
+import * as zoneActions from './actions/zoneActions.js';
+import * as playerActions from './actions/playerActions.js';
 
-export type ApplyResult = { ok: true; state: TableState } | { ok: false; reason: string };
+export type { ApplyResult } from './actions/helpers.js';
 
 interface ApplyDeps {
   randomInt: (exclusiveMax: number) => number;
@@ -25,13 +30,70 @@ export function applyAction(state: TableState, action: Action, deps: ApplyDeps =
       return draw(state, action);
     case 'PASS_TURN':
       return passTurn(state);
+
+    case 'TAP':
+      return objectActions.tap(state, action);
+    case 'UNTAP':
+      return objectActions.untap(state, action);
+    case 'UNTAP_ALL':
+      return objectActions.untapAll(state, action);
+    case 'SET_COUNTER':
+      return objectActions.setCounter(state, action);
+    case 'ATTACH':
+      return objectActions.attach(state, action);
+    case 'UNATTACH':
+      return objectActions.unattach(state, action);
+    case 'SET_MARKER':
+      return objectActions.setMarker(state, action);
+    case 'CLEAR_MARKER':
+      return objectActions.clearMarker(state, action);
+    case 'CLEAR_ALL_MARKERS':
+      return objectActions.clearAllMarkers(state);
+    case 'TRANSFORM':
+      return objectActions.transform(state, action);
+    case 'TURN_FACE_DOWN':
+      return objectActions.turnFaceDown(state, action);
+    case 'TURN_FACE_UP':
+      return objectActions.turnFaceUp(state, action);
+    case 'SET_ANNOTATION':
+      return objectActions.setAnnotation(state, action);
+    case 'CHANGE_CONTROLLER':
+      return objectActions.changeController(state, action);
+    case 'CREATE_TOKEN':
+      return objectActions.createToken(state, action);
+    case 'CREATE_COPY':
+      return objectActions.createCopy(state, action);
+    case 'DELETE_OBJECT':
+      return objectActions.deleteObject(state, action);
+
+    case 'MILL':
+      return zoneActions.mill(state, action);
+    case 'PEEK_TOP':
+      return zoneActions.peekTop(state, action);
+    case 'REVEAL':
+      return zoneActions.reveal(state, action);
+    case 'HIDE':
+      return zoneActions.hide(state, action);
+    case 'SEARCH_LIBRARY':
+      return zoneActions.searchLibrary(state, action);
+    case 'MOVE_ALL':
+      return zoneActions.moveAll(state, action);
+
+    case 'SET_LIFE':
+      return playerActions.setLife(state, action);
+    case 'SET_PLAYER_COUNTER':
+      return playerActions.setPlayerCounter(state, action);
+    case 'SET_COMMANDER_DAMAGE':
+      return playerActions.setCommanderDamage(state, action);
+    case 'MULLIGAN':
+      return playerActions.mulligan(state, action, deps.randomInt);
   }
 }
 
 function moveObject(state: TableState, action: Extract<Action, { t: 'MOVE_OBJECT' }>): ApplyResult {
-  const existing = state.objects[action.objectId];
+  const existing = requireObject(state, action.objectId);
   if (!existing) {
-    return { ok: false, reason: `no such object: ${action.objectId}` };
+    return err(`no such object: ${action.objectId}`);
   }
 
   const faceDown = action.faceDown ?? existing.faceDown;
@@ -47,8 +109,8 @@ function moveObject(state: TableState, action: Extract<Action, { t: 'MOVE_OBJECT
 }
 
 function shuffleLibrary(state: TableState, action: Extract<Action, { t: 'SHUFFLE_LIBRARY' }>, deps: ApplyDeps): ApplyResult {
-  if (!state.players.some((p) => p.id === action.playerId)) {
-    return { ok: false, reason: `no such player: ${action.playerId}` };
+  if (!requirePlayer(state, action.playerId)) {
+    return err(`no such player: ${action.playerId}`);
   }
 
   const libraryObjects = Object.values(state.objects).filter(
@@ -58,15 +120,17 @@ function shuffleLibrary(state: TableState, action: Extract<Action, { t: 'SHUFFLE
 
   let next = state;
   shuffled.forEach((obj, index) => {
-    next = withObject(next, { ...obj, position: index }, false);
+    // Also re-hides anything left visible by a prior SEARCH_LIBRARY/PEEK_TOP — a shuffle
+    // scrambles the very order that made those peeks meaningful.
+    next = withObject(next, { ...obj, position: index, faceVisibility: { kind: 'none' } }, false);
   });
 
   return ok(bumpRevision(next));
 }
 
 function draw(state: TableState, action: Extract<Action, { t: 'DRAW' }>): ApplyResult {
-  if (!state.players.some((p) => p.id === action.playerId)) {
-    return { ok: false, reason: `no such player: ${action.playerId}` };
+  if (!requirePlayer(state, action.playerId)) {
+    return err(`no such player: ${action.playerId}`);
   }
 
   const library = Object.values(state.objects)
@@ -113,36 +177,4 @@ function findNextActiveIndex(order: TableState['players'], fromIndex: number): n
     }
   }
   return fromIndex;
-}
-
-function defaultVisibilityFor(zone: ZoneRef, controllerId: string, faceDown: boolean): Visibility {
-  if (!('playerId' in zone)) {
-    // stack: shared and public. limbo: transitional, defaults to hidden as the safest choice.
-    return zone.zone === 'stack' ? { kind: 'all' } : { kind: 'none' };
-  }
-  switch (zone.zone) {
-    case 'library':
-      return { kind: 'none' };
-    case 'hand':
-      return { kind: 'players', ids: [zone.playerId] };
-    case 'battlefield':
-    case 'exile':
-      return faceDown ? { kind: 'players', ids: [controllerId] } : { kind: 'all' };
-    case 'graveyard':
-    case 'commandZone':
-      return { kind: 'all' };
-  }
-}
-
-function withObject(state: TableState, obj: GameObject, bump = true): TableState {
-  const next: TableState = { ...state, objects: { ...state.objects, [obj.id]: obj } };
-  return bump ? bumpRevision(next) : next;
-}
-
-function bumpRevision(state: TableState): TableState {
-  return { ...state, revision: state.revision + 1 };
-}
-
-function ok(state: TableState): ApplyResult {
-  return { ok: true, state };
 }
