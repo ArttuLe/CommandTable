@@ -51,6 +51,9 @@ export function Table() {
         case '-':
           act({ t: 'SET_LIFE', playerIds: [playerId], update: { mode: 'delta', amount: -1 } });
           break;
+        case 'escape':
+          useUiStore.getState().clearSelection();
+          break;
         default:
           return;
       }
@@ -102,6 +105,7 @@ export function Table() {
 
       <div className="sidebar">
         <ManaPad />
+        <SelectionBar />
 
         <div className="controls">
           <button title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>Draw</button>
@@ -353,9 +357,16 @@ function BattlefieldSlot({
   onContextMenu: (e: React.MouseEvent) => void;
 }) {
   const isLand = useIsLand(obj);
+  const selected = useUiStore((s) => s.selectedIds.has(obj.id));
+  const toggleSelected = useUiStore((s) => s.toggleSelected);
   return (
     <div className="battlefield-slot" style={{ order: isLand ? 0 : 2 }}>
-      <CardTile obj={obj} onClick={() => onTapToggle(obj)} onContextMenu={onContextMenu} />
+      <CardTile
+        obj={obj}
+        selected={selected}
+        onClick={(e) => (e.shiftKey ? toggleSelected(obj.id) : onTapToggle(obj))}
+        onContextMenu={onContextMenu}
+      />
       {onGraveyard && !isRedacted(obj) && (
         <button className="gy-button" onClick={() => onGraveyard(obj)}>
           GY
@@ -408,6 +419,42 @@ function ManaPad() {
         </span>
       ))}
       <button onClick={resetMana}>Reset</button>
+    </div>
+  );
+}
+
+// §16.2 multi-select: shift-click a battlefield object to toggle it into the selection, then
+// apply a bulk action — "tap five lands" or "sacrifice all my tokens" (§16.3) as one gesture.
+// Each object keeps its own controller for the graveyard move, matching the single-object
+// context menu (§10: freeform play has no restriction on whose object an action targets).
+function SelectionBar() {
+  const selectedIds = useUiStore((s) => s.selectedIds);
+  const clearSelection = useUiStore((s) => s.clearSelection);
+  const act = useStore((s) => s.act);
+  const objects = useStore((s) => s.tableState?.objects ?? {});
+
+  if (selectedIds.size === 0) return null;
+
+  function setTappedAll(tapped: boolean) {
+    selectedIds.forEach((id) => act({ t: tapped ? 'TAP' : 'UNTAP', objectId: id }));
+  }
+
+  function graveyardAll() {
+    selectedIds.forEach((id) => {
+      const obj = objects[id];
+      if (!obj) return;
+      act({ t: 'MOVE_OBJECT', objectId: id, toZone: { playerId: obj.controllerId, zone: 'graveyard' } });
+    });
+    clearSelection();
+  }
+
+  return (
+    <div className="selection-bar">
+      <span>{selectedIds.size} selected</span>
+      <button onClick={() => setTappedAll(true)}>Tap</button>
+      <button onClick={() => setTappedAll(false)}>Untap</button>
+      <button onClick={graveyardAll}>To graveyard</button>
+      <button onClick={clearSelection}>Clear</button>
     </div>
   );
 }

@@ -4,11 +4,12 @@ import { useUiStore } from './uiStore.js';
 
 interface CardTileProps {
   obj: ProjectedObject;
-  onClick?: () => void;
+  selected?: boolean;
+  onClick?: (e: React.MouseEvent) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
 }
 
-export function CardTile({ obj, onClick, onContextMenu }: CardTileProps) {
+export function CardTile({ obj, selected, onClick, onContextMenu }: CardTileProps) {
   const card = useCard(obj);
   const setHoveredCard = useUiStore((s) => s.setHoveredCard);
 
@@ -16,7 +17,7 @@ export function CardTile({ obj, onClick, onContextMenu }: CardTileProps) {
 
   return (
     <div
-      className={`card-tile ${obj.tapped ? 'tapped' : ''} ${isRedacted(obj) ? 'face-down' : ''}`}
+      className={`card-tile ${obj.tapped ? 'tapped' : ''} ${isRedacted(obj) ? 'face-down' : ''} ${selected ? 'selected' : ''}`}
       onClick={onClick}
       onContextMenu={onContextMenu}
       onMouseEnter={() => card && setHoveredCard(card)}
