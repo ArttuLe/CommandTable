@@ -212,6 +212,24 @@ describe('applyAction: PASS_TURN', () => {
     if (!result.ok) throw new Error('unreachable');
     expect(result.state.turn.activePlayerId).toBe('carol');
   });
+
+  it('untaps the new active player\'s battlefield permanents (§16.3 "untap bundle")', () => {
+    const state = makeState([
+      card({ id: 'bobTapped', controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' }, tapped: true }),
+      card({ id: 'aliceTapped', controllerId: ALICE, zone: { playerId: ALICE, zone: 'battlefield' }, tapped: true }),
+    ]);
+    const result = applyAction(state, { t: 'PASS_TURN' });
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['bobTapped'].tapped).toBe(false);
+    expect(result.state.objects['aliceTapped'].tapped).toBe(true);
+  });
+
+  it('bumps revision by exactly 1', () => {
+    const state = makeState([card({ id: 'bobTapped', controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' }, tapped: true })]);
+    const result = applyAction(state, { t: 'PASS_TURN' });
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.revision).toBe(state.revision + 1);
+  });
 });
 
 describe('log entries (§15.1: every action produces one)', () => {

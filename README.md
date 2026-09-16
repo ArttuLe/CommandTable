@@ -51,7 +51,14 @@ spend mana, reset at will, never synced to the server or other players. Multi-se
 covers the doc's two stated use cases — "tap five lands" and "sacrifice all my tokens" — via
 shift-click on any battlefield object, a selection bar with Tap/Untap/To graveyard/Clear, and
 Escape to clear; drag-box selection wasn't built since shift-click already satisfies the
-tedium checklist. Still missing: drag-and-drop — see the Phase 6/7 note below.
+tedium checklist. Drag-and-drop and mobile support are deliberately not planned — see the
+deviation notes below, not the Phase 6/7 gap list.
+
+The §16.3 tedium checklist is now fully covered: passing turn bundles an untap of the new
+active player's permanents (previously a separate click), life can be adjusted by an arbitrary
+amount or across all players at once (not just ±1 per player), "clear all markers" is a
+one-click sidebar action, and the two most common counter types (+1/+1, -1/-1) are one click
+from the context menu rather than two sequential prompts.
 
 This is the doc's "playable, ugly game" milestone (Phase 2) plus enough of Phase 3 that most
 interactions no longer need a workaround, plus Phase 4's referee: misclicks are now survivable
@@ -69,9 +76,10 @@ damage grid updating live across both clients — plus, at the protocol level, a
 catch (a player who drew a card and could see it, then undid the draw, correctly got flagged as
 still "knowing" what they saw).
 
-Not yet implemented: Phase 6/7's remaining polish (drag-and-drop, mobile support,
-MDFC/saga layout handling, a real stack view). See `packages/client/src` for
-what exists.
+Not yet implemented: Phase 6/7's remaining polish (MDFC/saga layout handling, a real stack
+view, server-restart persistence per §14.5). Drag-and-drop and mobile support are deliberately
+not planned — see "Notable deviations from the design doc" below. See `packages/client/src`
+for what exists.
 
 ## Structure
 
@@ -203,13 +211,28 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
   wide open (`Access-Control-Allow-Origin: *`) because this is a private, non-commercial,
   known-friend-group tool with no auth anywhere else in the stack (§2) — locking down origins
   would add friction without adding real protection.
-- **Client interaction is still narrower than §16.2 in one respect:** single-click (not
-  double-click) to play a hand card or tap a permanent; drag-and-drop hasn't been built. Context
-  menu and multi-select, both named in §16.2, have since landed. §16.2 frames all of these as
-  important but names them explicitly as Phase 6 polish ("worth building here, unlike in v0.1's
-  design" — i.e., eventually, not immediately); the original minimal client only needed to clear
-  Phase 2's "playable, ugly game" bar plus enough of the §16.3 checklist to prove the underlying
-  actions work through a real UI, not to be pleasant to play.
+- **Click-to-move instead of drag-and-drop, deliberately:** §16.2 calls drag-and-drop "worth
+  building" for zone movement, but the click-based interaction already built (single-click to
+  play a hand card or tap a permanent, plus the context menu for everything else) was judged
+  sufficient — a product call, not a stopgap pending a future drag-and-drop pass. Context menu
+  and multi-select, both also named in §16.2, have landed.
+- **Mobile/tablet support (§21 Open Question 4) is explicitly out of scope for now,** not merely
+  unstarted — no one in the group plays on a tablet currently, so the hover-dependent zoom
+  interaction stays as-is rather than adding a tap-triggered fallback nobody needs yet.
+- **CONCEDE's control-reversion is auto-revert-to-owner + a log flag, not the §14.3-specified
+  prompt, and this is staying that way:** "control reverts... but which player it reverts to is
+  context-dependent, so prompt rather than guess" is the doc's wording, but the auto-revert is
+  logged plainly ("please review") and any player can immediately fix a wrong guess via the
+  existing "Change controller…" context-menu action — judged sufficient without a dedicated
+  prompt protocol.
+- **Server-restart persistence (§14.5, also §21 Open Question 3) is skipped, on purpose:**
+  `TableState` is plain JSON and trivial to snapshot, but reconnecting after a restart also
+  needs each player's rejoin token, which lives only in-memory on the lobby `Room` object and is
+  never serialized anywhere today — a TableState-only snapshot would let a restarted server show
+  a room existed without letting anyone actually rejoin it. The doc itself ranks this as the
+  highest-effort of three mitigations and calls it optional ("worth doing if games get long");
+  the cheaper mitigations (don't deploy mid-game, a health endpoint showing player count) cover
+  the realistic risk for now.
 - **Casting a commander goes straight through the stack to the battlefield in one click:**
   clicking a command-zone commander sends `MOVE_OBJECT` to `{ zone: 'stack' }` (so §12.2's tax
   tracking fires, since that's keyed on the command-zone → stack transition specifically) and

@@ -16,7 +16,7 @@ export function describeAction(action: Action): string {
     case 'DRAW':
       return `drew ${action.count} card${action.count === 1 ? '' : 's'}`;
     case 'PASS_TURN':
-      return 'passed the turn';
+      return 'passed the turn (and untapped the new active player\'s permanents)';
     case 'TAP':
       return 'tapped a permanent';
     case 'UNTAP':
