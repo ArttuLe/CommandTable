@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { isRedacted, type GameObject, type ObjectId, type PlayerId, type PlayerState, type ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
 import { CardTile } from './CardTile.js';
@@ -23,6 +23,42 @@ export function Table() {
     e.preventDefault();
     setMenu({ obj, x: e.clientX, y: e.clientY });
   };
+
+  // §16.2 keyboard shortcuts for the high-frequency actions. Gated on not-typing-in-an-input so
+  // it doesn't fire while the chat box (or a browser-native prompt) has focus.
+  useEffect(() => {
+    function isTypingTarget(target: EventTarget | null): boolean {
+      return target instanceof HTMLElement && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return;
+      switch (e.key.toLowerCase()) {
+        case 'd':
+          act({ t: 'DRAW', playerId, count: 1 });
+          break;
+        case 'u':
+          act({ t: 'UNTAP_ALL', playerId });
+          break;
+        case 'p':
+          act({ t: 'PASS_TURN' });
+          break;
+        case '+':
+        case '=':
+          act({ t: 'SET_LIFE', playerIds: [playerId], update: { mode: 'delta', amount: 1 } });
+          break;
+        case '-':
+          act({ t: 'SET_LIFE', playerIds: [playerId], update: { mode: 'delta', amount: -1 } });
+          break;
+        default:
+          return;
+      }
+      e.preventDefault();
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [act, playerId]);
 
   const objects = Object.values(tableState.objects);
   const opponents = tableState.players.filter((p) => p.id !== playerId);
@@ -65,10 +101,10 @@ export function Table() {
 
       <div className="sidebar">
         <div className="controls">
-          <button onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>Draw</button>
+          <button title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>Draw</button>
           <button onClick={() => act({ t: 'SHUFFLE_LIBRARY', playerId })}>Shuffle</button>
-          <button onClick={() => act({ t: 'UNTAP_ALL', playerId })}>Untap all</button>
-          <button onClick={() => act({ t: 'PASS_TURN' })}>Pass turn</button>
+          <button title="Shortcut: U" onClick={() => act({ t: 'UNTAP_ALL', playerId })}>Untap all</button>
+          <button title="Shortcut: P" onClick={() => act({ t: 'PASS_TURN' })}>Pass turn</button>
           <button onClick={() => act({ t: 'MULLIGAN', playerId })}>Mulligan</button>
           <button onClick={() => act({ t: 'CONCEDE', playerId })}>Concede</button>
           <button onClick={() => act({ t: 'SEARCH_LIBRARY', playerId })}>Search library</button>
