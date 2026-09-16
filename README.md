@@ -53,6 +53,13 @@ shift-click on any battlefield object, a selection bar with Tap/Untap/To graveya
 Escape to clear; drag-box selection wasn't built since shift-click already satisfies the
 tedium checklist. Still missing: drag-and-drop — see the Phase 6/7 note below.
 
+The layout is deliberately weighted toward the table itself: card tiles are 30% larger
+(104×145px) so opponents' boards are actually readable at a glance, the sidebar shrank to just
+the mana pad/selection bar/action buttons (280px → 200px), and the log + chat — read rarely,
+compared to the board — moved out of a permanent sidebar slot into a popup opened via a "Log &
+chat" button, rather than competing for space with the cards every player is actually looking
+at.
+
 This is the doc's "playable, ugly game" milestone (Phase 2) plus enough of Phase 3 that most
 interactions no longer need a workaround, plus Phase 4's referee: misclicks are now survivable
 and disputes have a paper trail. Verified against live multi-client sessions at both the

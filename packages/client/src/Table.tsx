@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { isRedacted, type GameObject, type ObjectId, type PlayerId, type PlayerState, type ProjectedObject } from '@command-table/common';
+import { isRedacted, type GameObject, type LogEntry, type ObjectId, type PlayerId, type PlayerState, type ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
 import { useUiStore, type ManaColor } from './uiStore.js';
 import { CardTile } from './CardTile.js';
@@ -24,6 +24,8 @@ export function Table() {
     e.preventDefault();
     setMenu({ obj, x: e.clientX, y: e.clientY });
   };
+
+  const [logOpen, setLogOpen] = useState(false);
 
   // §16.2 keyboard shortcuts for the high-frequency actions. Gated on not-typing-in-an-input so
   // it doesn't fire while the chat box (or a browser-native prompt) has focus.
@@ -165,18 +167,9 @@ export function Table() {
           </div>
         )}
 
-        <div className="log">
-          {tableState.log.map((entry, i) => {
-            const actorName = tableState.players.find((p) => p.id === entry.actorId)?.displayName ?? entry.actorId;
-            return (
-              <p key={i}>
-                <strong>{actorName}</strong> {entry.text}
-              </p>
-            );
-          })}
-        </div>
-
-        <ChatBox onSend={(text) => act({ t: 'SAY', playerId, text })} />
+        <button className="log-toggle" onClick={() => setLogOpen(true)}>
+          Log &amp; chat{tableState.log.length > 0 ? ` (${tableState.log.length})` : ''}
+        </button>
       </div>
 
       <div className="self-area">
@@ -233,6 +226,14 @@ export function Table() {
       </div>
 
       {menu && <ContextMenu obj={menu.obj} x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
+      {logOpen && (
+        <LogChatModal
+          log={tableState.log}
+          players={tableState.players}
+          onSend={(text) => act({ t: 'SAY', playerId, text })}
+          onClose={() => setLogOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -456,6 +457,44 @@ function SelectionBar() {
       <button onClick={graveyardAll}>To graveyard</button>
       <button onClick={clearSelection}>Clear</button>
     </div>
+  );
+}
+
+// Log and chat moved off the always-visible sidebar into a popup: the table itself — the
+// battlefield and opponents' boards — is what players look at nearly all the time, so it gets
+// the screen space. A player opens this only when they need it.
+function LogChatModal({
+  log,
+  players,
+  onSend,
+  onClose,
+}: {
+  log: LogEntry[];
+  players: PlayerState[];
+  onSend: (text: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="modal log-modal">
+        <div className="modal-header">
+          <span>Log &amp; chat</span>
+          <button onClick={onClose}>×</button>
+        </div>
+        <div className="log">
+          {log.map((entry, i) => {
+            const actorName = players.find((p) => p.id === entry.actorId)?.displayName ?? entry.actorId;
+            return (
+              <p key={i}>
+                <strong>{actorName}</strong> {entry.text}
+              </p>
+            );
+          })}
+        </div>
+        <ChatBox onSend={onSend} />
+      </div>
+    </>
   );
 }
 
