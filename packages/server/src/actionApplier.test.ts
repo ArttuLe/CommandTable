@@ -94,6 +94,37 @@ describe('applyAction: MOVE_OBJECT', () => {
     applyAction(state, { t: 'MOVE_OBJECT', objectId: 'c1', toZone: { playerId: ALICE, zone: 'hand' } });
     expect(state.objects['c1'].zone).toEqual({ playerId: ALICE, zone: 'library' });
   });
+
+  it('increments the owner\'s commander tax count when a commander is cast from the command zone (§12.2)', () => {
+    const state = makeState([card({ id: 'cmd1', zone: { playerId: ALICE, zone: 'commandZone' } })]);
+    state.players[0].commanderIds = ['cmd1'];
+
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'cmd1', toZone: { zone: 'stack' } });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.players.find((p) => p.id === ALICE)?.commanderCastCount['cmd1']).toBe(1);
+  });
+
+  it('increments commander tax again on a second cast', () => {
+    let state = makeState([card({ id: 'cmd1', zone: { playerId: ALICE, zone: 'commandZone' } })]);
+    state.players[0].commanderIds = ['cmd1'];
+
+    let result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'cmd1', toZone: { zone: 'stack' } });
+    if (!result.ok) throw new Error('unreachable');
+    result = applyAction(result.state, { t: 'MOVE_OBJECT', objectId: 'cmd1', toZone: { playerId: ALICE, zone: 'commandZone' } });
+    if (!result.ok) throw new Error('unreachable');
+    result = applyAction(result.state, { t: 'MOVE_OBJECT', objectId: 'cmd1', toZone: { zone: 'stack' } });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.players.find((p) => p.id === ALICE)?.commanderCastCount['cmd1']).toBe(2);
+  });
+
+  it('does not increment tax for a non-commander object moving to the stack', () => {
+    const state = makeState([card({ id: 'spell', zone: { playerId: ALICE, zone: 'hand' } })]);
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'spell', toZone: { zone: 'stack' } });
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.players.find((p) => p.id === ALICE)?.commanderCastCount).toEqual({});
+  });
 });
 
 describe('applyAction: SHUFFLE_LIBRARY', () => {

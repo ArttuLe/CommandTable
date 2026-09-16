@@ -144,7 +144,22 @@ function moveObject(state: TableState, action: Extract<Action, { t: 'MOVE_OBJECT
     faceVisibility: defaultVisibilityFor(action.toZone, existing.controllerId, faceDown),
   };
 
-  return ok(withObject(state, updated));
+  const next = withObject(state, updated);
+  const isCommanderCast = existing.zone.zone === 'commandZone' && !('playerId' in action.toZone) && action.toZone.zone === 'stack';
+  if (!isCommanderCast) {
+    return ok(next);
+  }
+
+  // §12.2: commander tax is a display hint, incremented here so the client doesn't have to
+  // infer "was that a commander cast" itself; the player still pays the tax themselves.
+  return ok({
+    ...next,
+    players: next.players.map((p) =>
+      p.commanderIds.includes(existing.id)
+        ? { ...p, commanderCastCount: { ...p.commanderCastCount, [existing.id]: (p.commanderCastCount[existing.id] ?? 0) + 1 } }
+        : p
+    ),
+  });
 }
 
 function shuffleLibrary(state: TableState, action: Extract<Action, { t: 'SHUFFLE_LIBRARY' }>, deps: ApplyDeps): ApplyResult {
