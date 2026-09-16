@@ -29,16 +29,31 @@ Phases 1 through 4 (§17 of the design doc) are implemented:
   (§15.2). `ROLL_DICE`/`FLIP_COIN`/`CONCEDE`/`SAY` land here too, now that there's a log for
   their results to go into.
 
+Also implemented: **commander tax tracking** (§12.2, the one piece of Phase 5 that's server
+logic rather than UI — `commanderCastCount` increments when a commander moves command zone →
+stack), and a **minimal client** (early Phase 6 — React + TypeScript + Vite + Zustand, per §4).
+It's deliberately ugly: a lobby screen and a single-column-per-player table view with no
+drag-and-drop, no lands/nonlands split, no hover-zoom, no context menus — click a hand card to
+play it, click a battlefield card to tap/untap it, buttons for the rest. It covers enough of the
+§16.3 tedium checklist (draw, untap all, life ±1 on any player including bulk, move to
+graveyard, search + shuffle, pass turn) to actually play a rough game in a browser, which is
+what "playable, ugly game" means once there's a client at all.
+
 This is the doc's "playable, ugly game" milestone (Phase 2) plus enough of Phase 3 that most
 interactions no longer need a workaround, plus Phase 4's referee: misclicks are now survivable
-and disputes have a paper trail. Verified against live multi-client WebSocket sessions, not
-just unit tests — including a real self-leak catch (a player who drew a card and could see it,
-then undid the draw, correctly got flagged as still "knowing" what they saw).
+and disputes have a paper trail. Verified against live multi-client sessions at both the
+protocol level (raw WebSocket traffic) and now in a real browser with two tabs: room creation,
+joining, decklist submission with real warnings (deck size, color identity against real
+Scryfall data), starting a game, drawing, playing a card to the battlefield, tapping it (with a
+real card image and CSS rotation), adjusting another player's life, and the log updating live
+across both clients — plus, at the protocol level, a real self-leak catch (a player who drew a
+card and could see it, then undid the draw, correctly got flagged as still "knowing" what they
+saw).
 
-Not yet implemented: commander-specific affordances like the damage grid UI and tax display
-(Phase 5, though the underlying data — commander damage, cast count — already exists in
-`PlayerState`), and any client UI at all (Phases 6-7). Right now this is a server with no
-frontend — interact with it via raw WebSocket messages (see `packages/common/src/protocol.ts`).
+Not yet implemented: the rest of Phase 5's UI (a dedicated damage grid, tax display beyond a
+number that's tracked but not yet shown), and Phase 6/7's polish (drag-and-drop, multi-select,
+keyboard shortcuts, hover-zoom, lands/nonlands split, mobile support, MDFC/saga layout
+handling). See `packages/client/src` for what exists.
 
 ## Structure
 
@@ -48,6 +63,8 @@ packages/
   server/   Node WebSocket server: room manager, card index, decklist parser/resolver, ingestion,
             table factory, action applier (dispatch + actions/{object,zone,player,meta}Actions.ts),
             projection boundary, table history + undo
+  client/   Minimal React client: Home (create/join room) → Lobby (seats, decklist, ready/start)
+            → Table (battlefield/hand/log, wired straight to the WebSocket via a Zustand store)
 ```
 
 ## Setup
@@ -75,6 +92,16 @@ Listens on `:8080` (override with `PORT`). Two entry points:
   act on the table with `{ t: 'action', clientSeq, action }` or roll back with
   `{ t: 'undo', targetRevision }`. See `packages/common/src/protocol.ts` and
   `packages/common/src/actions.ts` for the full `Action` union and message set.
+
+## Running the client
+
+```
+npm run dev --workspace @command-table/client
+```
+
+Serves on `:5173` (Vite default). Hardcoded to talk to the server at `localhost:8080`
+(`packages/client/src/api.ts`) — there's no deployment story yet (§14.5 isn't reached), so this
+is dev-only. Requires the server to be running with an ingested card index (see above).
 
 ## Testing
 
@@ -148,3 +175,19 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
   after the revert. It won't catch every conceivable leak (e.g. a player inferring information
   from a count changing) — the doc only asks that the honest fact be surfaced, not that leakage
   be perfectly modeled, and this catches the common, concrete case (a peek/reveal being undone).
+- **`joined` now carries the joining player's own `playerId`:** the doc's §11.1 message shape
+  didn't include it, which would have forced the client to guess which seat was "me" by matching
+  on display name — fragile the moment two players share a name. Added it while building the
+  client, the first consumer that actually needed it.
+- **New `GET /api/cards/:scryfallId` endpoint, and permissive CORS on the HTTP API:** the wire
+  protocol only ever sends a `scryfallId` (§7.1 — `GameObject.source` never carries a display
+  name), so a client needs *some* way to resolve what a card actually looks like. CORS is
+  wide open (`Access-Control-Allow-Origin: *`) because this is a private, non-commercial,
+  known-friend-group tool with no auth anywhere else in the stack (§2) — locking down origins
+  would add friction without adding real protection.
+- **Client interaction is deliberately narrower than §16.2:** single-click (not double-click) to
+  play a hand card or tap a permanent, no drag-and-drop, no context menu, no multi-select. §16.2
+  frames these as important but names them explicitly as Phase 6 polish ("worth building here,
+  unlike in v0.1's design" — i.e., eventually, not immediately); the minimal client only needs to
+  clear Phase 2's "playable, ugly game" bar plus enough of the §16.3 checklist to prove the
+  underlying actions work through a real UI, not to be pleasant to play.

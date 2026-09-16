@@ -21,7 +21,7 @@ export type ClientMessage =
   | { t: 'ping' };
 
 export type ServerMessage =
-  | { t: 'joined'; roomState: RoomState; rejoinToken: string }
+  | { t: 'joined'; playerId: PlayerId; roomState: RoomState; rejoinToken: string }
   | { t: 'room'; roomState: RoomState }
   | { t: 'deckResult'; warnings: DeckWarningKind[]; unresolved: UnresolvedLine[] }
   | { t: 'state'; state: ClientTableState }

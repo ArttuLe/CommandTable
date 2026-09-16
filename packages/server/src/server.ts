@@ -94,7 +94,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       state.roomId = room.roomId;
       state.playerId = result.playerId;
       registerSocket(room.roomId, result.playerId, socket);
-      send(socket, { t: 'joined', roomState: room.toState(), rejoinToken: result.rejoinToken });
+      send(socket, { t: 'joined', playerId: result.playerId, roomState: room.toState(), rejoinToken: result.rejoinToken });
       broadcastRoomState(room);
       if (tablesByRoom.has(room.roomId)) {
         send(socket, { t: 'state', state: projectFor(tablesByRoom.get(room.roomId)!, result.playerId) });
