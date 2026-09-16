@@ -255,15 +255,20 @@ function PlayerArea({ player, handCount, libraryCount, battlefield, commandZone,
 
       <div className="battlefield">
         {battlefield.map((obj) => (
-          <div key={obj.id} className="battlefield-slot">
-            <CardTile obj={obj} onClick={() => onTapToggle(obj)} onContextMenu={onObjectContextMenu(obj)} />
-            {onGraveyard && !isRedacted(obj) && (
-              <button className="gy-button" onClick={() => onGraveyard(obj)}>
-                GY
-              </button>
-            )}
-          </div>
+          <BattlefieldSlot
+            key={obj.id}
+            obj={obj}
+            onTapToggle={onTapToggle}
+            onGraveyard={onGraveyard}
+            onContextMenu={onObjectContextMenu(obj)}
+          />
         ))}
+        {/* §16.1: lands row vs. nonlands area "removes enormous visual noise". Since land-ness
+            depends on card data that loads asynchronously per object, this uses a CSS ordering
+            trick (lands first, a full-width spacer forces a line wrap, nonlands after) rather
+            than pre-splitting into two arrays — a permanent may briefly render in the wrong
+            group for one frame while its card data is still loading, then self-correct. */}
+        <div className="battlefield-split" />
       </div>
 
       <table className="commander-damage">
@@ -285,6 +290,38 @@ function PlayerArea({ player, handCount, libraryCount, battlefield, commandZone,
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function useIsLand(obj: ProjectedObject): boolean {
+  const card = useCard(obj);
+  if (!isRedacted(obj) && obj.source.kind === 'token' && obj.source.adhoc) {
+    return obj.source.adhoc.typeLine.includes('Land');
+  }
+  return card?.typeLine.includes('Land') ?? false;
+}
+
+function BattlefieldSlot({
+  obj,
+  onTapToggle,
+  onGraveyard,
+  onContextMenu,
+}: {
+  obj: ProjectedObject;
+  onTapToggle: (obj: { id: string; tapped: boolean }) => void;
+  onGraveyard?: (obj: GameObject) => void;
+  onContextMenu: (e: React.MouseEvent) => void;
+}) {
+  const isLand = useIsLand(obj);
+  return (
+    <div className="battlefield-slot" style={{ order: isLand ? 0 : 2 }}>
+      <CardTile obj={obj} onClick={() => onTapToggle(obj)} onContextMenu={onContextMenu} />
+      {onGraveyard && !isRedacted(obj) && (
+        <button className="gy-button" onClick={() => onGraveyard(obj)}>
+          GY
+        </button>
+      )}
     </div>
   );
 }

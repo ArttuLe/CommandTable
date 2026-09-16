@@ -42,8 +42,9 @@ peek top N (with a "revealed library" panel that renders whatever `SEARCH_LIBRAR
 made visible, right-clickable like anything else), roll dice / flip a coin, create tokens
 (name/type/power/toughness/quantity via prompts), and a chat box for `SAY`. Hover-zoom made the
 cut despite being "later polish" in spirit, since the doc calls it "non-negotiable" (§16.1)
-rather than optional. Still missing: drag-and-drop, multi-select, keyboard shortcuts, and the
-lands/nonlands split — see the Phase 6/7 note below.
+rather than optional. The battlefield also splits into a lands row and a nonlands area (§16.1),
+via CSS `order` rather than pre-sorted arrays — see the deviation note. Still missing:
+drag-and-drop, multi-select, and keyboard shortcuts — see the Phase 6/7 note below.
 
 This is the doc's "playable, ugly game" milestone (Phase 2) plus enough of Phase 3 that most
 interactions no longer need a workaround, plus Phase 4's referee: misclicks are now survivable
@@ -226,3 +227,10 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
   requiring you to control it first — consistent with §10's "anyone can take any action at any
   time," which the doc frames as correct specifically because there's no priority system to
   violate.
+- **Lands/nonlands split uses a CSS ordering trick, not two arrays:** land-ness depends on card
+  data (`typeLine`) that loads asynchronously per object via `useCard`, so pre-splitting into
+  two arrays before render isn't straightforward without a global reactive cache. Instead every
+  battlefield slot sets its own flex `order` (lands first) plus a full-width spacer forces the
+  wrap between them. Cost: a permanent can render in the wrong group for one frame while its
+  card data is still loading, then self-correct — an acceptable, self-healing cost for the
+  "ugly by design" client.
