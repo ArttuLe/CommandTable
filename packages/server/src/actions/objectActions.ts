@@ -1,7 +1,7 @@
 // §8.1 object actions (Phase 3), continuing from MOVE_OBJECT in actionApplier.ts.
 
 import { randomUUID } from 'node:crypto';
-import type { Action, GameObject, TableState } from '@command-table/common';
+import type { Action, GameObject, PlayerId, TableState } from '@command-table/common';
 import {
   applyCounterUpdate,
   defaultVisibilityFor,
@@ -28,14 +28,21 @@ function setTapped(state: TableState, objectId: string, tapped: boolean): ApplyR
 }
 
 export function untapAll(state: TableState, action: Extract<Action, { t: 'UNTAP_ALL' }>): ApplyResult {
+  const next = untapControlledBy(state, action.playerId);
+  return ok({ ...next, revision: next.revision + 1 });
+}
+
+// Shared with PASS_TURN's untap bundle (§16.3: "pass turn, with untap bundle") — doesn't bump
+// revision itself so the caller can fold it into one action's single revision bump.
+export function untapControlledBy(state: TableState, playerId: PlayerId): TableState {
   const toUntap = Object.values(state.objects).filter(
-    (o) => o.controllerId === action.playerId && 'playerId' in o.zone && o.zone.zone === 'battlefield'
+    (o) => o.controllerId === playerId && 'playerId' in o.zone && o.zone.zone === 'battlefield'
   );
   let next = state;
   for (const obj of toUntap) {
     next = withObject(next, { ...obj, tapped: false }, false);
   }
-  return ok({ ...next, revision: next.revision + 1 });
+  return next;
 }
 
 export function setCounter(state: TableState, action: Extract<Action, { t: 'SET_COUNTER' }>): ApplyResult {

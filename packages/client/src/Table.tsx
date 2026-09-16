@@ -117,6 +117,18 @@ export function Table() {
           <button onClick={() => act({ t: 'SEARCH_LIBRARY', playerId })}>Search library</button>
           <button
             onClick={() => {
+              const text = window.prompt('Adjust ALL players\' life by how much?', '0');
+              const amount = Number(text);
+              if (Number.isFinite(amount) && amount !== 0) {
+                act({ t: 'SET_LIFE', playerIds: tableState.players.map((p) => p.id), update: { mode: 'delta', amount } });
+              }
+            }}
+          >
+            Adjust all life…
+          </button>
+          <button onClick={() => act({ t: 'CLEAR_ALL_MARKERS' })}>Clear all markers</button>
+          <button
+            onClick={() => {
               const countText = window.prompt('Look at the top how many cards?', '1');
               const count = Number(countText);
               if (Number.isFinite(count) && count > 0) act({ t: 'PEEK_TOP', playerId, count });
@@ -271,6 +283,15 @@ function PlayerArea({ player, handCount, libraryCount, battlefield, commandZone,
           <button onClick={() => onLifeDelta(-1)}>-1</button>
           {player.life}
           <button onClick={() => onLifeDelta(1)}>+1</button>
+          <button
+            onClick={() => {
+              const text = window.prompt('Adjust life by how much? (negative to lose life)', '0');
+              const amount = Number(text);
+              if (Number.isFinite(amount) && amount !== 0) onLifeDelta(amount);
+            }}
+          >
+            ±N…
+          </button>
         </span>
         <span className={`poison ${poison >= 10 ? 'lethal' : ''}`}>
           <button onClick={() => onPoisonDelta(-1)}>-1</button>
