@@ -61,12 +61,18 @@ amount or across all players at once (not just ±1 per player), "clear all marke
 one-click sidebar action, and the two most common counter types (+1/+1, -1/-1) are one click
 from the context menu rather than two sequential prompts.
 
-The layout is deliberately weighted toward the table itself: card tiles are 30% larger
-(104×145px) so opponents' boards are actually readable at a glance, the sidebar shrank to just
-the mana pad/selection bar/action buttons (280px → 200px), and the log + chat — read rarely,
-compared to the board — moved out of a permanent sidebar slot into a popup opened via a "Log &
-chat" button, rather than competing for space with the cards every player is actually looking
-at.
+The layout is a vertical stack, not a side-by-side split: a top toolbar (mana pad, selection
+bar, action buttons, a "Log & chat" popup toggle — log/chat moved out of always-visible space
+since they're read far less often than the board), then opponents' boards, then your own —
+each getting the full window width. This replaced an earlier side-by-side attempt (opponents +
+your own board sharing a column with a fixed-width sidebar) that turned out to have a genuine
+CSS Grid bug, not just a size problem: `.sidebar` had a definite row but an automatic column,
+and the grid placement algorithm resolves definite-row items *before* fully-automatic ones —
+so the sidebar silently claimed the wide column and `.opponents` got squeezed into the narrow
+one, the opposite of the intended layout. Card tiles are 30% larger than the original
+(104×145px) on top of that fix. Opponents wrap onto multiple rows (capped at 46vh with their
+own scroll) rather than forcing a horizontal scroll, so 1–3 opponents typically fit without
+scrolling at all — verified live with a 4-player game.
 
 This is the doc's "playable, ugly game" milestone (Phase 2) plus enough of Phase 3 that most
 interactions no longer need a workaround, plus Phase 4's referee: misclicks are now survivable
