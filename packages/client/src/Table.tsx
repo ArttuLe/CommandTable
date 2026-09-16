@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { isRedacted, type GameObject, type ObjectId, type PlayerId, type PlayerState, type ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
+import { useUiStore, type ManaColor } from './uiStore.js';
 import { CardTile } from './CardTile.js';
 import { useCard } from './useCard.js';
 import { ContextMenu } from './ContextMenu.js';
@@ -49,6 +50,9 @@ export function Table() {
           break;
         case '-':
           act({ t: 'SET_LIFE', playerIds: [playerId], update: { mode: 'delta', amount: -1 } });
+          break;
+        case 'escape':
+          useUiStore.getState().clearSelection();
           break;
         default:
           return;
@@ -100,6 +104,9 @@ export function Table() {
       </div>
 
       <div className="sidebar">
+        <ManaPad />
+        <SelectionBar />
+
         <div className="controls">
           <button title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>Draw</button>
           <button onClick={() => act({ t: 'SHUFFLE_LIBRARY', playerId })}>Shuffle</button>
@@ -350,9 +357,16 @@ function BattlefieldSlot({
   onContextMenu: (e: React.MouseEvent) => void;
 }) {
   const isLand = useIsLand(obj);
+  const selected = useUiStore((s) => s.selectedIds.has(obj.id));
+  const toggleSelected = useUiStore((s) => s.toggleSelected);
   return (
     <div className="battlefield-slot" style={{ order: isLand ? 0 : 2 }}>
-      <CardTile obj={obj} onClick={() => onTapToggle(obj)} onContextMenu={onContextMenu} />
+      <CardTile
+        obj={obj}
+        selected={selected}
+        onClick={(e) => (e.shiftKey ? toggleSelected(obj.id) : onTapToggle(obj))}
+        onContextMenu={onContextMenu}
+      />
       {onGraveyard && !isRedacted(obj) && (
         <button className="gy-button" onClick={() => onGraveyard(obj)}>
           GY
@@ -385,6 +399,64 @@ function CommanderTile({
 function CommanderName({ commander }: { commander: CommanderRef }) {
   const card = useCard(commander.obj);
   return <>{card ? card.name : `${commander.ownerName}'s commander`}</>;
+}
+
+const MANA_COLORS: ManaColor[] = ['W', 'U', 'B', 'R', 'G', 'C'];
+
+// §8.4 client-local mana pad: bumped as lands are tapped, spent as spells are cast, reset at
+// will. Purely client-side (uiStore) — the server has no concept of mana, per the doc.
+function ManaPad() {
+  const manaPad = useUiStore((s) => s.manaPad);
+  const bumpMana = useUiStore((s) => s.bumpMana);
+  const resetMana = useUiStore((s) => s.resetMana);
+  return (
+    <div className="mana-pad">
+      {MANA_COLORS.map((color) => (
+        <span key={color} className={`mana-pip mana-${color}`}>
+          <button onClick={() => bumpMana(color, -1)}>-</button>
+          {color} {manaPad[color]}
+          <button onClick={() => bumpMana(color, 1)}>+</button>
+        </span>
+      ))}
+      <button onClick={resetMana}>Reset</button>
+    </div>
+  );
+}
+
+// §16.2 multi-select: shift-click a battlefield object to toggle it into the selection, then
+// apply a bulk action — "tap five lands" or "sacrifice all my tokens" (§16.3) as one gesture.
+// Each object keeps its own controller for the graveyard move, matching the single-object
+// context menu (§10: freeform play has no restriction on whose object an action targets).
+function SelectionBar() {
+  const selectedIds = useUiStore((s) => s.selectedIds);
+  const clearSelection = useUiStore((s) => s.clearSelection);
+  const act = useStore((s) => s.act);
+  const objects = useStore((s) => s.tableState?.objects ?? {});
+
+  if (selectedIds.size === 0) return null;
+
+  function setTappedAll(tapped: boolean) {
+    selectedIds.forEach((id) => act({ t: tapped ? 'TAP' : 'UNTAP', objectId: id }));
+  }
+
+  function graveyardAll() {
+    selectedIds.forEach((id) => {
+      const obj = objects[id];
+      if (!obj) return;
+      act({ t: 'MOVE_OBJECT', objectId: id, toZone: { playerId: obj.controllerId, zone: 'graveyard' } });
+    });
+    clearSelection();
+  }
+
+  return (
+    <div className="selection-bar">
+      <span>{selectedIds.size} selected</span>
+      <button onClick={() => setTappedAll(true)}>Tap</button>
+      <button onClick={() => setTappedAll(false)}>Untap</button>
+      <button onClick={graveyardAll}>To graveyard</button>
+      <button onClick={clearSelection}>Clear</button>
+    </div>
+  );
 }
 
 function ChatBox({ onSend }: { onSend: (text: string) => void }) {
