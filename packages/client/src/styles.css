@@ -23,6 +23,8 @@ textarea { font-family: monospace; }
 .player-area.inactive { opacity: 0.5; }
 .player-header { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; font-size: 0.85rem; flex-wrap: wrap; }
 .life button { width: 1.5rem; }
+.life.lethal, .poison.lethal { background: #611; color: #fbb; padding: 0 4px; border-radius: 3px; }
+.poison { font-size: 0.8rem; }
 .command-zone, .battlefield, .hand { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
 .hand { min-height: 140px; }
 
@@ -36,9 +38,20 @@ textarea { font-family: monospace; }
 .counter-badge, .marker-badge { position: absolute; bottom: 0; left: 0; font-size: 0.5rem; background: rgba(0,0,0,0.7); padding: 0 2px; }
 .marker-badge { top: 0; bottom: auto; left: auto; right: 0; }
 
+.commander-tile { position: relative; display: inline-block; }
+.tax-badge { position: absolute; top: -6px; right: -6px; background: #663; color: #fff; font-size: 0.6rem; padding: 1px 4px; border-radius: 8px; }
+
+.commander-damage { margin-top: 0.4rem; font-size: 0.7rem; border-collapse: collapse; width: 100%; }
+.commander-damage td { padding: 1px 4px; }
+.commander-damage tr.lethal td { background: #611; color: #fbb; }
+.commander-damage button { width: 1.2rem; font-size: 0.6rem; }
+
 .controls { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .log { flex: 1; overflow-y: auto; font-size: 0.8rem; }
 .log p { margin: 0.2rem 0; }
 .undo-request { background: #442; padding: 0.5rem; border-radius: 4px; }
 
 .error-toast { position: fixed; top: 0.5rem; left: 50%; transform: translateX(-50%); background: #822; color: #fff; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; z-index: 10; }
+
+.zoom-preview { position: fixed; bottom: 1rem; right: 1rem; width: 260px; pointer-events: none; z-index: 20; box-shadow: 0 4px 16px rgba(0,0,0,0.6); border-radius: 12px; overflow: hidden; }
+.zoom-preview img { width: 100%; display: block; }

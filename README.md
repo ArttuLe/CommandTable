@@ -29,13 +29,18 @@ Phases 1 through 4 (§17 of the design doc) are implemented:
   (§15.2). `ROLL_DICE`/`FLIP_COIN`/`CONCEDE`/`SAY` land here too, now that there's a log for
   their results to go into.
 
-Also implemented: **commander tax tracking** (§12.2, the one piece of Phase 5 that's server
-logic rather than UI — `commanderCastCount` increments when a commander moves command zone →
-stack), and a **minimal client** (early Phase 6 — React + TypeScript + Vite + Zustand, per §4).
-It's deliberately ugly: a lobby screen and a single-column-per-player table view with no
-drag-and-drop, no lands/nonlands split, no hover-zoom, no context menus — click a hand card to
-play it, click a battlefield card to tap/untap it, buttons for the rest. It covers enough of the
-§16.3 tedium checklist (draw, untap all, life ±1 on any player including bulk, move to
+Also implemented: **Phase 5's commander affordances** (§12) — commander tax tracking
+(`commanderCastCount` increments when a commander moves command zone → stack, shown as a
+`+N` badge on the commander tile), a per-player commander damage grid (§12.3, one row per
+commander in play, editable, highlighted past 21 lethal), and life/poison lethal-threshold
+highlighting (≤0 life, ≥10 poison) — plus a **minimal client** (early Phase 6 — React +
+TypeScript + Vite + Zustand, per §4). It's deliberately ugly otherwise: a lobby screen and a
+single-column-per-player table view with no drag-and-drop, no lands/nonlands split, no context
+menus, no multi-select — click a hand card to play it, click a command-zone commander to cast
+it (through the stack, so tax tracking fires — see the deviation note), click a battlefield card
+to tap/untap it, buttons for the rest. Hover-zoom made the cut despite being "later polish" in
+spirit, since the doc calls it "non-negotiable" (§16.1) rather than optional. Covers enough of
+the §16.3 tedium checklist (draw, untap all, life ±1 on any player including bulk, move to
 graveyard, search + shuffle, pass turn) to actually play a rough game in a browser, which is
 what "playable, ugly game" means once there's a client at all.
 
@@ -43,17 +48,18 @@ This is the doc's "playable, ugly game" milestone (Phase 2) plus enough of Phase
 interactions no longer need a workaround, plus Phase 4's referee: misclicks are now survivable
 and disputes have a paper trail. Verified against live multi-client sessions at both the
 protocol level (raw WebSocket traffic) and now in a real browser with two tabs: room creation,
-joining, decklist submission with real warnings (deck size, color identity against real
-Scryfall data), starting a game, drawing, playing a card to the battlefield, tapping it (with a
-real card image and CSS rotation), adjusting another player's life, and the log updating live
-across both clients — plus, at the protocol level, a real self-leak catch (a player who drew a
-card and could see it, then undid the draw, correctly got flagged as still "knowing" what they
-saw).
+joining, decklist submission with real warnings (deck size, and a genuine color-identity
+violation against real Scryfall data), starting a game, drawing, playing a card to the
+battlefield, tapping it (with a real card image and CSS rotation), casting a commander through
+the stack, adjusting life/poison and commander damage (including triggering and visually
+confirming the 21-damage lethal highlight), hovering a card to see a full-size, fully-readable
+zoom preview, and the log and commander-damage grid updating live across both clients — plus, at
+the protocol level, a real self-leak catch (a player who drew a card and could see it, then
+undid the draw, correctly got flagged as still "knowing" what they saw).
 
-Not yet implemented: the rest of Phase 5's UI (a dedicated damage grid, tax display beyond a
-number that's tracked but not yet shown), and Phase 6/7's polish (drag-and-drop, multi-select,
-keyboard shortcuts, hover-zoom, lands/nonlands split, mobile support, MDFC/saga layout
-handling). See `packages/client/src` for what exists.
+Not yet implemented: Phase 6/7's remaining polish (drag-and-drop, multi-select, keyboard
+shortcuts, lands/nonlands split, mobile support, MDFC/saga layout handling, a real stack view).
+See `packages/client/src` for what exists.
 
 ## Structure
 
@@ -191,3 +197,15 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
   unlike in v0.1's design" — i.e., eventually, not immediately); the minimal client only needs to
   clear Phase 2's "playable, ugly game" bar plus enough of the §16.3 checklist to prove the
   underlying actions work through a real UI, not to be pleasant to play.
+- **Casting a commander goes straight through the stack to the battlefield in one click:**
+  clicking a command-zone commander sends `MOVE_OBJECT` to `{ zone: 'stack' }` (so §12.2's tax
+  tracking fires, since that's keyed on the command-zone → stack transition specifically) and
+  then immediately to the caster's battlefield. There's no stack UI to hold it there — the doc
+  lists "no stack resolution" as an explicit non-goal (§1.3), so a visible, interactive stack
+  would be scope the doc itself doesn't ask for. The two `MOVE_OBJECT` calls are genuinely two
+  separate actions server-side (two log entries, two history entries), which is a minor honesty
+  trade-off: self-undo after casting only reverts the second step.
+- **Commander name lookup falls back to "{owner}'s commander" when the card hasn't loaded (or
+  fetch failed) yet:** the commander-damage grid's rows are keyed by object id, not by a
+  pre-fetched name, since `useCard` resolves asynchronously per §4's "thin client" approach — no
+  client-side cache warm-up step exists yet.

@@ -1,4 +1,5 @@
 import { useStore } from './store.js';
+import { useUiStore } from './uiStore.js';
 import { Home } from './Home.js';
 import { Lobby } from './Lobby.js';
 import { Table } from './Table.js';
@@ -8,6 +9,7 @@ export function App() {
   const tableState = useStore((s) => s.tableState);
   const errorMessage = useStore((s) => s.errorMessage);
   const dismissError = useStore((s) => s.dismissError);
+  const hoveredCard = useUiStore((s) => s.hoveredCard);
 
   return (
     <>
@@ -17,6 +19,11 @@ export function App() {
         </div>
       )}
       {!roomState ? <Home /> : tableState ? <Table /> : <Lobby />}
+      {hoveredCard?.imageUris && (
+        <div className="zoom-preview">
+          <img src={hoveredCard.imageUris.normal} alt={hoveredCard.name} />
+        </div>
+      )}
     </>
   );
 }

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { isRedacted, type Card, type GameObject, type ProjectedObject } from '@command-table/common';
-import { fetchCard } from './api.js';
+import { useCard } from './useCard.js';
+import { useUiStore } from './uiStore.js';
 
 interface CardTileProps {
   obj: ProjectedObject;
@@ -9,23 +9,8 @@ interface CardTileProps {
 }
 
 export function CardTile({ obj, onClick, onContextMenu }: CardTileProps) {
-  const [card, setCard] = useState<Card | null>(null);
-
-  const scryfallId = !isRedacted(obj) && 'scryfallId' in obj.source ? obj.source.scryfallId : null;
-
-  useEffect(() => {
-    if (!scryfallId) {
-      setCard(null);
-      return;
-    }
-    let cancelled = false;
-    fetchCard(scryfallId).then((c) => {
-      if (!cancelled) setCard(c);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [scryfallId]);
+  const card = useCard(obj);
+  const setHoveredCard = useUiStore((s) => s.setHoveredCard);
 
   const label = isRedacted(obj) ? null : cardLabel(obj, card);
 
@@ -34,6 +19,8 @@ export function CardTile({ obj, onClick, onContextMenu }: CardTileProps) {
       className={`card-tile ${obj.tapped ? 'tapped' : ''} ${isRedacted(obj) ? 'face-down' : ''}`}
       onClick={onClick}
       onContextMenu={onContextMenu}
+      onMouseEnter={() => card && setHoveredCard(card)}
+      onMouseLeave={() => setHoveredCard(null)}
       title={label ?? undefined}
     >
       {!isRedacted(obj) && card?.imageUris ? (
