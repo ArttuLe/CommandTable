@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { isRedacted, type GameObject, type ObjectId, type PlayerId, type PlayerState, type ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
+import { useUiStore, type ManaColor } from './uiStore.js';
 import { CardTile } from './CardTile.js';
 import { useCard } from './useCard.js';
 import { ContextMenu } from './ContextMenu.js';
@@ -100,6 +101,8 @@ export function Table() {
       </div>
 
       <div className="sidebar">
+        <ManaPad />
+
         <div className="controls">
           <button title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>Draw</button>
           <button onClick={() => act({ t: 'SHUFFLE_LIBRARY', playerId })}>Shuffle</button>
@@ -385,6 +388,28 @@ function CommanderTile({
 function CommanderName({ commander }: { commander: CommanderRef }) {
   const card = useCard(commander.obj);
   return <>{card ? card.name : `${commander.ownerName}'s commander`}</>;
+}
+
+const MANA_COLORS: ManaColor[] = ['W', 'U', 'B', 'R', 'G', 'C'];
+
+// §8.4 client-local mana pad: bumped as lands are tapped, spent as spells are cast, reset at
+// will. Purely client-side (uiStore) — the server has no concept of mana, per the doc.
+function ManaPad() {
+  const manaPad = useUiStore((s) => s.manaPad);
+  const bumpMana = useUiStore((s) => s.bumpMana);
+  const resetMana = useUiStore((s) => s.resetMana);
+  return (
+    <div className="mana-pad">
+      {MANA_COLORS.map((color) => (
+        <span key={color} className={`mana-pip mana-${color}`}>
+          <button onClick={() => bumpMana(color, -1)}>-</button>
+          {color} {manaPad[color]}
+          <button onClick={() => bumpMana(color, 1)}>+</button>
+        </span>
+      ))}
+      <button onClick={resetMana}>Reset</button>
+    </div>
+  );
 }
 
 function ChatBox({ onSend }: { onSend: (text: string) => void }) {

@@ -47,6 +47,16 @@ textarea { font-family: monospace; }
 .commander-damage tr.lethal td { background: #611; color: #fbb; }
 .commander-damage button { width: 1.2rem; font-size: 0.6rem; }
 
+.mana-pad { display: flex; flex-wrap: wrap; gap: 0.3rem; font-size: 0.7rem; }
+.mana-pip { display: flex; align-items: center; gap: 0.15rem; padding: 0 3px; border-radius: 3px; background: #333; }
+.mana-pip button { width: 1.2rem; font-size: 0.6rem; }
+.mana-W { background: #eee; color: #222; }
+.mana-U { background: #0e68ab; color: #fff; }
+.mana-B { background: #444; color: #ddd; }
+.mana-R { background: #9c2a2a; color: #fff; }
+.mana-G { background: #1a6b3c; color: #fff; }
+.mana-C { background: #888; color: #222; }
+
 .controls { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .log { flex: 1; overflow-y: auto; font-size: 0.8rem; }
 .log p { margin: 0.2rem 0; }

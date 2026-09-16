@@ -45,9 +45,10 @@ cut despite being "later polish" in spirit, since the doc calls it "non-negotiab
 rather than optional. The battlefield also splits into a lands row and a nonlands area (§16.1),
 via CSS `order` rather than pre-sorted arrays — see the deviation note. Keyboard shortcuts
 (§16.2) cover the high-frequency actions — `D` draw, `U` untap all, `P` pass turn, `+`/`-` your
-own life — gated so they don't fire while a text input has focus; the mana pad the doc also
-lists isn't built yet, so there's no shortcut for it. Still missing: drag-and-drop and
-multi-select — see the Phase 6/7 note below.
+own life — gated so they don't fire while a text input has focus. A client-local mana pad (§8.4)
+sits above the sidebar controls: WUBRGC counters a player bumps by hand as they tap lands and
+spend mana, reset at will, never synced to the server or other players. Still missing:
+drag-and-drop and multi-select — see the Phase 6/7 note below.
 
 This is the doc's "playable, ugly game" milestone (Phase 2) plus enough of Phase 3 that most
 interactions no longer need a workaround, plus Phase 4's referee: misclicks are now survivable
@@ -65,8 +66,8 @@ damage grid updating live across both clients — plus, at the protocol level, a
 catch (a player who drew a card and could see it, then undid the draw, correctly got flagged as
 still "knowing" what they saw).
 
-Not yet implemented: Phase 6/7's remaining polish (drag-and-drop, multi-select, the mana pad,
-mobile support, MDFC/saga layout handling, a real stack view). See `packages/client/src` for
+Not yet implemented: Phase 6/7's remaining polish (drag-and-drop, multi-select, mobile support,
+MDFC/saga layout handling, a real stack view). See `packages/client/src` for
 what exists.
 
 ## Structure
