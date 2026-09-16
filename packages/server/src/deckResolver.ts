@@ -2,6 +2,15 @@
 
 import type { Card, DeckLine, DeckWarningKind, ParsedDecklist, ResolvedDecklist, ResolvedDeckLine } from '@command-table/common';
 
+export const EMPTY_RESOLVED_DECKLIST: ResolvedDecklist = {
+  commanders: [],
+  deck: [],
+  sideboard: [],
+  maybeboard: [],
+  unresolved: [],
+  warnings: [],
+};
+
 export interface CardLookup {
   findByName(name: string): Card | undefined;
   findByPrinting(name: string, set: string, collectorNumber: string): Card | undefined;

@@ -84,17 +84,44 @@ describe('RoomManager', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('setDeckStatus updates only the given seat', () => {
+  it('setResolvedDeck updates only the given seat\'s deck status', () => {
     const manager = new RoomManager();
     const room = manager.createRoom();
     const alice = room.join({ displayName: 'Alice' });
     const bob = room.join({ displayName: 'Bob' });
     if (!alice.ok || !bob.ok) throw new Error('unreachable');
 
-    room.setDeckStatus(alice.playerId, 'ok');
+    room.setResolvedDeck(alice.playerId, { commanders: [], deck: [], sideboard: [], maybeboard: [], unresolved: [], warnings: [] });
 
     expect(room.toState().seats[0].deckStatus).toBe('ok');
     expect(room.toState().seats[1].deckStatus).toBe('none');
+  });
+
+  it('buildSeatSetups includes only occupied seats with their resolved decks', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    const alice = room.join({ displayName: 'Alice', seat: 0 });
+    room.join({ displayName: 'Bob', seat: 2 });
+    if (!alice.ok) throw new Error('unreachable');
+    const resolved = { commanders: [], deck: [], sideboard: [], maybeboard: [], unresolved: [], warnings: [] };
+    room.setResolvedDeck(alice.playerId, resolved);
+
+    const setups = room.buildSeatSetups();
+
+    expect(setups).toHaveLength(2);
+    expect(setups.find((s) => s.displayName === 'Alice')?.resolved).toBe(resolved);
+  });
+
+  it('canStart requires at least two seated players and refuses once started', () => {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    expect(room.canStart()).toBe(false);
+    room.join({ displayName: 'Alice' });
+    expect(room.canStart()).toBe(false);
+    room.join({ displayName: 'Bob' });
+    expect(room.canStart()).toBe(true);
+    room.start();
+    expect(room.canStart()).toBe(false);
   });
 
   it('setReady toggles a seat readiness', () => {

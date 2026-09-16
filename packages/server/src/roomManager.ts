@@ -4,17 +4,21 @@
 // information posture extended to pre-game info the doc doesn't explicitly cover).
 
 import { randomUUID } from 'node:crypto';
-import type { DeckStatus, PlayerId, RoomId, RoomState } from '@command-table/common';
+import type { PlayerId, ResolvedDecklist, RoomId, RoomState } from '@command-table/common';
 import { generateRoomCode } from './roomCode.js';
+import { deckStatusFrom } from './deckStatus.js';
+import { EMPTY_RESOLVED_DECKLIST } from './deckResolver.js';
+import type { SeatSetup } from './tableFactory.js';
 
 const MAX_SEATS = 4;
+const MIN_PLAYERS_TO_START = 2;
 
 interface Seat {
   playerId: PlayerId | null;
   displayName: string | null;
   connected: boolean;
   ready: boolean;
-  deckStatus: DeckStatus;
+  resolvedDeck: ResolvedDecklist | null;
 }
 
 export type JoinResult =
@@ -22,7 +26,7 @@ export type JoinResult =
   | { ok: false; reason: string };
 
 function emptySeat(): Seat {
-  return { playerId: null, displayName: null, connected: false, ready: false, deckStatus: 'none' };
+  return { playerId: null, displayName: null, connected: false, ready: false, resolvedDeck: null };
 }
 
 export class Room {
@@ -57,7 +61,7 @@ export class Room {
       displayName: params.displayName,
       connected: true,
       ready: false,
-      deckStatus: 'none',
+      resolvedDeck: null,
     };
     this.seatIndexByPlayer.set(playerId, seatIndex);
     this.playerIdByRejoinToken.set(rejoinToken, playerId);
@@ -92,9 +96,9 @@ export class Room {
     if (seat) seat.connected = connected;
   }
 
-  setDeckStatus(playerId: PlayerId, status: DeckStatus): void {
+  setResolvedDeck(playerId: PlayerId, resolved: ResolvedDecklist): void {
     const seat = this.seatFor(playerId);
-    if (seat) seat.deckStatus = status;
+    if (seat) seat.resolvedDeck = resolved;
   }
 
   setReady(playerId: PlayerId, ready: boolean): void {
@@ -106,8 +110,28 @@ export class Room {
     return this.hostId === playerId;
   }
 
+  occupiedSeatCount(): number {
+    return this.seats.filter((s) => s.playerId !== null).length;
+  }
+
+  canStart(): boolean {
+    return !this.started && this.occupiedSeatCount() >= MIN_PLAYERS_TO_START;
+  }
+
   start(): void {
     this.started = true;
+  }
+
+  buildSeatSetups(): SeatSetup[] {
+    return this.seats
+      .map((seat, index) => ({ seat, index }))
+      .filter(({ seat }) => seat.playerId !== null)
+      .map(({ seat, index }) => ({
+        playerId: seat.playerId as PlayerId,
+        displayName: seat.displayName ?? `Seat ${index + 1}`,
+        seat: index,
+        resolved: seat.resolvedDeck ?? EMPTY_RESOLVED_DECKLIST,
+      }));
   }
 
   private seatFor(playerId: PlayerId): Seat | undefined {
@@ -126,7 +150,7 @@ export class Room {
         displayName: seat.displayName,
         connected: seat.connected,
         ready: seat.ready,
-        deckStatus: seat.deckStatus,
+        deckStatus: seat.resolvedDeck ? deckStatusFrom(seat.resolvedDeck) : 'none',
       })),
     };
   }

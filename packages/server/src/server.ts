@@ -1,22 +1,26 @@
-// Phase 1 server: room/lobby over HTTP + WebSocket, per design doc §11 and §14.1.
-// Game-table state (§7) doesn't exist yet — 'start' only flips the lobby's `started` flag.
+// Server: lobby (Phase 1, §11/§14.1) plus in-game table state (Phase 2, §7-§9). 'start' builds
+// the initial TableState from each seat's resolved decklist; 'action' applies §8 actions to it.
+// Every outbound table snapshot goes through projectFor (§9.1) — never send a TableState raw.
 
 import { createServer } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import Database from 'better-sqlite3';
-import type { ClientMessage, PlayerId, RoomId, ServerMessage } from '@command-table/common';
+import type { ClientMessage, PlayerId, RoomId, ServerMessage, TableState } from '@command-table/common';
 import { CardIndex } from './cardIndex.js';
 import { parseDecklist } from './decklistParser.js';
 import { resolveDecklist } from './deckResolver.js';
-import { deckStatusFrom } from './deckStatus.js';
 import { Room, RoomManager } from './roomManager.js';
+import { createTableState } from './tableFactory.js';
+import { applyAction } from './actionApplier.js';
+import { projectFor } from './projection.js';
 
 const PORT = Number(process.env.PORT ?? 8080);
 const DB_PATH = process.env.CARD_DB_PATH ?? './data/cards.sqlite3';
 
 const cardIndex = new CardIndex(new Database(DB_PATH, { readonly: true }));
 const roomManager = new RoomManager();
-const socketsByRoom = new Map<RoomId, Set<WebSocket>>();
+const socketsByRoom = new Map<RoomId, Map<PlayerId, WebSocket>>();
+const tablesByRoom = new Map<RoomId, TableState>();
 
 interface ConnectionState {
   roomId: RoomId | null;
@@ -31,22 +35,34 @@ function broadcastRoomState(room: Room): void {
   const sockets = socketsByRoom.get(room.roomId);
   if (!sockets) return;
   const message: ServerMessage = { t: 'room', roomState: room.toState() };
-  for (const socket of sockets) {
+  for (const socket of sockets.values()) {
     send(socket, message);
   }
 }
 
-function registerSocket(roomId: RoomId, socket: WebSocket): void {
-  let sockets = socketsByRoom.get(roomId);
-  if (!sockets) {
-    sockets = new Set();
-    socketsByRoom.set(roomId, sockets);
+function broadcastTableState(roomId: RoomId): void {
+  const table = tablesByRoom.get(roomId);
+  const sockets = socketsByRoom.get(roomId);
+  if (!table || !sockets) return;
+  for (const [playerId, socket] of sockets) {
+    send(socket, { t: 'state', state: projectFor(table, playerId) });
   }
-  sockets.add(socket);
 }
 
-function unregisterSocket(roomId: RoomId, socket: WebSocket): void {
-  socketsByRoom.get(roomId)?.delete(socket);
+function registerSocket(roomId: RoomId, playerId: PlayerId, socket: WebSocket): void {
+  let sockets = socketsByRoom.get(roomId);
+  if (!sockets) {
+    sockets = new Map();
+    socketsByRoom.set(roomId, sockets);
+  }
+  sockets.set(playerId, socket);
+}
+
+function unregisterSocket(roomId: RoomId, playerId: PlayerId, socket: WebSocket): void {
+  const sockets = socketsByRoom.get(roomId);
+  if (sockets?.get(playerId) === socket) {
+    sockets.delete(playerId);
+  }
 }
 
 function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMessage): void {
@@ -64,9 +80,12 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       }
       state.roomId = room.roomId;
       state.playerId = result.playerId;
-      registerSocket(room.roomId, socket);
+      registerSocket(room.roomId, result.playerId, socket);
       send(socket, { t: 'joined', roomState: room.toState(), rejoinToken: result.rejoinToken });
       broadcastRoomState(room);
+      if (tablesByRoom.has(room.roomId)) {
+        send(socket, { t: 'state', state: projectFor(tablesByRoom.get(room.roomId)!, result.playerId) });
+      }
       return;
     }
 
@@ -75,7 +94,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       if (!room || !state.playerId) return;
       const parsed = parseDecklist(raw.list);
       const resolved = resolveDecklist(parsed, cardIndex);
-      room.setDeckStatus(state.playerId, deckStatusFrom(resolved));
+      room.setResolvedDeck(state.playerId, resolved);
       send(socket, { t: 'deckResult', warnings: resolved.warnings, unresolved: resolved.unresolved });
       broadcastRoomState(room);
       return;
@@ -96,8 +115,33 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
         send(socket, { t: 'error', message: 'only the host can start the game' });
         return;
       }
+      if (!room.canStart()) {
+        send(socket, { t: 'error', message: 'need at least 2 seated players to start' });
+        return;
+      }
+      const table = createTableState({ roomId: room.roomId, seats: room.buildSeatSetups() });
+      tablesByRoom.set(room.roomId, table);
       room.start();
       broadcastRoomState(room);
+      broadcastTableState(room.roomId);
+      return;
+    }
+
+    case 'action': {
+      const room = requireRoom(socket, state);
+      if (!room || !state.playerId) return;
+      const table = tablesByRoom.get(room.roomId);
+      if (!table) {
+        send(socket, { t: 'rejected', clientSeq: raw.clientSeq, reason: 'game has not started' });
+        return;
+      }
+      const result = applyAction(table, raw.action);
+      if (!result.ok) {
+        send(socket, { t: 'rejected', clientSeq: raw.clientSeq, reason: result.reason });
+        return;
+      }
+      tablesByRoom.set(room.roomId, result.state);
+      broadcastTableState(room.roomId);
       return;
     }
 
@@ -151,7 +195,7 @@ wss.on('connection', (socket) => {
   socket.on('close', () => {
     if (state.roomId && state.playerId) {
       const room = roomManager.getRoom(state.roomId);
-      unregisterSocket(state.roomId, socket);
+      unregisterSocket(state.roomId, state.playerId, socket);
       if (room) {
         room.setConnected(state.playerId, false);
         broadcastRoomState(room);

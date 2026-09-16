@@ -2,4 +2,7 @@ export * from './ids.js';
 export * from './card.js';
 export * from './deck.js';
 export * from './room.js';
+export * from './objects.js';
+export * from './table.js';
+export * from './actions.js';
 export * from './protocol.js';

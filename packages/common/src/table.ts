@@ -1,0 +1,67 @@
+// In-game table state, per design doc §7.3 and §10. Distinct from the lobby's RoomState
+// (room.ts), which is what exists before the host starts the game.
+
+import type { PlayerId } from './ids.js';
+import type { GameObject, ObjectId, Visibility } from './objects.js';
+
+export type Phase = 'main' | 'combat' | 'end';
+
+export interface TurnTracker {
+  turnNumber: number;
+  activePlayerId: PlayerId;
+  phase: Phase;
+}
+
+export interface PlayerState {
+  id: PlayerId;
+  displayName: string;
+  seat: number;
+  connected: boolean;
+
+  life: number;
+  counters: Record<string, number>;
+
+  commanderDamageTaken: Record<ObjectId, number>;
+  commanderCastCount: Record<ObjectId, number>;
+
+  commanderIds: ObjectId[];
+  status: 'active' | 'conceded' | 'eliminated';
+}
+
+export interface TableState {
+  roomId: string;
+  objects: Record<ObjectId, GameObject>;
+  players: PlayerState[];
+  turn: TurnTracker;
+  revision: number;
+  createdAt: number;
+}
+
+// The redacted shape sent to a client for an object it may not see, per design doc §9.2:
+// omit `source`, `ownerId`, and `annotation` entirely rather than send them with a flag.
+export interface RedactedObject {
+  id: ObjectId;
+  zone: GameObject['zone'];
+  controllerId: PlayerId;
+  tapped: boolean;
+  counters: Record<string, number>;
+  attachedTo: ObjectId | null;
+  markers: string[];
+  hidden: true;
+}
+
+export type ProjectedObject = GameObject | RedactedObject;
+
+export interface ClientTableState {
+  roomId: string;
+  objects: Record<ObjectId, ProjectedObject>;
+  libraryCounts: Record<PlayerId, number>;
+  handCounts: Record<PlayerId, number>;
+  players: PlayerState[];
+  turn: TurnTracker;
+  revision: number;
+}
+
+export function isRedacted(obj: ProjectedObject): obj is RedactedObject {
+  return 'hidden' in obj && obj.hidden === true;
+}
