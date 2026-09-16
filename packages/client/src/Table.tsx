@@ -84,31 +84,15 @@ export function Table() {
 
   return (
     <div className="table">
-      <div className="opponents">
-        {opponents.map((p) => (
-          <PlayerArea
-            key={p.id}
-            player={p}
-            handCount={tableState.handCounts[p.id]}
-            libraryCount={tableState.libraryCounts[p.id]}
-            battlefield={battlefieldOf(p.id)}
-            commandZone={commandZoneOf(p.id)}
-            allCommanders={allCommanders}
-            onLifeDelta={(delta) => act({ t: 'SET_LIFE', playerIds: [p.id], update: { mode: 'delta', amount: delta } })}
-            onPoisonDelta={(delta) => act({ t: 'SET_PLAYER_COUNTER', playerId: p.id, key: 'poison', update: { mode: 'delta', amount: delta } })}
-            onTapToggle={(obj) => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id })}
-            onCommanderDamageDelta={(fromCommanderObjectId, delta) =>
-              act({ t: 'SET_COMMANDER_DAMAGE', toPlayerId: p.id, fromCommanderObjectId, update: { mode: 'delta', amount: delta } })
-            }
-            onObjectContextMenu={openMenu}
-          />
-        ))}
-      </div>
-
-      <div className="sidebar">
+      {/* A compact, wrapping toolbar instead of a permanent side column — a fixed-width sidebar
+          was silently stealing most of the window's width from the opponents' and your own
+          boards (a CSS Grid auto-placement gotcha: `.sidebar` had a definite row but an
+          automatic column, which the grid placement algorithm resolves *before* `.opponents`'
+          fully-automatic placement, so sidebar claimed the wide column). Cards on the table are
+          what players look at almost all the time; the toolbar only needs to be reachable. */}
+      <div className="toolbar">
         <ManaPad />
         <SelectionBar />
-
         <div className="controls">
           <button title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>Draw</button>
           <button onClick={() => act({ t: 'SHUFFLE_LIBRARY', playerId })}>Shuffle</button>
@@ -170,18 +154,38 @@ export function Table() {
             Create token…
           </button>
         </div>
-
-        {pendingUndoRequest && (
-          <div className="undo-request">
-            <p>{pendingUndoRequest.describes}?</p>
-            <button onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: true })}>Approve</button>
-            <button onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: false })}>Reject</button>
-          </div>
-        )}
-
         <button className="log-toggle" onClick={() => setLogOpen(true)}>
           Log &amp; chat{tableState.log.length > 0 ? ` (${tableState.log.length})` : ''}
         </button>
+      </div>
+
+      {pendingUndoRequest && (
+        <div className="undo-request">
+          <p>{pendingUndoRequest.describes}?</p>
+          <button onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: true })}>Approve</button>
+          <button onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: false })}>Reject</button>
+        </div>
+      )}
+
+      <div className="opponents">
+        {opponents.map((p) => (
+          <PlayerArea
+            key={p.id}
+            player={p}
+            handCount={tableState.handCounts[p.id]}
+            libraryCount={tableState.libraryCounts[p.id]}
+            battlefield={battlefieldOf(p.id)}
+            commandZone={commandZoneOf(p.id)}
+            allCommanders={allCommanders}
+            onLifeDelta={(delta) => act({ t: 'SET_LIFE', playerIds: [p.id], update: { mode: 'delta', amount: delta } })}
+            onPoisonDelta={(delta) => act({ t: 'SET_PLAYER_COUNTER', playerId: p.id, key: 'poison', update: { mode: 'delta', amount: delta } })}
+            onTapToggle={(obj) => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id })}
+            onCommanderDamageDelta={(fromCommanderObjectId, delta) =>
+              act({ t: 'SET_COMMANDER_DAMAGE', toPlayerId: p.id, fromCommanderObjectId, update: { mode: 'delta', amount: delta } })
+            }
+            onObjectContextMenu={openMenu}
+          />
+        ))}
       </div>
 
       <div className="self-area">

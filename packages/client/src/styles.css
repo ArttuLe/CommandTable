@@ -14,23 +14,24 @@ body { margin: 0; font-family: sans-serif; background: #1b1b1b; color: #eee; }
 .deck-result { background: #2a2a2a; padding: 0.5rem; border-radius: 4px; }
 textarea { font-family: monospace; }
 
-/* The sidebar is deliberately narrow and compact (mana pad, selection bar, action buttons) —
-   the table itself (opponents' boards + your own) is what players look at almost all the time,
-   so it gets the space. Log/chat live in a popup (LogChatModal) instead of taking a permanent
-   slice of the sidebar. */
-.table { display: grid; grid-template-columns: 1fr 200px; grid-template-rows: auto 1fr; height: 100vh; gap: 0.5rem; padding: 0.5rem; }
-.opponents { display: flex; gap: 0.5rem; overflow-x: auto; }
-.self-area { grid-column: 1; display: flex; flex-direction: column; gap: 0.5rem; }
-.sidebar { grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 0.5rem; background: #242424; padding: 0.5rem; border-radius: 4px; overflow-y: auto; }
+/* Vertical stack, not a side-by-side grid: a permanent side column was competing with the
+   opponents'/your own boards for width, which is exactly backwards — the cards on the table are
+   what players look at almost all the time, the toolbar just needs to be reachable. Opponents
+   get a capped height with their own scroll (so one big board can't push your own area off
+   screen); your own area gets the rest. */
+.table { display: flex; flex-direction: column; height: 100vh; gap: 0.5rem; padding: 0.5rem; }
+.toolbar { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; background: #242424; padding: 0.4rem 0.6rem; border-radius: 4px; flex-shrink: 0; }
+.opponents { display: flex; flex-wrap: wrap; gap: 0.5rem; overflow-y: auto; max-height: 46vh; flex-shrink: 0; }
+.self-area { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-height: 0; overflow-y: auto; }
 
-.player-area { border: 1px solid #444; border-radius: 4px; padding: 0.4rem; flex: 1; min-width: 280px; }
+.player-area { border: 1px solid #444; border-radius: 4px; padding: 0.4rem; flex: 1; min-width: 320px; }
 .player-area.inactive { opacity: 0.5; }
 .player-header { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; font-size: 0.85rem; flex-wrap: wrap; }
 .life button { width: 1.5rem; }
 .life.lethal, .poison.lethal { background: #611; color: #fbb; padding: 0 4px; border-radius: 3px; }
 .poison { font-size: 0.8rem; }
 .command-zone, .battlefield, .hand { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
-.hand { min-height: 140px; }
+.hand { min-height: 155px; }
 
 .battlefield-slot { display: flex; flex-direction: column; align-items: center; }
 .battlefield-split { order: 1; flex-basis: 100%; height: 0.4rem; border-bottom: 1px dashed #444; margin-bottom: 0.2rem; }
@@ -72,7 +73,7 @@ textarea { font-family: monospace; }
 .library-viewer-label { font-size: 0.7rem; color: #aaa; margin: 0 0 0.3rem; }
 .chat-box { display: flex; gap: 0.3rem; }
 .chat-box input { flex: 1; }
-.log-toggle { margin-top: auto; }
+.log-toggle { margin-left: auto; }
 
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
 .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 41; background: #242424; border: 1px solid #555; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); display: flex; flex-direction: column; }
