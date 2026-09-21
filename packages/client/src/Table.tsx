@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { isRedacted, type GameObject, type ObjectId, type PlayerId, type PlayerState, type ProjectedObject } from '@command-table/common';
+import { isRedacted, type GameObject, type LogEntry, type ObjectId, type PlayerId, type PlayerState, type ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
 import { useUiStore, type ManaColor } from './uiStore.js';
 import { CardTile } from './CardTile.js';
@@ -24,6 +24,9 @@ export function Table() {
     e.preventDefault();
     setMenu({ obj, x: e.clientX, y: e.clientY });
   };
+
+  const [logOpen, setLogOpen] = useState(false);
+  const [expandedPlayerId, setExpandedPlayerId] = useState<PlayerId | null>(null);
 
   // §16.2 keyboard shortcuts for the high-frequency actions. Gated on not-typing-in-an-input so
   // it doesn't fire while the chat box (or a browser-native prompt) has focus.
@@ -80,33 +83,36 @@ export function Table() {
     owner.commanderIds.map((id) => ({ id, ownerName: owner.displayName, obj: tableState.objects[id] }))
   );
 
+  // Built once and shared between the compact opponents row and the expanded-view modal, so
+  // "expand" shows exactly the same live board, just at full card size instead of the shrunk
+  // opponents-row size (a pure CSS scoping difference, not a different component or data path).
+  const opponentAreaProps = opponents.map((p) => ({
+    player: p,
+    handCount: tableState.handCounts[p.id],
+    libraryCount: tableState.libraryCounts[p.id],
+    battlefield: battlefieldOf(p.id),
+    commandZone: commandZoneOf(p.id),
+    allCommanders,
+    onLifeDelta: (delta: number) => act({ t: 'SET_LIFE', playerIds: [p.id], update: { mode: 'delta', amount: delta } }),
+    onPoisonDelta: (delta: number) => act({ t: 'SET_PLAYER_COUNTER', playerId: p.id, key: 'poison', update: { mode: 'delta', amount: delta } }),
+    onTapToggle: (obj: { id: string; tapped: boolean }) => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id }),
+    onCommanderDamageDelta: (fromCommanderObjectId: ObjectId, delta: number) =>
+      act({ t: 'SET_COMMANDER_DAMAGE', toPlayerId: p.id, fromCommanderObjectId, update: { mode: 'delta', amount: delta } }),
+    onObjectContextMenu: openMenu,
+  }));
+  const expandedOpponent = opponentAreaProps.find((o) => o.player.id === expandedPlayerId);
+
   return (
     <div className="table">
-      <div className="opponents">
-        {opponents.map((p) => (
-          <PlayerArea
-            key={p.id}
-            player={p}
-            handCount={tableState.handCounts[p.id]}
-            libraryCount={tableState.libraryCounts[p.id]}
-            battlefield={battlefieldOf(p.id)}
-            commandZone={commandZoneOf(p.id)}
-            allCommanders={allCommanders}
-            onLifeDelta={(delta) => act({ t: 'SET_LIFE', playerIds: [p.id], update: { mode: 'delta', amount: delta } })}
-            onPoisonDelta={(delta) => act({ t: 'SET_PLAYER_COUNTER', playerId: p.id, key: 'poison', update: { mode: 'delta', amount: delta } })}
-            onTapToggle={(obj) => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id })}
-            onCommanderDamageDelta={(fromCommanderObjectId, delta) =>
-              act({ t: 'SET_COMMANDER_DAMAGE', toPlayerId: p.id, fromCommanderObjectId, update: { mode: 'delta', amount: delta } })
-            }
-            onObjectContextMenu={openMenu}
-          />
-        ))}
-      </div>
-
-      <div className="sidebar">
+      {/* A compact, wrapping toolbar instead of a permanent side column — a fixed-width sidebar
+          was silently stealing most of the window's width from the opponents' and your own
+          boards (a CSS Grid auto-placement gotcha: `.sidebar` had a definite row but an
+          automatic column, which the grid placement algorithm resolves *before* `.opponents`'
+          fully-automatic placement, so sidebar claimed the wide column). Cards on the table are
+          what players look at almost all the time; the toolbar only needs to be reachable. */}
+      <div className="toolbar">
         <ManaPad />
         <SelectionBar />
-
         <div className="controls">
           <button title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>Draw</button>
           <button onClick={() => act({ t: 'SHUFFLE_LIBRARY', playerId })}>Shuffle</button>
@@ -115,6 +121,18 @@ export function Table() {
           <button onClick={() => act({ t: 'MULLIGAN', playerId })}>Mulligan</button>
           <button onClick={() => act({ t: 'CONCEDE', playerId })}>Concede</button>
           <button onClick={() => act({ t: 'SEARCH_LIBRARY', playerId })}>Search library</button>
+          <button
+            onClick={() => {
+              const text = window.prompt('Adjust ALL players\' life by how much?', '0');
+              const amount = Number(text);
+              if (Number.isFinite(amount) && amount !== 0) {
+                act({ t: 'SET_LIFE', playerIds: tableState.players.map((p) => p.id), update: { mode: 'delta', amount } });
+              }
+            }}
+          >
+            Adjust all life…
+          </button>
+          <button onClick={() => act({ t: 'CLEAR_ALL_MARKERS' })}>Clear all markers</button>
           <button
             onClick={() => {
               const countText = window.prompt('Look at the top how many cards?', '1');
@@ -156,27 +174,23 @@ export function Table() {
             Create token…
           </button>
         </div>
+        <button className="log-toggle" onClick={() => setLogOpen(true)}>
+          Log &amp; chat{tableState.log.length > 0 ? ` (${tableState.log.length})` : ''}
+        </button>
+      </div>
 
-        {pendingUndoRequest && (
-          <div className="undo-request">
-            <p>{pendingUndoRequest.describes}?</p>
-            <button onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: true })}>Approve</button>
-            <button onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: false })}>Reject</button>
-          </div>
-        )}
-
-        <div className="log">
-          {tableState.log.map((entry, i) => {
-            const actorName = tableState.players.find((p) => p.id === entry.actorId)?.displayName ?? entry.actorId;
-            return (
-              <p key={i}>
-                <strong>{actorName}</strong> {entry.text}
-              </p>
-            );
-          })}
+      {pendingUndoRequest && (
+        <div className="undo-request">
+          <p>{pendingUndoRequest.describes}?</p>
+          <button onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: true })}>Approve</button>
+          <button onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: false })}>Reject</button>
         </div>
+      )}
 
-        <ChatBox onSend={(text) => act({ t: 'SAY', playerId, text })} />
+      <div className="opponents">
+        {opponentAreaProps.map(({ player, ...props }) => (
+          <PlayerArea key={player.id} player={player} {...props} onExpand={() => setExpandedPlayerId(player.id)} />
+        ))}
       </div>
 
       <div className="self-area">
@@ -233,6 +247,17 @@ export function Table() {
       </div>
 
       {menu && <ContextMenu obj={menu.obj} x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
+      {expandedOpponent && (
+        <ExpandedPlayerModal {...expandedOpponent} onClose={() => setExpandedPlayerId(null)} />
+      )}
+      {logOpen && (
+        <LogChatModal
+          log={tableState.log}
+          players={tableState.players}
+          onSend={(text) => act({ t: 'SAY', playerId, text })}
+          onClose={() => setLogOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -257,20 +282,35 @@ interface PlayerAreaProps {
   onCommanderDamageDelta: (fromCommanderObjectId: ObjectId, delta: number) => void;
   onCastCommander?: (obj: GameObject) => void;
   onObjectContextMenu: (obj: ProjectedObject) => (e: React.MouseEvent) => void;
+  onExpand?: () => void;
 }
 
-function PlayerArea({ player, handCount, libraryCount, battlefield, commandZone, allCommanders, onLifeDelta, onPoisonDelta, onTapToggle, onGraveyard, onCommanderDamageDelta, onCastCommander, onObjectContextMenu }: PlayerAreaProps) {
+function PlayerArea({ player, handCount, libraryCount, battlefield, commandZone, allCommanders, onLifeDelta, onPoisonDelta, onTapToggle, onGraveyard, onCommanderDamageDelta, onCastCommander, onObjectContextMenu, onExpand }: PlayerAreaProps) {
   const poison = player.counters.poison ?? 0;
   return (
     <div className={`player-area ${player.status !== 'active' ? 'inactive' : ''}`}>
       <div className="player-header">
         <span className="player-name">
           {player.displayName} {!player.connected && '(disconnected)'} {player.status !== 'active' && `— ${player.status}`}
+          {onExpand && (
+            <button className="expand-button" onClick={onExpand} title="Expand to full size">
+              ⤢
+            </button>
+          )}
         </span>
         <span className={`life ${player.life <= 0 ? 'lethal' : ''}`}>
           <button onClick={() => onLifeDelta(-1)}>-1</button>
           {player.life}
           <button onClick={() => onLifeDelta(1)}>+1</button>
+          <button
+            onClick={() => {
+              const text = window.prompt('Adjust life by how much? (negative to lose life)', '0');
+              const amount = Number(text);
+              if (Number.isFinite(amount) && amount !== 0) onLifeDelta(amount);
+            }}
+          >
+            ±N…
+          </button>
         </span>
         <span className={`poison ${poison >= 10 ? 'lethal' : ''}`}>
           <button onClick={() => onPoisonDelta(-1)}>-1</button>
@@ -456,6 +496,64 @@ function SelectionBar() {
       <button onClick={graveyardAll}>To graveyard</button>
       <button onClick={clearSelection}>Clear</button>
     </div>
+  );
+}
+
+// Opponents render compact (small card-tiles, a pure CSS override scoped to `.opponents`) so
+// your own board — what you interact with almost every turn — gets most of the screen. This
+// reuses PlayerArea completely unchanged: outside `.opponents`, CardTile falls back to its
+// normal full size, so "expand" is just "render the same board somewhere the compact CSS
+// doesn't reach," not a second board-rendering code path to keep in sync.
+function ExpandedPlayerModal({ onClose, ...playerAreaProps }: PlayerAreaProps & { onClose: () => void }) {
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="modal expanded-player-modal">
+        <div className="modal-header">
+          <span>{playerAreaProps.player.displayName}</span>
+          <button onClick={onClose}>×</button>
+        </div>
+        <PlayerArea {...playerAreaProps} />
+      </div>
+    </>
+  );
+}
+
+// Log and chat moved off the always-visible sidebar into a popup: the table itself — the
+// battlefield and opponents' boards — is what players look at nearly all the time, so it gets
+// the screen space. A player opens this only when they need it.
+function LogChatModal({
+  log,
+  players,
+  onSend,
+  onClose,
+}: {
+  log: LogEntry[];
+  players: PlayerState[];
+  onSend: (text: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="modal log-modal">
+        <div className="modal-header">
+          <span>Log &amp; chat</span>
+          <button onClick={onClose}>×</button>
+        </div>
+        <div className="log">
+          {log.map((entry, i) => {
+            const actorName = players.find((p) => p.id === entry.actorId)?.displayName ?? entry.actorId;
+            return (
+              <p key={i}>
+                <strong>{actorName}</strong> {entry.text}
+              </p>
+            );
+          })}
+        </div>
+        <ChatBox onSend={onSend} />
+      </div>
+    </>
   );
 }
 

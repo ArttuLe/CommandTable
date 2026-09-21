@@ -49,6 +49,15 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
         </button>
 
         <hr />
+        {/* One-click buttons for the two counter types that come up on nearly every turn — the
+            generic "Add counter…" below still covers everything else (loyalty, stun, etc.) and
+            adding more than one at a time. */}
+        <button onClick={() => run(() => act({ t: 'SET_COUNTER', objectId: obj.id, key: '+1/+1', update: { mode: 'delta', amount: 1 } }))}>
+          +1/+1 counter
+        </button>
+        <button onClick={() => run(() => act({ t: 'SET_COUNTER', objectId: obj.id, key: '-1/-1', update: { mode: 'delta', amount: 1 } }))}>
+          -1/-1 counter
+        </button>
         <button
           onClick={() => {
             const key = window.prompt('Counter type (e.g. +1/+1, stun, loyalty):');

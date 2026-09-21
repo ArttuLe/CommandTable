@@ -214,11 +214,16 @@ function passTurn(state: TableState): ApplyResult {
   const order = state.players;
   const currentIndex = order.findIndex((p) => p.id === state.turn.activePlayerId);
   const nextIndex = findNextActiveIndex(order, currentIndex);
+  const nextPlayerId = order[nextIndex].id;
+
+  // §16.3 "pass turn (with untap bundle)": the new active player's permanents untap as part of
+  // passing turn, rather than needing a separate UNTAP_ALL click.
+  const untapped = objectActions.untapControlledBy(state, nextPlayerId);
 
   return ok(
     bumpRevision({
-      ...state,
-      turn: { ...state.turn, activePlayerId: order[nextIndex].id, turnNumber: state.turn.turnNumber + 1 },
+      ...untapped,
+      turn: { ...untapped.turn, activePlayerId: nextPlayerId, turnNumber: untapped.turn.turnNumber + 1 },
     })
   );
 }

@@ -61,18 +61,45 @@ describe('createTableState', () => {
     expect(aliceCommander?.source).toEqual({ kind: 'card', scryfallId: 'scryfall-Atraxa', oracleId: 'oracle-Atraxa' });
   });
 
-  it('creates one library object per copy, expanding line quantity', () => {
+  it('creates one library object per copy, expanding line quantity, minus the opening hand', () => {
     const state = createTableState({ roomId: 'ROOM1', seats }, { randomInt: () => 0 });
 
     const aliceLibrary = Object.values(state.objects).filter(
       (o) => o.ownerId === 'alice' && o.zone.zone === 'library'
     );
-    // 1 Sol Ring + 3 Plains = 4 cards
-    expect(aliceLibrary).toHaveLength(4);
+    // 1 Sol Ring + 3 Plains = 4 cards, all dealt into the opening hand (deck smaller than 7)
+    expect(aliceLibrary).toHaveLength(0);
+  });
+
+  it('deals each player an opening hand of 7, visible only to them (§14.1 step 5)', () => {
+    const bigDeck = makeResolved('Atraxa', Array.from({ length: 20 }, (_, i) => [`Card ${i}`, 1] as [string, number]));
+    const state = createTableState(
+      { roomId: 'ROOM1', seats: [{ playerId: 'alice', displayName: 'Alice', seat: 0, resolved: bigDeck }] },
+      { randomInt: () => 0 }
+    );
+
+    const aliceHand = Object.values(state.objects).filter((o) => o.ownerId === 'alice' && o.zone.zone === 'hand');
+    expect(aliceHand).toHaveLength(7);
+    for (const obj of aliceHand) {
+      expect(obj.faceVisibility).toEqual({ kind: 'players', ids: ['alice'] });
+    }
+    const aliceLibrary = Object.values(state.objects).filter((o) => o.ownerId === 'alice' && o.zone.zone === 'library');
+    expect(aliceLibrary).toHaveLength(13);
+  });
+
+  it('deals whatever is available, not an error, when the deck has fewer than 7 cards', () => {
+    const state = createTableState({ roomId: 'ROOM1', seats }, { randomInt: () => 0 });
+    const aliceHand = Object.values(state.objects).filter((o) => o.ownerId === 'alice' && o.zone.zone === 'hand');
+    expect(aliceHand).toHaveLength(4);
   });
 
   it('sets library cards to hidden visibility', () => {
-    const state = createTableState({ roomId: 'ROOM1', seats }, { randomInt: () => 0 });
+    // Needs a deck bigger than the opening hand, or there's no library card left to check.
+    const bigDeck = makeResolved('Atraxa', Array.from({ length: 20 }, (_, i) => [`Card ${i}`, 1] as [string, number]));
+    const state = createTableState(
+      { roomId: 'ROOM1', seats: [{ playerId: 'alice', displayName: 'Alice', seat: 0, resolved: bigDeck }] },
+      { randomInt: () => 0 }
+    );
     const libraryCard = Object.values(state.objects).find((o) => o.zone.zone === 'library');
     expect(libraryCard?.faceVisibility).toEqual({ kind: 'none' });
   });
