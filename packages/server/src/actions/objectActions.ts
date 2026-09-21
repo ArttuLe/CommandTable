@@ -88,6 +88,18 @@ export function clearAllMarkers(state: TableState): ApplyResult {
   return ok({ ...next, revision: next.revision + 1 });
 }
 
+// Shared with PASS_TURN's attacking sweep — doesn't bump revision itself so the caller can fold
+// it into one action's single bump, like untapControlledBy above.
+export function clearMarkerFromAll(state: TableState, marker: string): TableState {
+  let next = state;
+  for (const obj of Object.values(state.objects)) {
+    if (obj.markers.includes(marker)) {
+      next = withObject(next, { ...obj, markers: obj.markers.filter((m) => m !== marker) }, false);
+    }
+  }
+  return next;
+}
+
 export function transform(state: TableState, action: Extract<Action, { t: 'TRANSFORM' }>): ApplyResult {
   const existing = requireObject(state, action.objectId);
   if (!existing) return err(`no such object: ${action.objectId}`);

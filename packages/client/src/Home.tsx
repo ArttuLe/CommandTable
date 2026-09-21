@@ -22,7 +22,7 @@ export function Home() {
   }
 
   return (
-    <div className="home">
+    <div className="home panel">
       <h1>Command Table</h1>
       <label>
         Your name
@@ -30,9 +30,11 @@ export function Home() {
       </label>
 
       <div className="home-actions">
-        <button disabled={!canJoin || busy} onClick={handleCreate}>
-          Create room
+        <button className="btn btn-lg btn-primary" disabled={!canJoin || busy} onClick={handleCreate}>
+          {busy ? 'Creating…' : 'Create room'}
         </button>
+
+        <span className="home-or">or</span>
 
         <div className="home-join">
           <input
@@ -41,7 +43,7 @@ export function Home() {
             placeholder="Room code"
             maxLength={6}
           />
-          <button disabled={!canJoin || !roomCode.trim()} onClick={handleJoin}>
+          <button className="btn btn-lg" disabled={!canJoin || !roomCode.trim()} onClick={handleJoin}>
             Join room
           </button>
         </div>

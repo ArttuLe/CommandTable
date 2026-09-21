@@ -70,8 +70,10 @@ describe('applyAction: MOVE_OBJECT', () => {
     expect(result.state.objects['c1'].faceVisibility).toEqual({ kind: 'all' });
   });
 
+  // Its controller, not the player whose zone it landed in: a face-down card can sit on someone
+  // else's mat (exiled under a permanent) and still only be readable by the player it belongs to.
   it('sets battlefield visibility to the controller only when moved face down', () => {
-    const state = makeState([card({ id: 'c1', controllerId: BOB })]);
+    const state = makeState([card({ id: 'c1', ownerId: BOB, controllerId: BOB, zone: { playerId: BOB, zone: 'library' } })]);
     const result = applyAction(state, {
       t: 'MOVE_OBJECT',
       objectId: 'c1',
@@ -124,6 +126,83 @@ describe('applyAction: MOVE_OBJECT', () => {
     const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'spell', toZone: { zone: 'stack' } });
     if (!result.ok) throw new Error('unreachable');
     expect(result.state.players.find((p) => p.id === ALICE)?.commanderCastCount).toEqual({});
+  });
+});
+
+// CR 400.7: a card that changes zones becomes a new object. Nothing here enforces rules, but
+// carrying tap state and counters out of the battlefield is state every player had to undo by
+// hand — a creature that died with three +1/+1 counters came back from the graveyard wearing them.
+describe('applyAction: MOVE_OBJECT treats a zone change as a new object', () => {
+  it('strips tap state, counters, markers, annotation and face state', () => {
+    const state = makeState([
+      card({
+        id: 'c1',
+        zone: { playerId: ALICE, zone: 'battlefield' },
+        tapped: true,
+        counters: { '+1/+1': 3 },
+        markers: ['attacking'],
+        annotation: 'my combo piece',
+        flipped: true,
+        currentFace: 1,
+      }),
+    ]);
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'c1', toZone: { playerId: ALICE, zone: 'graveyard' } });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['c1']).toMatchObject({
+      tapped: false,
+      counters: {},
+      markers: [],
+      annotation: null,
+      flipped: false,
+      currentFace: 0,
+    });
+  });
+
+  it('returns a stolen permanent to its owner when it leaves the battlefield', () => {
+    const state = makeState([card({ id: 'c1', controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' } })]);
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'c1', toZone: { playerId: ALICE, zone: 'graveyard' } });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['c1'].controllerId).toBe(ALICE);
+  });
+
+  it('detaches the object it left behind, and anything that was attached to it', () => {
+    const state = makeState([
+      card({ id: 'creature', zone: { playerId: ALICE, zone: 'battlefield' } }),
+      card({ id: 'aura', zone: { playerId: ALICE, zone: 'battlefield' }, attachedTo: 'creature' }),
+      card({ id: 'equipped', zone: { playerId: ALICE, zone: 'battlefield' }, attachedTo: 'creature' }),
+    ]);
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'creature', toZone: { playerId: ALICE, zone: 'exile' } });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['aura'].attachedTo).toBeNull();
+    expect(result.state.objects['equipped'].attachedTo).toBeNull();
+  });
+
+  it('clears the attachment of an aura that is itself moved away', () => {
+    const state = makeState([
+      card({ id: 'creature', zone: { playerId: ALICE, zone: 'battlefield' } }),
+      card({ id: 'aura', zone: { playerId: ALICE, zone: 'battlefield' }, attachedTo: 'creature' }),
+    ]);
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'aura', toZone: { playerId: ALICE, zone: 'graveyard' } });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['aura'].attachedTo).toBeNull();
+    expect(result.state.objects['creature'].zone).toEqual({ playerId: ALICE, zone: 'battlefield' });
+  });
+
+  it('leaves a reorder within one zone alone — a library move is not a new object', () => {
+    const state = makeState([card({ id: 'c1', counters: { charge: 2 }, markers: ['noted'] })]);
+    const result = applyAction(state, {
+      t: 'MOVE_OBJECT',
+      objectId: 'c1',
+      toZone: { playerId: ALICE, zone: 'library' },
+      toPosition: 7,
+    });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['c1']).toMatchObject({ position: 7, counters: { charge: 2 }, markers: ['noted'] });
   });
 });
 
@@ -224,8 +303,32 @@ describe('applyAction: PASS_TURN', () => {
     expect(result.state.objects['aliceTapped'].tapped).toBe(true);
   });
 
-  it('bumps revision by exactly 1', () => {
-    const state = makeState([card({ id: 'bobTapped', controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' }, tapped: true })]);
+  it('clears attacking markers left over from the turn that just ended', () => {
+    const state = makeState([
+      card({ id: 'attacker', zone: { playerId: ALICE, zone: 'battlefield' }, markers: ['attacking'] }),
+      card({ id: 'goaded', zone: { playerId: BOB, zone: 'battlefield' }, markers: ['attacking', 'goaded'] }),
+    ]);
+    const result = applyAction(state, { t: 'PASS_TURN' });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['attacker'].markers).toEqual([]);
+    expect(result.state.objects['goaded'].markers).toEqual(['goaded']);
+  });
+
+  // The draw is the player's own (`D`, or the Draw button) — passing turn must not take it for
+  // them, however convenient the bundle would be.
+  it('leaves the incoming player\'s library alone', () => {
+    const state = makeState([card({ id: 'bobTop', ownerId: BOB, controllerId: BOB, zone: { playerId: BOB, zone: 'library' } })]);
+    const result = applyAction(state, { t: 'PASS_TURN' });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['bobTop'].zone).toEqual({ playerId: BOB, zone: 'library' });
+  });
+
+  it('bumps revision by exactly 1, untap and sweep and all', () => {
+    const state = makeState([
+      card({ id: 'bobTapped', controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' }, tapped: true, markers: ['attacking'] }),
+    ]);
     const result = applyAction(state, { t: 'PASS_TURN' });
     if (!result.ok) throw new Error('unreachable');
     expect(result.state.revision).toBe(state.revision + 1);

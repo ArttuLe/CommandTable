@@ -1,17 +1,32 @@
-import { useEffect, useState } from 'react';
-import { isRedacted, type GameObject, type LogEntry, type ObjectId, type PlayerId, type PlayerState, type ProjectedObject } from '@command-table/common';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { PlayerId, ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
-import { useUiStore, type ManaColor } from './uiStore.js';
+import { useUiStore } from './uiStore.js';
 import { CardTile } from './CardTile.js';
-import { useCard } from './useCard.js';
 import { ContextMenu } from './ContextMenu.js';
+import { Plane } from './Plane.js';
+import { Board } from './Board.js';
+import { CrossroadsHub } from './CrossroadsHub.js';
+import { CommanderName, type CommanderRef } from './commanders.js';
+import { ActionBar, ManaPad, SelectionBar, VitalsPad } from './ActionBar.js';
+import { LogRail, Toasts } from './LogRail.js';
+import { ZoneDock, type DockZone } from './ZoneDock.js';
+import { seating } from './seating.js';
+import { PASS_TURN_WARNING, turnHighlight, turnLabel } from './turnStatus.js';
+import { libraryMoveAction } from './libraryMoves.js';
+import { commanderPrompts } from './commanderPrompt.js';
+import { SettingsMenu } from './SettingsMenu.js';
+import { ConfirmDialog } from './ConfirmDialog.js';
 
 function isOwnZone(obj: ProjectedObject, playerId: PlayerId, zone: string): boolean {
   return 'playerId' in obj.zone && obj.zone.playerId === playerId && obj.zone.zone === zone;
 }
 
-const COMMANDER_DAMAGE_LETHAL = 21;
-
+/**
+ * Three bands: a status bar that reports and asks (whose turn it is, undo votes, whether a dead
+ * commander should go to the command zone), the table itself with the log rail beside it, and
+ * your own things — mana, hand, zones, actions — along the bottom where your cursor already is.
+ */
 export function Table() {
   const tableState = useStore((s) => s.tableState)!;
   const playerId = useStore((s) => s.playerId)!;
@@ -19,14 +34,29 @@ export function Table() {
   const pendingUndoRequest = useStore((s) => s.pendingUndoRequest);
   const send = useStore((s) => s.send);
 
+  const logRailOpen = useUiStore((s) => s.logRailOpen);
+  const toggleLogRail = useUiStore((s) => s.toggleLogRail);
+  const setLibraryDirty = useUiStore((s) => s.setLibraryDirty);
+  const dismissedCommanders = useUiStore((s) => s.dismissedCommanders);
+  const dismissCommander = useUiStore((s) => s.dismissCommander);
+  const followActivePlayer = useUiStore((s) => s.followActivePlayer);
+  const dialogOpen = useUiStore((s) => s.openDialogs > 0);
+
   const [menu, setMenu] = useState<{ obj: ProjectedObject; x: number; y: number } | null>(null);
   const openMenu = (obj: ProjectedObject) => (e: React.MouseEvent) => {
     e.preventDefault();
     setMenu({ obj, x: e.clientX, y: e.clientY });
   };
 
-  const [logOpen, setLogOpen] = useState(false);
-  const [expandedPlayerId, setExpandedPlayerId] = useState<PlayerId | null>(null);
+  const isMyTurn = tableState.turn.activePlayerId === playerId;
+
+  // PASS_TURN advances the table from whoever is active, so out of turn it ends someone else's
+  // turn — one dialog in front of both the button and the shortcut (see turnStatus.ts).
+  const [confirmingPass, setConfirmingPass] = useState(false);
+  const requestPassTurn = useCallback(
+    () => (isMyTurn ? act({ t: 'PASS_TURN' }) : setConfirmingPass(true)),
+    [act, isMyTurn]
+  );
 
   // §16.2 keyboard shortcuts for the high-frequency actions. Gated on not-typing-in-an-input so
   // it doesn't fire while the chat box (or a browser-native prompt) has focus.
@@ -36,7 +66,8 @@ export function Table() {
     }
 
     function onKeyDown(e: KeyboardEvent) {
-      if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return;
+      // A dialog answers its own keys; the table's shortcuts stay out of the way while one is up.
+      if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target) || dialogOpen) return;
       switch (e.key.toLowerCase()) {
         case 'd':
           act({ t: 'DRAW', playerId, count: 1 });
@@ -45,7 +76,7 @@ export function Table() {
           act({ t: 'UNTAP_ALL', playerId });
           break;
         case 'p':
-          act({ t: 'PASS_TURN' });
+          requestPassTurn();
           break;
         case '+':
         case '=':
@@ -53,6 +84,9 @@ export function Table() {
           break;
         case '-':
           act({ t: 'SET_LIFE', playerIds: [playerId], update: { mode: 'delta', amount: -1 } });
+          break;
+        case 'l':
+          toggleLogRail();
           break;
         case 'escape':
           useUiStore.getState().clearSelection();
@@ -65,510 +99,216 @@ export function Table() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [act, playerId]);
+  }, [act, playerId, dialogOpen, requestPassTurn, toggleLogRail]);
 
   const objects = Object.values(tableState.objects);
-  const opponents = tableState.players.filter((p) => p.id !== playerId);
-  const me = tableState.players.find((p) => p.id === playerId);
 
-  const battlefieldOf = (pid: PlayerId) => objects.filter((o) => isOwnZone(o, pid, 'battlefield'));
-  const commandZoneOf = (pid: PlayerId) => objects.filter((o) => isOwnZone(o, pid, 'commandZone'));
-  const myHand = objects.filter((o) => isOwnZone(o, playerId, 'hand'));
-  // Only cards SEARCH_LIBRARY/PEEK_TOP made visible show up here at all — everything else in a
-  // library is omitted from tableState.objects entirely (§9.2), never fetched or rendered.
-  const myVisibleLibrary = objects.filter((o) => isOwnZone(o, playerId, 'library'));
+  // You are always bottom-left, everyone else clockwise from you in turn order (see seating.ts).
+  const seats = useMemo(() => seating(tableState.players, playerId), [tableState.players, playerId]);
 
-  // §12.3: a row per commander on the table, for every player's damage-taken column.
-  const allCommanders = tableState.players.flatMap((owner) =>
-    owner.commanderIds.map((id) => ({ id, ownerName: owner.displayName, obj: tableState.objects[id] }))
+  const inZone = (pid: PlayerId, zone: string) => objects.filter((o) => isOwnZone(o, pid, zone));
+  const myHand = inZone(playerId, 'hand');
+
+  // §12.3: every commander on the table, for the crossroads damage badges and the commander
+  // prompt; your own HUD only offers the ones that can actually hit you.
+  const allCommanders: CommanderRef[] = tableState.players.flatMap((owner) =>
+    owner.commanderIds.map((id) => ({
+      id,
+      ownerId: owner.id,
+      ownerName: owner.displayName,
+      obj: tableState.objects[id],
+    }))
   );
 
-  // Built once and shared between the compact opponents row and the expanded-view modal, so
-  // "expand" shows exactly the same live board, just at full card size instead of the shrunk
-  // opponents-row size (a pure CSS scoping difference, not a different component or data path).
-  const opponentAreaProps = opponents.map((p) => ({
-    player: p,
-    handCount: tableState.handCounts[p.id],
-    libraryCount: tableState.libraryCounts[p.id],
-    battlefield: battlefieldOf(p.id),
-    commandZone: commandZoneOf(p.id),
-    allCommanders,
-    onLifeDelta: (delta: number) => act({ t: 'SET_LIFE', playerIds: [p.id], update: { mode: 'delta', amount: delta } }),
-    onPoisonDelta: (delta: number) => act({ t: 'SET_PLAYER_COUNTER', playerId: p.id, key: 'poison', update: { mode: 'delta', amount: delta } }),
-    onTapToggle: (obj: { id: string; tapped: boolean }) => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id }),
-    onCommanderDamageDelta: (fromCommanderObjectId: ObjectId, delta: number) =>
-      act({ t: 'SET_COMMANDER_DAMAGE', toPlayerId: p.id, fromCommanderObjectId, update: { mode: 'delta', amount: delta } }),
-    onObjectContextMenu: openMenu,
-  }));
-  const expandedOpponent = opponentAreaProps.find((o) => o.player.id === expandedPlayerId);
+  const me = tableState.players.find((p) => p.id === playerId)!;
+  const opposingCommanders = allCommanders.filter((c) => c.ownerId !== playerId);
+
+  // §12: your own commanders only — whether one goes to the command zone instead of staying dead
+  // is its owner's call, and nobody else's to be nagged about.
+  const prompts = commanderPrompts(tableState.objects, me.commanderIds, dismissedCommanders);
+
+  const dockZones: DockZone[] = [
+    { key: 'graveyard', label: 'Graveyard', count: inZone(playerId, 'graveyard').length, objects: inZone(playerId, 'graveyard') },
+    { key: 'exile', label: 'Exile', count: inZone(playerId, 'exile').length, objects: inZone(playerId, 'exile') },
+    {
+      key: 'library',
+      label: 'Library',
+      count: tableState.libraryCounts[playerId],
+      // Only cards SEARCH_LIBRARY/PEEK_TOP made visible are in tableState.objects at all —
+      // everything else in a library is omitted from the projection entirely (§9.2).
+      objects: inZone(playerId, 'library'),
+      note: 'Only cards you searched or peeked at are shown.',
+      onMove: (move, obj) =>
+        act(libraryMoveAction(move, obj.id, playerId, tableState.libraryCounts[playerId])),
+      // A search owes the table a shuffle and used to owe it in prose ("remember to shuffle").
+      // Closing the popover is the moment the search is over, so that's where it gets paid.
+      onClose: () => {
+        if (!useUiStore.getState().libraryDirty) return;
+        act({ t: 'SHUFFLE_LIBRARY', playerId });
+        setLibraryDirty(false);
+      },
+    },
+  ];
 
   return (
     <div className="table">
-      {/* A compact, wrapping toolbar instead of a permanent side column — a fixed-width sidebar
-          was silently stealing most of the window's width from the opponents' and your own
-          boards (a CSS Grid auto-placement gotcha: `.sidebar` had a definite row but an
-          automatic column, which the grid placement algorithm resolves *before* `.opponents`'
-          fully-automatic placement, so sidebar claimed the wide column). Cards on the table are
-          what players look at almost all the time; the toolbar only needs to be reachable. */}
-      <div className="toolbar">
-        <ManaPad />
-        <SelectionBar />
-        <div className="controls">
-          <button title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>Draw</button>
-          <button onClick={() => act({ t: 'SHUFFLE_LIBRARY', playerId })}>Shuffle</button>
-          <button title="Shortcut: U" onClick={() => act({ t: 'UNTAP_ALL', playerId })}>Untap all</button>
-          <button title="Shortcut: P" onClick={() => act({ t: 'PASS_TURN' })}>Pass turn</button>
-          <button onClick={() => act({ t: 'MULLIGAN', playerId })}>Mulligan</button>
-          <button onClick={() => act({ t: 'CONCEDE', playerId })}>Concede</button>
-          <button onClick={() => act({ t: 'SEARCH_LIBRARY', playerId })}>Search library</button>
-          <button
-            onClick={() => {
-              const text = window.prompt('Adjust ALL players\' life by how much?', '0');
-              const amount = Number(text);
-              if (Number.isFinite(amount) && amount !== 0) {
-                act({ t: 'SET_LIFE', playerIds: tableState.players.map((p) => p.id), update: { mode: 'delta', amount } });
-              }
-            }}
-          >
-            Adjust all life…
-          </button>
-          <button onClick={() => act({ t: 'CLEAR_ALL_MARKERS' })}>Clear all markers</button>
-          <button
-            onClick={() => {
-              const countText = window.prompt('Look at the top how many cards?', '1');
-              const count = Number(countText);
-              if (Number.isFinite(count) && count > 0) act({ t: 'PEEK_TOP', playerId, count });
-            }}
-          >
-            Peek top…
-          </button>
-          <button
-            onClick={() => {
-              const sidesText = window.prompt('Roll a d__?', '6');
-              const sides = Number(sidesText);
-              if (Number.isFinite(sides) && sides >= 2) act({ t: 'ROLL_DICE', playerId, sides });
-            }}
-          >
-            Roll dice…
-          </button>
-          <button onClick={() => act({ t: 'FLIP_COIN', playerId })}>Flip coin</button>
-          <button
-            onClick={() => {
-              const name = window.prompt('Token name:', 'Squirrel');
-              if (!name) return;
-              const typeLine = window.prompt('Type line:', 'Token Creature — Squirrel') ?? '';
-              const power = window.prompt('Power (blank if none):', '1') || undefined;
-              const toughness = window.prompt('Toughness (blank if none):', '1') || undefined;
-              const quantityText = window.prompt('Quantity:', '1');
-              const quantity = Number(quantityText);
-              if (!Number.isFinite(quantity) || quantity < 1) return;
-              act({
-                t: 'CREATE_TOKEN',
-                ownerId: playerId,
-                zone: { playerId, zone: 'battlefield' },
-                source: { adhoc: { name, typeLine, power, toughness } },
-                quantity,
-              });
-            }}
-          >
-            Create token…
-          </button>
-        </div>
-        <button className="log-toggle" onClick={() => setLogOpen(true)}>
-          Log &amp; chat{tableState.log.length > 0 ? ` (${tableState.log.length})` : ''}
-        </button>
-      </div>
+      <header className="status-bar">
+        <span className={`turn-pill ${isMyTurn ? 'mine' : ''}`}>{turnLabel(tableState.turn, tableState.players, playerId)}</span>
 
-      {pendingUndoRequest && (
-        <div className="undo-request">
-          <p>{pendingUndoRequest.describes}?</p>
-          <button onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: true })}>Approve</button>
-          <button onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: false })}>Reject</button>
-        </div>
-      )}
-
-      <div className="opponents">
-        {opponentAreaProps.map(({ player, ...props }) => (
-          <PlayerArea key={player.id} player={player} {...props} onExpand={() => setExpandedPlayerId(player.id)} />
-        ))}
-      </div>
-
-      <div className="self-area">
-        {me && (
-          <PlayerArea
-            player={me}
-            handCount={tableState.handCounts[me.id]}
-            libraryCount={tableState.libraryCounts[me.id]}
-            battlefield={battlefieldOf(me.id)}
-            commandZone={commandZoneOf(me.id)}
-            allCommanders={allCommanders}
-            onLifeDelta={(delta) => act({ t: 'SET_LIFE', playerIds: [me.id], update: { mode: 'delta', amount: delta } })}
-            onPoisonDelta={(delta) => act({ t: 'SET_PLAYER_COUNTER', playerId: me.id, key: 'poison', update: { mode: 'delta', amount: delta } })}
-            onTapToggle={(obj) => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id })}
-            onGraveyard={(obj) => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: { playerId, zone: 'graveyard' } })}
-            onCommanderDamageDelta={(fromCommanderObjectId, delta) =>
-              act({ t: 'SET_COMMANDER_DAMAGE', toPlayerId: me.id, fromCommanderObjectId, update: { mode: 'delta', amount: delta } })
-            }
-            onCastCommander={(obj) => {
-              // Two steps so §12.2's tax tracking (command zone -> stack) fires; the doc treats
-              // the stack itself as a non-goal (§1.3: "no stack resolution"), so resolving
-              // straight to the battlefield in the same click is a fair simplification.
-              act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: { zone: 'stack' } });
-              act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: { playerId, zone: 'battlefield' } });
-            }}
-            onObjectContextMenu={openMenu}
-          />
-        )}
-
-        <div className="hand">
-          {myHand.map((obj) => (
-            <CardTile
-              key={obj.id}
-              obj={obj}
-              onClick={() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: { playerId, zone: 'battlefield' } })}
-              onContextMenu={openMenu(obj)}
-            />
-          ))}
-        </div>
-
-        {myVisibleLibrary.length > 0 && (
-          <div className="library-viewer">
-            <p className="library-viewer-label">Library (searched/peeked — right-click a card to move it)</p>
-            <div className="hand">
-              {myVisibleLibrary
-                .filter((o): o is GameObject => !isRedacted(o))
-                .sort((a, b) => a.position - b.position)
-                .map((obj) => (
-                  <CardTile key={obj.id} obj={obj} onContextMenu={openMenu(obj)} />
-                ))}
-            </div>
+        {pendingUndoRequest && (
+          <div className="undo-request">
+            <span>{pendingUndoRequest.describes}?</span>
+            <button className="btn" onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: true })}>
+              Approve
+            </button>
+            <button className="btn btn-ghost" onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: false })}>
+              Reject
+            </button>
           </div>
         )}
-      </div>
 
-      {menu && <ContextMenu obj={menu.obj} x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
-      {expandedOpponent && (
-        <ExpandedPlayerModal {...expandedOpponent} onClose={() => setExpandedPlayerId(null)} />
-      )}
-      {logOpen && (
-        <LogChatModal
+        {/* Sits here with the undo request rather than in the toast rail: the offer is a standing
+            state, not a moment. A toast would expire in five seconds and take the choice with it. */}
+        {prompts.map((prompt) => (
+          <div key={prompt.objectId} className="commander-prompt">
+            <span>
+              <CommanderName commander={allCommanders.find((c) => c.id === prompt.objectId)!} /> is in your{' '}
+              {prompt.zone === 'graveyard' ? 'graveyard' : 'exile'}.
+            </span>
+            <button
+              className="btn"
+              onClick={() => act({ t: 'MOVE_OBJECT', objectId: prompt.objectId, toZone: { playerId, zone: 'commandZone' } })}
+            >
+              To command zone
+            </button>
+            <button className="btn btn-ghost" onClick={() => dismissCommander(prompt.objectId, prompt.zone)}>
+              Leave it
+            </button>
+          </div>
+        ))}
+
+        {/* Pushed to the far end of the bar by its own margin, so whatever the bar is currently
+            asking you stays next to the turn pill where you're already looking. */}
+        <SettingsMenu />
+      </header>
+
+      <div className="table-main">
+        {/* Refit only when the number of boards changes — the plane's size changes then, and a
+            view that re-centered itself every time someone played a card would be unusable. */}
+        <Plane fitKey={seats.length} focusKey={followActivePlayer ? tableState.turn.activePlayerId : null}>
+          <div className={`mats ${seats.length <= 2 ? 'stacked' : 'quad'}`}>
+            {seats.map((seat) => {
+              const player = tableState.players.find((p) => p.id === seat.playerId);
+              if (!player) return null;
+              const isSelf = player.id === playerId;
+              return (
+                <Board
+                  key={player.id}
+                  player={player}
+                  seat={seat}
+                  turn={turnHighlight(player.id, tableState.turn, playerId)}
+                  handCount={tableState.handCounts[player.id]}
+                  libraryCount={tableState.libraryCounts[player.id]}
+                  battlefield={inZone(player.id, 'battlefield')}
+                  commandZone={inZone(player.id, 'commandZone')}
+                  commanderCastCount={player.commanderCastCount}
+                  onTapToggle={(obj) => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id })}
+                  onCastCommander={
+                    isSelf
+                      ? (obj) => {
+                          // Two steps so §12.2's tax tracking (command zone -> stack) fires; the
+                          // doc treats the stack itself as a non-goal (§1.3: "no stack
+                          // resolution"), so resolving straight to the battlefield is fair.
+                          act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: { zone: 'stack' } });
+                          act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: { playerId, zone: 'battlefield' } });
+                        }
+                      : undefined
+                  }
+                  onObjectContextMenu={openMenu}
+                />
+              );
+            })}
+
+            <CrossroadsHub
+              players={tableState.players}
+              seats={seats}
+              turn={tableState.turn}
+              myId={playerId}
+              allCommanders={allCommanders}
+            />
+          </div>
+        </Plane>
+
+        <LogRail
           log={tableState.log}
           players={tableState.players}
+          myId={playerId}
+          open={logRailOpen}
+          onToggle={toggleLogRail}
           onSend={(text) => act({ t: 'SAY', playerId, text })}
-          onClose={() => setLogOpen(false)}
+        />
+      </div>
+
+      {/* Fixed chrome, outside the plane: your hand has to stay readable no matter how far the
+          table is zoomed out, and the actions you take every turn belong next to it. */}
+      <div className={`hud ${isMyTurn ? 'my-turn' : ''}`}>
+        {/* Mana and your zones share the top strip: both are read-and-poke controls that want to
+            be near the hand without stealing any of its height. */}
+        <div className="hud-top">
+          {/* Your life and poison are written here and read at the crossroads: the readouts out
+              on the plane are a scoreboard, and only their owner's own HUD changes a row of it. */}
+          <VitalsPad
+            player={me}
+            commanders={opposingCommanders}
+            onLifeDelta={(amount) => act({ t: 'SET_LIFE', playerIds: [playerId], update: { mode: 'delta', amount } })}
+            onPoisonDelta={(amount) =>
+              act({ t: 'SET_PLAYER_COUNTER', playerId, key: 'poison', update: { mode: 'delta', amount } })
+            }
+            // Commander damage is also life lost (§12.3), and tracking it twice by hand is how
+            // the two readouts drift apart. Both halves are separate actions, so one undo reverts
+            // one half — acceptable next to always having to remember the second click.
+            onCommanderDamageDelta={(fromCommanderObjectId, amount) => {
+              act({ t: 'SET_COMMANDER_DAMAGE', toPlayerId: playerId, fromCommanderObjectId, update: { mode: 'delta', amount } });
+              act({ t: 'SET_LIFE', playerIds: [playerId], update: { mode: 'delta', amount: -amount } });
+            }}
+          />
+          <ManaPad />
+          <ZoneDock zones={dockZones} onObjectContextMenu={openMenu} />
+        </div>
+        <div className="hud-row">
+          <ActionBar playerId={playerId} players={tableState.players} isMyTurn={isMyTurn} onPassTurn={requestPassTurn} />
+          {/* Overlapping fan rather than a second row: a big hand must not steal height from
+              the table. */}
+          <div className={`hand ${myHand.length > 8 ? 'crowded' : ''}`}>
+            {myHand.map((obj) => (
+              <CardTile
+                key={obj.id}
+                obj={obj}
+                onClick={() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: { playerId, zone: 'battlefield' } })}
+                onContextMenu={openMenu(obj)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <SelectionBar />
+      <Toasts log={tableState.log} players={tableState.players} myId={playerId} railOpen={logRailOpen} />
+
+      {confirmingPass && (
+        <ConfirmDialog
+          title="Pass turn"
+          message={PASS_TURN_WARNING}
+          confirmLabel="Pass turn"
+          onConfirm={() => {
+            setConfirmingPass(false);
+            act({ t: 'PASS_TURN' });
+          }}
+          onCancel={() => setConfirmingPass(false)}
         />
       )}
+
+      {menu && <ContextMenu obj={menu.obj} x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
     </div>
-  );
-}
-
-interface CommanderRef {
-  id: ObjectId;
-  ownerName: string;
-  obj: ProjectedObject | undefined;
-}
-
-interface PlayerAreaProps {
-  player: PlayerState;
-  handCount: number;
-  libraryCount: number;
-  battlefield: ProjectedObject[];
-  commandZone: ProjectedObject[];
-  allCommanders: CommanderRef[];
-  onLifeDelta: (delta: number) => void;
-  onPoisonDelta: (delta: number) => void;
-  onTapToggle: (obj: { id: string; tapped: boolean }) => void;
-  onGraveyard?: (obj: GameObject) => void;
-  onCommanderDamageDelta: (fromCommanderObjectId: ObjectId, delta: number) => void;
-  onCastCommander?: (obj: GameObject) => void;
-  onObjectContextMenu: (obj: ProjectedObject) => (e: React.MouseEvent) => void;
-  onExpand?: () => void;
-}
-
-function PlayerArea({ player, handCount, libraryCount, battlefield, commandZone, allCommanders, onLifeDelta, onPoisonDelta, onTapToggle, onGraveyard, onCommanderDamageDelta, onCastCommander, onObjectContextMenu, onExpand }: PlayerAreaProps) {
-  const poison = player.counters.poison ?? 0;
-  return (
-    <div className={`player-area ${player.status !== 'active' ? 'inactive' : ''}`}>
-      <div className="player-header">
-        <span className="player-name">
-          {player.displayName} {!player.connected && '(disconnected)'} {player.status !== 'active' && `— ${player.status}`}
-          {onExpand && (
-            <button className="expand-button" onClick={onExpand} title="Expand to full size">
-              ⤢
-            </button>
-          )}
-        </span>
-        <span className={`life ${player.life <= 0 ? 'lethal' : ''}`}>
-          <button onClick={() => onLifeDelta(-1)}>-1</button>
-          {player.life}
-          <button onClick={() => onLifeDelta(1)}>+1</button>
-          <button
-            onClick={() => {
-              const text = window.prompt('Adjust life by how much? (negative to lose life)', '0');
-              const amount = Number(text);
-              if (Number.isFinite(amount) && amount !== 0) onLifeDelta(amount);
-            }}
-          >
-            ±N…
-          </button>
-        </span>
-        <span className={`poison ${poison >= 10 ? 'lethal' : ''}`}>
-          <button onClick={() => onPoisonDelta(-1)}>-1</button>
-          Poison: {poison}
-          <button onClick={() => onPoisonDelta(1)}>+1</button>
-        </span>
-        <span className="counts">
-          Hand: {handCount} · Library: {libraryCount}
-        </span>
-      </div>
-
-      {commandZone.length > 0 && (
-        <div className="command-zone">
-          {commandZone.map((obj) => (
-            <CommanderTile
-              key={obj.id}
-              obj={obj}
-              taxCount={player.commanderCastCount[obj.id] ?? 0}
-              onCast={onCastCommander && !isRedacted(obj) ? () => onCastCommander(obj) : undefined}
-              onContextMenu={onObjectContextMenu(obj)}
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="battlefield">
-        {battlefield.map((obj) => (
-          <BattlefieldSlot
-            key={obj.id}
-            obj={obj}
-            onTapToggle={onTapToggle}
-            onGraveyard={onGraveyard}
-            onContextMenu={onObjectContextMenu(obj)}
-          />
-        ))}
-        {/* §16.1: lands row vs. nonlands area "removes enormous visual noise". Since land-ness
-            depends on card data that loads asynchronously per object, this uses a CSS ordering
-            trick (lands first, a full-width spacer forces a line wrap, nonlands after) rather
-            than pre-splitting into two arrays — a permanent may briefly render in the wrong
-            group for one frame while its card data is still loading, then self-correct. */}
-        <div className="battlefield-split" />
-      </div>
-
-      <table className="commander-damage">
-        <tbody>
-          {allCommanders.map((c) => {
-            const damage = player.commanderDamageTaken[c.id] ?? 0;
-            return (
-              <tr key={c.id} className={damage >= COMMANDER_DAMAGE_LETHAL ? 'lethal' : ''}>
-                <td>
-                  <CommanderName commander={c} />
-                </td>
-                <td>
-                  <button onClick={() => onCommanderDamageDelta(c.id, -1)}>-1</button>
-                  {damage}
-                  <button onClick={() => onCommanderDamageDelta(c.id, 1)}>+1</button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function useIsLand(obj: ProjectedObject): boolean {
-  const card = useCard(obj);
-  if (!isRedacted(obj) && obj.source.kind === 'token' && obj.source.adhoc) {
-    return obj.source.adhoc.typeLine.includes('Land');
-  }
-  return card?.typeLine.includes('Land') ?? false;
-}
-
-function BattlefieldSlot({
-  obj,
-  onTapToggle,
-  onGraveyard,
-  onContextMenu,
-}: {
-  obj: ProjectedObject;
-  onTapToggle: (obj: { id: string; tapped: boolean }) => void;
-  onGraveyard?: (obj: GameObject) => void;
-  onContextMenu: (e: React.MouseEvent) => void;
-}) {
-  const isLand = useIsLand(obj);
-  const selected = useUiStore((s) => s.selectedIds.has(obj.id));
-  const toggleSelected = useUiStore((s) => s.toggleSelected);
-  return (
-    <div className="battlefield-slot" style={{ order: isLand ? 0 : 2 }}>
-      <CardTile
-        obj={obj}
-        selected={selected}
-        onClick={(e) => (e.shiftKey ? toggleSelected(obj.id) : onTapToggle(obj))}
-        onContextMenu={onContextMenu}
-      />
-      {onGraveyard && !isRedacted(obj) && (
-        <button className="gy-button" onClick={() => onGraveyard(obj)}>
-          GY
-        </button>
-      )}
-    </div>
-  );
-}
-
-function CommanderTile({
-  obj,
-  taxCount,
-  onCast,
-  onContextMenu,
-}: {
-  obj: ProjectedObject;
-  taxCount: number;
-  onCast?: () => void;
-  onContextMenu: (e: React.MouseEvent) => void;
-}) {
-  const tax = taxCount * 2;
-  return (
-    <div className="commander-tile">
-      <CardTile obj={obj} onClick={onCast} onContextMenu={onContextMenu} />
-      {tax > 0 && <span className="tax-badge">+{tax}</span>}
-    </div>
-  );
-}
-
-function CommanderName({ commander }: { commander: CommanderRef }) {
-  const card = useCard(commander.obj);
-  return <>{card ? card.name : `${commander.ownerName}'s commander`}</>;
-}
-
-const MANA_COLORS: ManaColor[] = ['W', 'U', 'B', 'R', 'G', 'C'];
-
-// §8.4 client-local mana pad: bumped as lands are tapped, spent as spells are cast, reset at
-// will. Purely client-side (uiStore) — the server has no concept of mana, per the doc.
-function ManaPad() {
-  const manaPad = useUiStore((s) => s.manaPad);
-  const bumpMana = useUiStore((s) => s.bumpMana);
-  const resetMana = useUiStore((s) => s.resetMana);
-  return (
-    <div className="mana-pad">
-      {MANA_COLORS.map((color) => (
-        <span key={color} className={`mana-pip mana-${color}`}>
-          <button onClick={() => bumpMana(color, -1)}>-</button>
-          {color} {manaPad[color]}
-          <button onClick={() => bumpMana(color, 1)}>+</button>
-        </span>
-      ))}
-      <button onClick={resetMana}>Reset</button>
-    </div>
-  );
-}
-
-// §16.2 multi-select: shift-click a battlefield object to toggle it into the selection, then
-// apply a bulk action — "tap five lands" or "sacrifice all my tokens" (§16.3) as one gesture.
-// Each object keeps its own controller for the graveyard move, matching the single-object
-// context menu (§10: freeform play has no restriction on whose object an action targets).
-function SelectionBar() {
-  const selectedIds = useUiStore((s) => s.selectedIds);
-  const clearSelection = useUiStore((s) => s.clearSelection);
-  const act = useStore((s) => s.act);
-  const objects = useStore((s) => s.tableState?.objects ?? {});
-
-  if (selectedIds.size === 0) return null;
-
-  function setTappedAll(tapped: boolean) {
-    selectedIds.forEach((id) => act({ t: tapped ? 'TAP' : 'UNTAP', objectId: id }));
-  }
-
-  function graveyardAll() {
-    selectedIds.forEach((id) => {
-      const obj = objects[id];
-      if (!obj) return;
-      act({ t: 'MOVE_OBJECT', objectId: id, toZone: { playerId: obj.controllerId, zone: 'graveyard' } });
-    });
-    clearSelection();
-  }
-
-  return (
-    <div className="selection-bar">
-      <span>{selectedIds.size} selected</span>
-      <button onClick={() => setTappedAll(true)}>Tap</button>
-      <button onClick={() => setTappedAll(false)}>Untap</button>
-      <button onClick={graveyardAll}>To graveyard</button>
-      <button onClick={clearSelection}>Clear</button>
-    </div>
-  );
-}
-
-// Opponents render compact (small card-tiles, a pure CSS override scoped to `.opponents`) so
-// your own board — what you interact with almost every turn — gets most of the screen. This
-// reuses PlayerArea completely unchanged: outside `.opponents`, CardTile falls back to its
-// normal full size, so "expand" is just "render the same board somewhere the compact CSS
-// doesn't reach," not a second board-rendering code path to keep in sync.
-function ExpandedPlayerModal({ onClose, ...playerAreaProps }: PlayerAreaProps & { onClose: () => void }) {
-  return (
-    <>
-      <div className="modal-backdrop" onClick={onClose} />
-      <div className="modal expanded-player-modal">
-        <div className="modal-header">
-          <span>{playerAreaProps.player.displayName}</span>
-          <button onClick={onClose}>×</button>
-        </div>
-        <PlayerArea {...playerAreaProps} />
-      </div>
-    </>
-  );
-}
-
-// Log and chat moved off the always-visible sidebar into a popup: the table itself — the
-// battlefield and opponents' boards — is what players look at nearly all the time, so it gets
-// the screen space. A player opens this only when they need it.
-function LogChatModal({
-  log,
-  players,
-  onSend,
-  onClose,
-}: {
-  log: LogEntry[];
-  players: PlayerState[];
-  onSend: (text: string) => void;
-  onClose: () => void;
-}) {
-  return (
-    <>
-      <div className="modal-backdrop" onClick={onClose} />
-      <div className="modal log-modal">
-        <div className="modal-header">
-          <span>Log &amp; chat</span>
-          <button onClick={onClose}>×</button>
-        </div>
-        <div className="log">
-          {log.map((entry, i) => {
-            const actorName = players.find((p) => p.id === entry.actorId)?.displayName ?? entry.actorId;
-            return (
-              <p key={i}>
-                <strong>{actorName}</strong> {entry.text}
-              </p>
-            );
-          })}
-        </div>
-        <ChatBox onSend={onSend} />
-      </div>
-    </>
-  );
-}
-
-function ChatBox({ onSend }: { onSend: (text: string) => void }) {
-  const [text, setText] = useState('');
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!text.trim()) return;
-    onSend(text.trim());
-    setText('');
-  }
-  return (
-    <form className="chat-box" onSubmit={submit}>
-      <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Say something…" />
-      <button type="submit">Send</button>
-    </form>
   );
 }

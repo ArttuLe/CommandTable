@@ -1,6 +1,8 @@
 import { isRedacted, type Card, type GameObject, type ProjectedObject } from '@command-table/common';
 import { useCard } from './useCard.js';
+import { counterBadgeText, counterKind } from './counters.js';
 import { useUiStore } from './uiStore.js';
+import { ATTACKING_MARKER, isAttacking } from './combat.js';
 
 interface CardTileProps {
   obj: ProjectedObject;
@@ -17,7 +19,7 @@ export function CardTile({ obj, selected, onClick, onContextMenu }: CardTileProp
 
   return (
     <div
-      className={`card-tile ${obj.tapped ? 'tapped' : ''} ${isRedacted(obj) ? 'face-down' : ''} ${selected ? 'selected' : ''}`}
+      className={`card-tile ${obj.tapped ? 'tapped' : ''} ${isRedacted(obj) ? 'face-down' : ''} ${selected ? 'selected' : ''} ${isAttacking(obj) ? 'attacking' : ''}`}
       onClick={onClick}
       onContextMenu={onContextMenu}
       onMouseEnter={() => card && setHoveredCard(card)}
@@ -29,12 +31,19 @@ export function CardTile({ obj, selected, onClick, onContextMenu }: CardTileProp
       ) : (
         <div className="card-tile-fallback">{label ?? '?'}</div>
       )}
-      {Object.entries(obj.counters).map(([key, value]) => (
-        <span key={key} className="counter-badge">
-          {key}: {value}
-        </span>
-      ))}
-      {obj.markers.map((marker) => (
+      {/* One strip rather than a badge per corner: counters used to be stacked on top of each
+          other, so a creature with both a +1/+1 and a stun counter only ever showed one. */}
+      {Object.keys(obj.counters).length > 0 && (
+        <div className="card-badges">
+          {Object.entries(obj.counters).map(([key, value]) => (
+            <span key={key} className={`counter-badge counter-${counterKind(key)}`} title={`${key}: ${value}`}>
+              {counterBadgeText(key, value)}
+            </span>
+          ))}
+        </div>
+      )}
+      {/* The attacking marker is the red border, not a badge — see combat.ts. */}
+      {obj.markers.filter((marker) => marker !== ATTACKING_MARKER).map((marker) => (
         <span key={marker} className="marker-badge">
           {marker}
         </span>

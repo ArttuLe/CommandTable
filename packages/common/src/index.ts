@@ -3,6 +3,7 @@ export * from './card.js';
 export * from './deck.js';
 export * from './room.js';
 export * from './objects.js';
+export * from './markers.js';
 export * from './log.js';
 export * from './table.js';
 export * from './actions.js';

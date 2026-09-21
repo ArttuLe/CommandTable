@@ -5,9 +5,21 @@
 // DRAW/PASS_TURN (Phase 2) stay here since they predate that split.
 
 import { randomInt as cryptoRandomInt } from 'node:crypto';
-import type { Action, GameObject, LogEntry, PlayerId, TableState } from '@command-table/common';
+import { ATTACKING_MARKER, type Action, type GameObject, type LogEntry, type PlayerId, type TableState } from '@command-table/common';
 import { fisherYatesShuffle } from './shuffle.js';
-import { bumpRevision, defaultVisibilityFor, err, ok, requireObject, requirePlayer, withObject, type ApplyResult } from './actions/helpers.js';
+import {
+  asNewObject,
+  bumpRevision,
+  defaultVisibilityFor,
+  detachFrom,
+  err,
+  ok,
+  requireObject,
+  requirePlayer,
+  withObject,
+  zonesEqual,
+  type ApplyResult,
+} from './actions/helpers.js';
 import * as objectActions from './actions/objectActions.js';
 import * as zoneActions from './actions/zoneActions.js';
 import * as playerActions from './actions/playerActions.js';
@@ -38,7 +50,7 @@ export function applyAction(
     return result;
   }
 
-  const { text, visibility } = result.log ?? { text: describeAction(action), visibility: undefined };
+  const { text, visibility, kind } = result.log ?? { text: describeAction(action), visibility: undefined, kind: undefined };
   const entry: LogEntry = {
     revision: result.state.revision,
     timestamp: Date.now(),
@@ -46,6 +58,7 @@ export function applyAction(
     text,
     visibility: visibility ?? { kind: 'all' },
     undoable: true,
+    kind,
   };
   return { ok: true, state: { ...result.state, log: [...result.state.log, entry] } };
 }
@@ -136,15 +149,19 @@ function moveObject(state: TableState, action: Extract<Action, { t: 'MOVE_OBJECT
   }
 
   const faceDown = action.faceDown ?? existing.faceDown;
+  // A change of zone makes this a new object (CR 400.7, see asNewObject); staying put — a
+  // library reorder — does not. Visibility is decided by the destination either way.
+  const changedZone = !zonesEqual(existing.zone, action.toZone);
+  const base = changedZone ? asNewObject(existing) : existing;
   const updated: GameObject = {
-    ...existing,
+    ...base,
     zone: action.toZone,
     position: action.toPosition ?? 0,
     faceDown,
-    faceVisibility: defaultVisibilityFor(action.toZone, existing.controllerId, faceDown),
+    faceVisibility: defaultVisibilityFor(action.toZone, base.controllerId, faceDown),
   };
 
-  const next = withObject(state, updated);
+  const next = withObject(changedZone ? detachFrom(state, existing.id) : state, updated);
   const isCommanderCast = existing.zone.zone === 'commandZone' && !('playerId' in action.toZone) && action.toZone.zone === 'stack';
   if (!isCommanderCast) {
     return ok(next);
@@ -187,21 +204,22 @@ function draw(state: TableState, action: Extract<Action, { t: 'DRAW' }>): ApplyR
     return err(`no such player: ${action.playerId}`);
   }
 
+  const { playerId } = action;
   const library = Object.values(state.objects)
-    .filter((o) => 'playerId' in o.zone && o.zone.playerId === action.playerId && o.zone.zone === 'library')
+    .filter((o) => 'playerId' in o.zone && o.zone.playerId === playerId && o.zone.zone === 'library')
     .sort((a, b) => a.position - b.position);
 
-  const toDraw = library.slice(0, action.count);
-
+  // Drawing from an empty library takes what's there rather than erroring: §3 leaves losing the
+  // game to the players.
   let next = state;
-  for (const obj of toDraw) {
+  for (const obj of library.slice(0, action.count)) {
     next = withObject(
       next,
       {
         ...obj,
-        zone: { playerId: action.playerId, zone: 'hand' },
+        zone: { playerId, zone: 'hand' },
         position: 0,
-        faceVisibility: { kind: 'players', ids: [action.playerId] },
+        faceVisibility: { kind: 'players', ids: [playerId] },
       },
       false
     );
@@ -217,8 +235,14 @@ function passTurn(state: TableState): ApplyResult {
   const nextPlayerId = order[nextIndex].id;
 
   // §16.3 "pass turn (with untap bundle)": the new active player's permanents untap as part of
-  // passing turn, rather than needing a separate UNTAP_ALL click.
-  const untapped = objectActions.untapControlledBy(state, nextPlayerId);
+  // passing turn, rather than needing a separate UNTAP_ALL click, and the combat markers from
+  // the turn that just ended are swept up in the same beat.
+  //
+  // Drawing for the turn is deliberately NOT bundled here: it's the one turn-start step players
+  // want to take themselves (`D`, or the Draw button), and a draw that happens to you is worse
+  // than one you asked for.
+  const swept = objectActions.clearMarkerFromAll(state, ATTACKING_MARKER);
+  const untapped = objectActions.untapControlledBy(swept, nextPlayerId);
 
   return ok(
     bumpRevision({

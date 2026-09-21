@@ -32,22 +32,35 @@ Phases 1 through 4 (§17 of the design doc) are implemented:
 
 Also implemented: **Phase 5's commander affordances** (§12) — commander tax tracking
 (`commanderCastCount` increments when a commander moves command zone → stack, shown as a
-`+N` badge on the commander tile), a per-player commander damage grid (§12.3, one row per
-commander in play, editable, highlighted past 21 lethal), and life/poison lethal-threshold
+`+N` badge on the commander tile), commander damage tracked per source (§12.3, edited by the
+player taking it, highlighted past 21 lethal), and life/poison lethal-threshold
 highlighting (≤0 life, ≥10 poison) — plus a **minimal client** (early Phase 6 — React +
 TypeScript + Vite + Zustand, per §4) that now covers most of the action catalog, not just the
 headline ones. Beyond click-to-play/click-to-tap: a right-click context menu on any object
-(§16.2 — tap/untap, transform, face down/up, move to any zone, add a counter or marker, remove
-an existing marker, set an annotation, change controller), sidebar buttons for search library +
-peek top N (with a "revealed library" panel that renders whatever `SEARCH_LIBRARY`/`PEEK_TOP`
-made visible, right-clickable like anything else), roll dice / flip a coin, create tokens
-(name/type/power/toughness/quantity via prompts), and a chat box for `SAY`. Hover-zoom made the
+(§16.2 — tap/untap, mark as attacking, transform, face down/up, move to any zone, add a counter
+or marker, remove an existing marker, set an annotation, change controller, duplicate a token;
+the menu flips up or left when it would otherwise run off the window — see `menuPlacement.ts`),
+search library + peek top N (both open the hand dock's Library popover on the spot, since
+flipping card visibility server-side is otherwise invisible; each revealed card carries
+Hand / Play / Top / Bottom buttons, which is what makes a peek usable as a scry, and a search
+shuffles itself on the way out — see `libraryMoves.ts`), roll dice / flip a coin, create tokens
+(name / type line / P / T / quantity as one form, with the type line following the name until
+you edit it — `TokenDialog.tsx`, rules in `tokenForm.ts`), and a chat box for `SAY`. Hover-zoom made the
 cut despite being "later polish" in spirit, since the doc calls it "non-negotiable" (§16.1)
-rather than optional. The battlefield also splits into a lands row and a nonlands area (§16.1),
-via CSS `order` rather than pre-sorted arrays — see the deviation note. Keyboard shortcuts
+rather than optional, and sits against the left edge, a little above centre, where it is at eye
+level and never under the cursor that summoned it — the cards you hover most are along the bottom
+of the window, so a dead-centre preview reads as lower than its own card. The battlefield splits into three named zones (§16.1) —
+lands, non-creature permanents, creatures — see `battlefieldZones.ts`; identical basics fan into
+one overlapping stack with a count (`landStacks.ts`) so a ten-land board doesn't wrap onto a
+second row. Keyboard shortcuts
 (§16.2) cover the high-frequency actions — `D` draw, `U` untap all, `P` pass turn, `+`/`-` your
-own life — gated so they don't fire while a text input has focus. A client-local mana pad (§8.4)
-sits above the sidebar controls: WUBRGC counters a player bumps by hand as they tap lands and
+own life, `L` the log rail — gated so they don't fire while a text input has focus. Passing on
+someone else's turn (button or `P`) puts a confirmation dialog in front of it, since `PASS_TURN`
+ends whoever is active, not you. That dialog is the app's own (`ConfirmDialog.tsx`), not
+`window.confirm`; while it is up the keyboard shortcuts stand down so Escape and Enter belong
+to it. A
+client-local mana pad (§8.4) shares a strip above the hand with the graveyard / exile / library
+tiles: WUBRGC counters a player bumps by hand as they tap lands and
 spend mana, reset at will, never synced to the server or other players. Multi-select (§16.2)
 covers the doc's two stated use cases — "tap five lands" and "sacrifice all my tokens" — via
 shift-click on any battlefield object, a selection bar with Tap/Untap/To graveyard/Clear, and
@@ -55,31 +68,113 @@ Escape to clear; drag-box selection wasn't built since shift-click already satis
 tedium checklist. Drag-and-drop and mobile support are deliberately not planned — see the
 deviation notes below, not the Phase 6/7 gap list.
 
-The §16.3 tedium checklist is now fully covered: passing turn bundles an untap of the new
-active player's permanents (previously a separate click), life can be adjusted by an arbitrary
-amount or across all players at once (not just ±1 per player), "clear all markers" is a
-one-click sidebar action, and the two most common counter types (+1/+1, -1/-1) are one click
-from the context menu rather than two sequential prompts.
+The §16.3 tedium checklist is now fully covered: passing turn untaps the incoming player's
+permanents and clears last turn's attackers as one undoable action (drawing for the turn stays
+manual on purpose — see the deviation notes). Life can be adjusted by an arbitrary amount or
+across all players at once (not just ±1 per player), commander damage takes the matching life
+with it, "clear all markers" is a one-click sidebar action, the two most common counter types
+(+1/+1, -1/-1) are one click from the context menu rather than two sequential prompts, and a
+token is duplicated from that same menu instead of being re-typed into the form.
 
-The layout is a vertical stack, not a side-by-side split: a top toolbar (mana pad, selection
-bar, action buttons, a "Log & chat" popup toggle — log/chat moved out of always-visible space
-since they're read far less often than the board), then opponents' boards, then your own —
-each getting the full window width. This replaced an earlier side-by-side attempt (opponents +
-your own board sharing a column with a fixed-width sidebar) that turned out to have a genuine
-CSS Grid bug, not just a size problem: `.sidebar` had a definite row but an automatic column,
-and the grid placement algorithm resolves definite-row items *before* fully-automatic ones —
-so the sidebar silently claimed the wide column and `.opponents` got squeezed into the narrow
-one, the opposite of the intended layout. Card tiles are 30% larger than the original
-(104×145px) on top of that fix. Opponents wrap onto multiple rows (capped, own scroll) rather
-than forcing a horizontal scroll, so 1–3 opponents typically fit without scrolling at all —
-verified live with a 4-player game.
+A commander that lands in your graveyard or exile puts a standing offer in the status bar —
+"To command zone" or "Leave it" (`commanderPrompt.ts`, §12). It reads the table rather than
+watching for the death, so it survives a refresh and a player who was looking elsewhere, and
+"Leave it" is remembered per zone: the same commander later being exiled out of the graveyard
+asks again, because that is a new decision.
 
-Opponents render at a compact card size (50×70px, `.opponents .card-tile` — a CSS-only
-override) so your own board, interacted with almost every turn, gets most of the vertical
-space (opponents capped at 28vh). A ⤢ button next to each opponent's name opens
-`ExpandedPlayerModal`, which renders that same player's `PlayerArea` — unchanged, same data,
-same handlers — in a large modal outside `.opponents`, so it falls back to full card size with
-no separate rendering path to keep in sync.
+Attacking creatures are marked rather than tracked: the context menu's Attacking toggle on any
+creature sets the ordinary `attacking` marker (`combat.ts`), which draws a red ring around the
+tile for everyone at the table. It is a reminder, not combat state — nothing resolves damage —
+and it clears itself when the turn passes, so red rings never outlive the combat they described.
+
+A card that changes zones comes out clean (`asNewObject` in `actions/helpers.ts`, CR 400.7): tap
+state, counters, markers, annotation and attachments are dropped and control returns to the
+owner, and anything attached to it comes loose. Reordering within one zone — the library moves —
+is not a zone change and keeps everything. This is the one rules-shaped thing the server does,
+and it earns its place: the alternative was every player hand-clearing a dead creature's +1/+1
+counters before it could be reused.
+
+The table is a pan-and-zoom plane holding every player's mat, laid out the way the group would
+sit around a physical table (`Plane.tsx`, `seating.ts`, `Board.tsx`, `CrossroadsHub.tsx`). You
+are always bottom-left and the other players run clockwise from you in turn order
+(`PlayerState.seat`), so the player who acts after you is the one on your left; two-player games
+stack vertically instead, since there's no clockwise worth modelling with one opponent. Each mat
+faces its owner — the header (with the command zone tucked into it at half scale, since an
+uncast commander is one card that was costing a full row of height) and the lands hug the
+board's *outer* edge, non-creature permanents sit behind the line, and creatures push inward
+toward the middle where combat happens. All three zones are always drawn, each with a faint label, so a permanent never
+changes band as the board fills. The mirroring is a CSS flip (`column-reverse` on both the
+board and its battlefield) over one `Board` component and one child order, not two layouts to
+keep in sync.
+
+Life, poison and commander damage live at the crossroads where the mats meet, each player's
+readout in the corner nearest their own board. Those readouts only *report*: a name, a life
+total, and a badge row that carries a ☠ poison count and a ⚔ badge per commander that has
+actually connected — nothing while there is nothing to say, so an untouched board shows a bare
+number. Which commander a ⚔ badge belongs to is in its hover title, not on its face; the badge
+has to stay readable at the zoom where a whole four-player table fits on screen.
+
+Everything on it is written from the vitals pad in your own bottom HUD (`ActionBar.tsx`, beside
+the mana pad): −1/+1 life, a ±N dialog, poison −/+, and a ⚔ button — wearing your worst single
+commander total — that opens a list of the other players' commanders with −/+ each. Nobody edits
+a neighbour's numbers; you record what you took, the way you would across a physical table. That
+also keeps the readout a number you read at a glance rather than a cluster of small buttons
+repeated once per seat. The N×N damage matrix that used to sit at the crossroads is gone: with
+badges on every box and an editor in your own HUD it was a third copy of the same numbers.
+
+Pan by dragging the background, zoom with the wheel (exponential on the wheel delta, so
+trackpads stay smooth and notched mice don't jump a step per click), or use the −/Fit/+
+controls. The view refits only when the number of boards changes, never mid-turn — unless the
+settings gear's "follow the active player" is on, in which case each turn the plane glides to
+the new active player's mat and zooms in on it (`focusView` in `planeView.ts` frames the rect;
+the easing is a CSS transition added for the glide and removed after, so dragging stays
+frame-tight). It's off by default and panning by hand still works in between. Panning is
+deliberately unbounded — "Fit" is one click away, which beats edge-clamping math that fights the
+user near the borders. This is **not** WebGL or canvas, on purpose: a 4-player Commander table
+peaks at a couple of hundred card elements, and the entire pan/zoom is one CSS transform on one
+element (a composited layer move, not a relayout of every card). WebGL would mean reimplementing
+the context menu, hover zoom, badges and text layout as textured quads with hand-rolled
+hit-testing, and managing card images as textures instead of browser-cached `<img>` tags — all
+cost, no benefit at this scale. The pan/zoom math that *is* subtle (keeping the point under the
+cursor pinned while the scale changes) lives in `planeView.ts` behind unit tests, as do the
+seating rules in `seating.ts` — the client's first two tested modules.
+
+The screen is three bands. A slim status bar on top reports whose turn it is and nothing else —
+`TurnTracker` has shipped in every projection since Phase 2 but went unrendered until now, so the
+only way to tell was to read the log. Below it the plane, with the log rail beside it. Along the
+bottom, in fixed chrome at a constant size no matter how far the table is zoomed out: your mana
+pad, the three actions you take every turn (Draw / Untap all / **Pass turn**, plus a "More ⋯"
+popover holding the ten you take a few times a game), your hand, and Graveyard / Exile / Library
+as buttons that open their contents as a card grid. Card size is one knob — `--card-w`/`--card-h`
+in `:root`, currently 156×218px — which the zone heights, the hand's height, its fan overlap and
+the floating bars' offsets all derive from, so legibility is tuned in one place rather than six.
+A hand over eight cards overlaps into a fan rather than wrapping to a second row, which would
+steal height from the table.
+
+Home and the lobby share that same token set — one `.panel` idiom, the `.btn` family, and a
+baseline for text inputs so they aren't browser-default white boxes on a dark table. The lobby is
+a header (room code, and the host's Start) over two panels, seats beside your deck, collapsing to
+one column on a narrow window; deck warnings reuse the coloured-left-border treatment the table's
+toasts use, so a caution reads the same on every screen.
+
+Whose turn it is, is a ring: amber around the active player's mat, blue when it's yours, mirrored
+on their life readout at the crossroads so it reads even when their mat is panned off-screen. The
+rule lives in `turnStatus.ts` behind unit tests. `TurnTracker.phase` is deliberately not shown —
+nothing mutates it (there's no `SET_PHASE` action), so it would permanently read "main".
+
+Log and chat are a collapsible right rail rather than a modal. The modal's problem wasn't where
+it sat but that nothing reached you until you opened it: a chat message or a dice roll was
+invisible until someone went looking. Collapsed, the rail is a strip with an unread count, and
+new entries pop as transient toasts in the top-right corner, clear of the rail itself (they shift
+left when it's open), newest on top. Each carries its own five-second deadline that one shared
+timer waits on, and fades out rather than vanishing. `LogEntry.kind` (`'chat' | 'random'`, absent for ordinary
+actions) is what lets the rail style those apart and the toasts pick what's worth interrupting for
+— the alternative was sniffing log strings, since `SAY`'s log text is the player's message verbatim.
+
+This plane replaced a vertical stack of full-width boards, in which opponents rendered at a
+compact 50×70px card size (capped at 28vh) with a ⤢ button to open any one of them full-size in
+a modal. Zooming into any board subsumes both, so that compact CSS override and
+`ExpandedPlayerModal` were removed rather than kept alongside it.
 
 This is the doc's "playable, ugly game" milestone (Phase 2) plus enough of Phase 3 that most
 interactions no longer need a workaround, plus Phase 4's referee: misclicks are now survivable
@@ -111,7 +206,10 @@ packages/
             table factory, action applier (dispatch + actions/{object,zone,player,meta}Actions.ts),
             projection boundary, table history + undo
   client/   Minimal React client: Home (create/join room) → Lobby (seats, decklist, ready/start)
-            → Table (battlefield/hand/log, wired straight to the WebSocket via a Zustand store)
+            → Table (a pan/zoom plane of per-player boards, the read-only crossroads life
+            readout, a collapsible log rail, and a fixed bottom band of hand + vitals + mana +
+            zones + actions, wired
+            straight to the WebSocket via a Zustand store)
 ```
 
 ## Setup
@@ -263,26 +361,69 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
   separate actions server-side (two log entries, two history entries), which is a minor honesty
   trade-off: self-undo after casting only reverts the second step.
 - **Commander name lookup falls back to "{owner}'s commander" when the card hasn't loaded (or
-  fetch failed) yet:** the commander-damage grid's rows are keyed by object id, not by a
-  pre-fetched name, since `useCard` resolves asynchronously per §4's "thin client" approach — no
-  client-side cache warm-up step exists yet.
-- **The context menu and several sidebar buttons use `window.prompt()`** for free-text/numeric
-  input (counter key+amount, marker name, annotation, change-controller target, dice sides,
-  peek count, token fields) rather than a custom modal. This is a real, if minor, UX compromise
-  — native prompts are blunt and block the page — but building N one-off modal components for an
-  "ugly by design" MVP client wasn't worth it. The one place this matters beyond taste: automated
-  browser testing can't drive these paths (a JS prompt blocks further extension commands), so
-  they're verified by code review and manual play rather than the live-session testing the rest
-  of the client got.
+  fetch failed) yet:** commander damage is keyed by object id, not by a pre-fetched name, since
+  `useCard` resolves asynchronously per §4's "thin client" approach — no client-side cache
+  warm-up step exists yet. `commanders.tsx` owns that fallback so the damage badges, the HUD's
+  damage list and the status bar's command-zone prompt all name a commander the same way.
+- **The context menu and a few "More ⋯" items still use `window.prompt()`** for free-text/numeric
+  input (counter key+amount, marker name, annotation, change-controller target, ±N life across
+  all players) rather than a dialog. The paths that are worth the dialog have one — pass turn,
+  peek depth, dice sides, create token, ±N on your own life — built on a shared shell
+  (`Dialog.tsx`, plus `ConfirmDialog`,
+  `NumberDialog`, `TokenDialog`) that owns Escape, click-outside, and standing the table's
+  keyboard shortcuts down while it is up. The rest keep the native prompt for now: it is a real,
+  if minor, UX compromise, and it costs automated browser testing those paths (a JS prompt
+  blocks further extension commands), so they're verified by code review and manual play.
 - **Right-clicking any object works regardless of who controls it:** the context menu's zone
   moves target the object's `controllerId` (visible even on a redacted object) rather than
   requiring you to control it first — consistent with §10's "anyone can take any action at any
   time," which the doc frames as correct specifically because there's no priority system to
   violate.
-- **Lands/nonlands split uses a CSS ordering trick, not two arrays:** land-ness depends on card
-  data (`typeLine`) that loads asynchronously per object via `useCard`, so pre-splitting into
-  two arrays before render isn't straightforward without a global reactive cache. Instead every
-  battlefield slot sets its own flex `order` (lands first) plus a full-width spacer forces the
-  wrap between them. Cost: a permanent can render in the wrong group for one frame while its
-  card data is still loading, then self-correct — an acceptable, self-healing cost for the
-  "ugly by design" client.
+- **Battlefield zones resolve card data in the parent, not per tile:** which zone a permanent
+  belongs to depends on `typeLine`, which loads asynchronously, and `useCard` is a per-object
+  hook that can't be called across a list whose length changes between renders. `useCards`
+  (`useCard.ts`) resolves a whole zone in one hook through the cache `api.ts` already keeps, so
+  `Board` can group with a pure function (`battlefieldZones.ts`) before rendering. This replaced
+  an earlier flex-`order` trick, which could not give the zones labels or reserved height.
+  Cost: a permanent sits in the middle zone for one frame while its card data loads, then moves
+  itself — an acceptable, self-healing cost for the "ugly by design" client.
+- **"Bottom of library" is `toPosition: libraryCount`, which can tie:** `SHUFFLE_LIBRARY`
+  renumbers positions densely `0..n-1`, so the card count is always past the last card and a
+  bottomed card really does land underneath everything. Two cards bottomed in a row, though,
+  both get that same position, leaving their relative order arbitrary until the next shuffle.
+  Renumbering server-side on every insert would fix it and isn't worth the write amplification
+  for a freeform client whose libraries get shuffled constantly.
+- **Mulligan is a plain redraw of seven, not the London mulligan:** `MULLIGAN` returns the hand,
+  reshuffles and draws 7 without bottoming N cards, so a mulligan currently costs nothing. The
+  count is tracked (`counters.mulligan`) and shown in the board header, so players can enforce
+  the bottoming by hand; §10's freeform stance means the client wouldn't block them either way.
+- **Passing turn untaps and clears attackers, but deliberately does not draw:** the untap bundle
+  is §16.3's, and sweeping the `attacking` markers keeps red rings from outliving their combat.
+  A turn-start draw was built and then removed — it is the one turn-start step players want to
+  perform themselves (`D`, or the Draw button), and a card that draws itself is harder to trust
+  than one you asked for. `PASS_TURN` would have been the right place for it: it's the only thing
+  that starts a turn, so the opening player's skipped draw needed no special case.
+- **Commander damage also subtracts life, from one click:** §12.3 tracks the damage grid and
+  §8.3 the life total as separate actions, and doing both by hand is how the two readouts drift
+  apart. The HUD's ⚔ ±1 buttons fire both. They stay two actions in the log, so an undo reverts
+  one half — worth it against forgetting the second click every combat.
+- **Nothing in the client writes another player's life:** every readout at the crossroads is
+  read-only and the vitals pad only ever targets `playerId`, so the damage you dealt is recorded
+  by the player who took it. `SET_LIFE` still takes a list of players and "Adjust all life…" in
+  `More ⋯` still uses it, which is the one remaining way a total moves for someone else — and it
+  moves everyone's at once. The gap this leaves is a disconnected player whose total has drifted:
+  nobody can correct it for them.
+- **A library search shuffles itself when you close the popover:** the popover used to carry a
+  note asking you to remember. A peek never shuffles, since a scry depends on exactly the order
+  it just showed you (`libraryDirtiedBy` in `libraryMoves.ts`).
+- **"Duplicate" creates a token rather than a `copy` object:** `CREATE_COPY` requires a
+  `scryfallId`, so it cannot reproduce the ad-hoc tokens that "Create token…" makes, and its
+  output is a `copy`, which the server then refuses to copy again. `duplicate.ts` issues
+  `CREATE_TOKEN` with the original's own face instead, so a duplicate is as duplicable as what it
+  came from.
+- **The commander replacement offer covers graveyard and exile only,** not the hand and library
+  CR 903.9 also allows. A commander in hand is usually there on purpose (you bounced it to
+  recast), and a tucked one can't be offered at all: cards in a library are omitted from the
+  projection entirely (§9.2), so the client never learns it's there. The standing offer lives in
+  the status bar rather than the toast rail it was planned for — a toast expires in five seconds
+  and would take the choice with it.

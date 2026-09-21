@@ -1,7 +1,7 @@
 // Shared plumbing for action modules, split out of actionApplier.ts so each §8 subsection
 // (object/zone/player actions) can live in its own file without duplicating this.
 
-import type { CounterUpdate, GameObject, PlayerId, TableState, Visibility, ZoneRef } from '@command-table/common';
+import type { CounterUpdate, GameObject, LogKind, PlayerId, TableState, Visibility, ZoneRef } from '@command-table/common';
 
 // `log` lets an action override the generic, action-type-derived log description from
 // actionDescriptions.ts — needed when the log text depends on the *outcome*, not just the
@@ -9,10 +9,10 @@ import type { CounterUpdate, GameObject, PlayerId, TableState, Visibility, ZoneR
 // applyAction wrapper in actionApplier.ts consumes this and turns it into a LogEntry; it never
 // reaches callers of applyAction.
 export type ApplyResult =
-  | { ok: true; state: TableState; log?: { text: string; visibility?: Visibility } }
+  | { ok: true; state: TableState; log?: { text: string; visibility?: Visibility; kind?: LogKind } }
   | { ok: false; reason: string };
 
-export function ok(state: TableState, log?: { text: string; visibility?: Visibility }): ApplyResult {
+export function ok(state: TableState, log?: { text: string; visibility?: Visibility; kind?: LogKind }): ApplyResult {
   return { ok: true, state, log };
 }
 
@@ -77,4 +77,39 @@ export function defaultVisibilityFor(zone: ZoneRef, controllerId: PlayerId, face
     case 'commandZone':
       return { kind: 'all' };
   }
+}
+
+/**
+ * A card that changes zones becomes a new object (CR 400.7): it loses the state it accumulated
+ * where it was. Nothing here enforces rules, but the alternative is every player undoing this by
+ * hand — a creature that died wearing three +1/+1 counters used to come back from the graveyard
+ * still wearing them.
+ *
+ * `faceDown`/`faceVisibility` are deliberately absent: MOVE_OBJECT already decides those from
+ * the destination zone. Only a *change* of zone counts — reordering a library (see the client's
+ * libraryMoves.ts) moves an object without making it a new one.
+ */
+export function asNewObject(obj: GameObject): GameObject {
+  return {
+    ...obj,
+    controllerId: obj.ownerId,
+    tapped: false,
+    flipped: false,
+    currentFace: 0,
+    counters: {},
+    markers: [],
+    annotation: null,
+    attachedTo: null,
+  };
+}
+
+/** Anything attached to `objectId` comes loose — otherwise the reference dangles. */
+export function detachFrom(state: TableState, objectId: string): TableState {
+  let next = state;
+  for (const obj of Object.values(state.objects)) {
+    if (obj.attachedTo === objectId) {
+      next = withObject(next, { ...obj, attachedTo: null }, false);
+    }
+  }
+  return next;
 }

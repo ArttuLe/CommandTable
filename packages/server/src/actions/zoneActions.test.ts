@@ -125,4 +125,22 @@ describe('MOVE_ALL', () => {
     expect(next.objects['h2'].zone.zone).toBe('graveyard');
     expect(next.objects['other'].zone.zone).toBe('hand');
   });
+
+  it('strips battlefield state on the way out, like MOVE_OBJECT does (CR 400.7)', () => {
+    const state = makeState([
+      card({
+        id: 'wiped',
+        zone: { playerId: ALICE, zone: 'battlefield' },
+        tapped: true,
+        counters: { '+1/+1': 2 },
+        markers: ['attacking'],
+      }),
+    ]);
+    const next = unwrap(state, {
+      t: 'MOVE_ALL',
+      fromZone: { playerId: ALICE, zone: 'battlefield' },
+      toZone: { playerId: ALICE, zone: 'graveyard' },
+    });
+    expect(next.objects['wiped']).toMatchObject({ tapped: false, counters: {}, markers: [] });
+  });
 });
