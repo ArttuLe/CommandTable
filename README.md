@@ -230,9 +230,11 @@ not user state; re-run weekly or whenever Oracle Cards updates). Requires networ
 npm run dev --workspace @command-table/server
 ```
 
-Listens on `:8080` (override with `PORT`). Two entry points:
+Listens on `:8080` (override with `PORT`). On startup it prints the table passphrase — set
+`HOST_SECRET` to choose your own, or let it generate one. Both entry points require it: room
+creation as an `X-Host-Secret` header, joining as the `secret` field on the `join` message.
 - `POST /api/rooms` — creates a room, returns `{ roomId }`.
-- `ws://localhost:8080/ws` — join with `{ t: 'join', roomId, displayName }`, submit a deck with
+- `ws://localhost:8080/ws` — join with `{ t: 'join', roomId, displayName, secret }`, submit a deck with
   `{ t: 'deck', list }`, and once the host sends `{ t: 'start' }` (2+ seated players required),
   act on the table with `{ t: 'action', clientSeq, action }` or roll back with
   `{ t: 'undo', targetRevision }`. See `packages/common/src/protocol.ts` and
@@ -244,9 +246,16 @@ Listens on `:8080` (override with `PORT`). Two entry points:
 npm run dev --workspace @command-table/client
 ```
 
-Serves on `:5173` (Vite default). Hardcoded to talk to the server at `localhost:8080`
-(`packages/client/src/api.ts`) — there's no deployment story yet (§14.5 isn't reached), so this
-is dev-only. Requires the server to be running with an ingested card index (see above).
+Serves on `:5173`, bound to all interfaces. It talks to the server on port 8080 of **whatever
+hostname the page was loaded from** (`packages/client/src/api.ts`), so `localhost`, a LAN
+address, and a tailnet name all work with no rebuild. Override the port with `VITE_SERVER_PORT`
+if you moved the server off 8080. Requires the server to be running with an ingested card index
+(see above).
+
+## Playing with a friend
+
+Two people on different machines connect over Tailscale — no VPS, no port forwarding, whoever is
+hosting runs the server. See [playing-with-a-friend.md](playing-with-a-friend.md).
 
 ## Testing
 
@@ -327,9 +336,13 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
 - **New `GET /api/cards/:scryfallId` endpoint, and permissive CORS on the HTTP API:** the wire
   protocol only ever sends a `scryfallId` (§7.1 — `GameObject.source` never carries a display
   name), so a client needs *some* way to resolve what a card actually looks like. CORS is
-  wide open (`Access-Control-Allow-Origin: *`) because this is a private, non-commercial,
-  known-friend-group tool with no auth anywhere else in the stack (§2) — locking down origins
-  would add friction without adding real protection.
+  wide open (`Access-Control-Allow-Origin: *`) because the client is served from a different
+  origin than the API, on a hostname that changes with whoever is hosting — there is no origin
+  allowlist that could be written down ahead of time. Access is gated by the table passphrase
+  instead (see [playing-with-a-friend.md](playing-with-a-friend.md)), which is the one piece of
+  authentication the design
+  doc's §2 "known friend group" assumption doesn't cover: that assumption holds on a trusted
+  network, and the passphrase is what makes it hold when the server is a laptop.
 - **Click-to-move instead of drag-and-drop, deliberately:** §16.2 calls drag-and-drop "worth
   building" for zone movement, but the click-based interaction already built (single-click to
   play a hand card or tap a permanent, plus the context menu for everything else) was judged

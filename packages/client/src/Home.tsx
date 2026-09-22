@@ -1,24 +1,31 @@
 import { useState } from 'react';
 import { createRoom } from './api.js';
-import { useStore } from './store.js';
+import { storedSecret, useStore } from './store.js';
 
 export function Home() {
   const join = useStore((s) => s.join);
+  const showError = useStore((s) => s.showError);
   const [displayName, setDisplayName] = useState('');
   const [roomCode, setRoomCode] = useState('');
+  const [secret, setSecret] = useState(storedSecret);
   const [busy, setBusy] = useState(false);
 
-  const canJoin = displayName.trim().length > 0;
+  const canJoin = displayName.trim().length > 0 && secret.length > 0;
 
   async function handleCreate() {
     setBusy(true);
-    const roomId = await createRoom();
-    join(roomId, displayName.trim());
+    try {
+      const roomId = await createRoom(secret);
+      join(roomId, displayName.trim(), secret);
+    } catch {
+      showError('wrong passphrase');
+      setBusy(false);
+    }
   }
 
   function handleJoin() {
     if (!roomCode.trim()) return;
-    join(roomCode.trim().toUpperCase(), displayName.trim());
+    join(roomCode.trim().toUpperCase(), displayName.trim(), secret);
   }
 
   return (
@@ -27,6 +34,16 @@ export function Home() {
       <label>
         Your name
         <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Alice" />
+      </label>
+
+      <label>
+        Table passphrase
+        <input
+          type="password"
+          value={secret}
+          onChange={(e) => setSecret(e.target.value)}
+          placeholder="from whoever is hosting"
+        />
       </label>
 
       <div className="home-actions">

@@ -11,7 +11,7 @@ import type { Action } from './actions.js';
 import type { ClientTableState } from './table.js';
 
 export type ClientMessage =
-  | { t: 'join'; roomId: RoomId; displayName: string; seat?: number; rejoinToken?: string }
+  | { t: 'join'; roomId: RoomId; displayName: string; secret: string; seat?: number; rejoinToken?: string }
   | { t: 'deck'; list: string }
   | { t: 'ready'; ready: boolean }
   | { t: 'start' }
