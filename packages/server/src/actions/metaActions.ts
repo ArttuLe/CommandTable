@@ -13,7 +13,7 @@ export function rollDice(
   if (!requirePlayer(state, action.playerId)) return err(`no such player: ${action.playerId}`);
   if (action.sides < 2) return err('a die needs at least 2 sides');
   const result = randomInt(action.sides) + 1;
-  return ok(bumpRevision(state), { text: `rolled a d${action.sides}: ${result}` });
+  return ok(bumpRevision(state), { text: `rolled a d${action.sides}: ${result}`, kind: 'random' });
 }
 
 export function flipCoin(
@@ -23,12 +23,12 @@ export function flipCoin(
 ): ApplyResult {
   if (!requirePlayer(state, action.playerId)) return err(`no such player: ${action.playerId}`);
   const result = randomInt(2) === 0 ? 'heads' : 'tails';
-  return ok(bumpRevision(state), { text: `flipped a coin: ${result}` });
+  return ok(bumpRevision(state), { text: `flipped a coin: ${result}`, kind: 'random' });
 }
 
 export function say(state: TableState, action: Extract<Action, { t: 'SAY' }>): ApplyResult {
   if (!requirePlayer(state, action.playerId)) return err(`no such player: ${action.playerId}`);
-  return ok(bumpRevision(state), { text: action.text });
+  return ok(bumpRevision(state), { text: action.text, kind: 'chat' });
 }
 
 export function concede(state: TableState, action: Extract<Action, { t: 'CONCEDE' }>): ApplyResult {

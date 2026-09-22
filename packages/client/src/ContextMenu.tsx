@@ -3,8 +3,14 @@
 // (§10) — the menu targets the object's controller for zone moves, since that's visible even on
 // a redacted (hidden) object, unlike ownerId.
 
+import { useLayoutEffect, useRef, useState } from 'react';
 import { isRedacted, type ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
+import { useCard } from './useCard.js';
+import { isCreature, typeLineOf } from './battlefieldZones.js';
+import { ATTACKING_MARKER, isAttacking } from './combat.js';
+import { placeMenu } from './menuPlacement.js';
+import { duplicateAction } from './duplicate.js';
 
 interface ContextMenuProps {
   obj: ProjectedObject;
@@ -16,6 +22,21 @@ interface ContextMenuProps {
 export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
   const act = useStore((s) => s.act);
   const players = useStore((s) => s.tableState?.players ?? []);
+  const card = useCard(obj);
+  const attacking = isAttacking(obj);
+  const duplicate = isRedacted(obj) ? null : duplicateAction(obj, obj.ownerId);
+
+  // Measure, then place: the menu's height depends on which items this object gets, so there's
+  // nothing to flip against until it has rendered once. Hidden for that first frame rather than
+  // drawn at the cursor and yanked (see placeMenu).
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    setPos(placeMenu({ x, y }, { width, height }, { width: window.innerWidth, height: window.innerHeight }));
+  }, [x, y, card, attacking, Boolean(duplicate)]);
 
   function run(fn: () => void) {
     fn();
@@ -30,10 +51,32 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
   return (
     <>
       <div className="context-menu-backdrop" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }} />
-      <div className="context-menu" style={{ left: x, top: y }}>
+      <div
+        ref={ref}
+        className="context-menu"
+        style={{ left: pos?.left ?? x, top: pos?.top ?? y, visibility: pos ? 'visible' : 'hidden' }}
+      >
         <button onClick={() => run(() => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id }))}>
           {obj.tapped ? 'Untap' : 'Tap'}
         </button>
+        {/* Attacking is the one marker the whole table reads at a glance, so it gets its own
+            toggle and a red border on the tile instead of living behind "Add marker…". Only
+            creatures can attack, so only creatures are offered it. */}
+        {isCreature(typeLineOf(obj, card)) && (
+          <button
+            onClick={() =>
+              run(() =>
+                act(
+                  attacking
+                    ? { t: 'CLEAR_MARKER', objectId: obj.id, marker: ATTACKING_MARKER }
+                    : { t: 'SET_MARKER', objectId: obj.id, marker: ATTACKING_MARKER }
+                )
+              )
+            }
+          >
+            {attacking ? 'Not attacking' : 'Attacking'}
+          </button>
+        )}
         <button onClick={() => run(() => act({ t: 'TRANSFORM', objectId: obj.id }))}>Transform</button>
         <button onClick={() => run(() => act({ t: 'TURN_FACE_DOWN', objectId: obj.id }))}>Turn face down</button>
         <button onClick={() => run(() => act({ t: 'TURN_FACE_UP', objectId: obj.id }))}>Turn face up</button>
@@ -71,7 +114,7 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
           Add counter…
         </button>
 
-        {obj.markers.map((marker) => (
+        {obj.markers.filter((marker) => marker !== ATTACKING_MARKER).map((marker) => (
           <button key={marker} onClick={() => run(() => act({ t: 'CLEAR_MARKER', objectId: obj.id, marker }))}>
             Remove marker &apos;{marker}&apos;
           </button>
@@ -108,6 +151,9 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
         >
           Change controller…
         </button>
+
+        {/* §16.3's "create N copies of a token", minus the five prompts. */}
+        {duplicate && <button onClick={() => run(() => act(duplicate))}>Duplicate</button>}
 
         {!isRedacted(obj) && (obj.source.kind === 'token' || obj.source.kind === 'copy') && (
           <button onClick={() => run(() => act({ t: 'DELETE_OBJECT', objectId: obj.id }))}>Delete</button>

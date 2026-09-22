@@ -1,7 +1,19 @@
 // §8.2 zone actions (Phase 3), continuing from SHUFFLE_LIBRARY/DRAW in actionApplier.ts.
 
 import type { Action, TableState } from '@command-table/common';
-import { defaultVisibilityFor, err, ok, objectsInZone, requireObject, requirePlayer, withObject, type ApplyResult } from './helpers.js';
+import {
+  asNewObject,
+  defaultVisibilityFor,
+  detachFrom,
+  err,
+  ok,
+  objectsInZone,
+  requireObject,
+  requirePlayer,
+  withObject,
+  zonesEqual,
+  type ApplyResult,
+} from './helpers.js';
 
 function libraryOf(state: TableState, playerId: string) {
   return Object.values(state.objects)
@@ -60,15 +72,20 @@ export function searchLibrary(state: TableState, action: Extract<Action, { t: 'S
 
 export function moveAll(state: TableState, action: Extract<Action, { t: 'MOVE_ALL' }>): ApplyResult {
   const toMove = objectsInZone(state, action.fromZone);
+  if (zonesEqual(action.fromZone, action.toZone)) return ok(state);
+
   let next = state;
   for (const obj of toMove) {
+    // Same new-object rule as MOVE_OBJECT (CR 400.7): a board wipe shouldn't leave every
+    // creature's +1/+1 counters waiting in the graveyard.
+    const moved = asNewObject(obj);
     next = withObject(
-      next,
+      detachFrom(next, obj.id),
       {
-        ...obj,
+        ...moved,
         zone: action.toZone,
         position: 0,
-        faceVisibility: defaultVisibilityFor(action.toZone, obj.controllerId, obj.faceDown),
+        faceVisibility: defaultVisibilityFor(action.toZone, moved.controllerId, obj.faceDown),
       },
       false
     );

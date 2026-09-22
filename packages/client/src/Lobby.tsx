@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { DeckWarningKind } from '@command-table/common';
+import type { DeckStatus, DeckWarningKind } from '@command-table/common';
 import { useStore } from './store.js';
 
 export function Lobby() {
@@ -14,51 +14,69 @@ export function Lobby() {
 
   return (
     <div className="lobby">
-      <h2>
-        Room <span className="room-code">{roomState.roomId}</span>
-      </h2>
+      <header className="lobby-header">
+        <h2>Room</h2>
+        <span className="room-code">{roomState.roomId}</span>
+        {isHost && (
+          <button className="btn btn-lg btn-primary" onClick={() => send({ t: 'start' })}>
+            Start game
+          </button>
+        )}
+      </header>
 
-      <table className="seats">
-        <thead>
-          <tr>
-            <th>Seat</th>
-            <th>Player</th>
-            <th>Connected</th>
-            <th>Ready</th>
-            <th>Deck</th>
-          </tr>
-        </thead>
-        <tbody>
-          {roomState.seats.map((seat) => (
-            <tr key={seat.seat} className={seat.playerId === playerId ? 'me' : ''}>
-              <td>{seat.seat + 1}</td>
-              <td>{seat.displayName ?? <em>open</em>}</td>
-              <td>{seat.playerId ? (seat.connected ? '●' : '○') : ''}</td>
-              <td>{seat.playerId ? (seat.ready ? '✓' : '') : ''}</td>
-              <td>{seat.deckStatus}</td>
+      <section className="panel">
+        <p className="panel-title">Seats</p>
+        <table className="seats">
+          <thead>
+            <tr>
+              <th>Seat</th>
+              <th>Player</th>
+              <th>Conn.</th>
+              <th>Ready</th>
+              <th>Deck</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {roomState.seats.map((seat) => (
+              <tr key={seat.seat} className={seat.playerId === playerId ? 'me' : ''}>
+                <td>{seat.seat + 1}</td>
+                <td>{seat.displayName ?? <em>open</em>}</td>
+                <td className={seat.connected ? 'dot-on' : 'dot-off'}>
+                  {seat.playerId ? (seat.connected ? '●' : '○') : ''}
+                </td>
+                <td className={seat.ready ? 'ready-yes' : ''}>{seat.playerId ? (seat.ready ? '✓' : '—') : ''}</td>
+                <td>
+                  {seat.playerId && <span className={`deck-pill deck-${seat.deckStatus}`}>{deckStatusLabel(seat.deckStatus)}</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
 
       {mySeat && (
-        <>
+        <section className="panel deck-form">
+          <p className="panel-title">Your deck</p>
           <label>
             Paste your decklist
             <textarea
               rows={8}
               value={deckText}
               onChange={(e) => setDeckText(e.target.value)}
-              placeholder={'Commander\n1 Atraxa, Praetors\' Voice\n\nDeck\n1 Sol Ring\n...'}
+              placeholder={'Commander\n1 Atraxa, Praetors\' Voice\n\nDeck\n100 Sol Ring\n...'}
             />
           </label>
-          <button onClick={() => send({ t: 'deck', list: deckText })}>Submit deck</button>
+          <button className="btn" onClick={() => send({ t: 'deck', list: deckText })}>
+            Submit deck
+          </button>
 
           {deckResult && (
             <div className="deck-result">
-              {deckResult.warnings.length === 0 && deckResult.unresolved.length === 0 && <p>Deck resolved with no warnings.</p>}
+              {deckResult.warnings.length === 0 && deckResult.unresolved.length === 0 && (
+                <p className="deck-note ok">Deck resolved with no warnings.</p>
+              )}
               {deckResult.unresolved.length > 0 && (
-                <div>
+                <div className="deck-note unresolved">
                   <strong>Unresolved cards:</strong>
                   <ul>
                     {deckResult.unresolved.map((u, i) => (
@@ -71,7 +89,7 @@ export function Lobby() {
                 </div>
               )}
               {deckResult.warnings.length > 0 && (
-                <div>
+                <div className="deck-note warnings">
                   <strong>Warnings:</strong>
                   <ul>
                     {deckResult.warnings.map((w, i) => (
@@ -87,12 +105,21 @@ export function Lobby() {
             <input type="checkbox" checked={mySeat.ready} onChange={(e) => send({ t: 'ready', ready: e.target.checked })} />
             Ready
           </label>
-        </>
+        </section>
       )}
-
-      {isHost && <button onClick={() => send({ t: 'start' })}>Start game</button>}
     </div>
   );
+}
+
+function deckStatusLabel(status: DeckStatus): string {
+  switch (status) {
+    case 'none':
+      return 'No deck';
+    case 'ok':
+      return 'Ready';
+    case 'warnings':
+      return 'Warnings';
+  }
 }
 
 function describeWarning(w: DeckWarningKind): string {

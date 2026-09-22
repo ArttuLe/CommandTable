@@ -3,6 +3,10 @@
 import type { PlayerId } from './ids.js';
 import type { Visibility } from './objects.js';
 
+// Most entries describe an action and need no kind. Chat and random results are called out so the
+// client can style them apart and surface them while the log rail is collapsed.
+export type LogKind = 'chat' | 'random';
+
 export interface LogEntry {
   revision: number;
   timestamp: number;
@@ -10,4 +14,5 @@ export interface LogEntry {
   text: string;
   visibility: Visibility;
   undoable: boolean;
+  kind?: LogKind;
 }
