@@ -18,6 +18,7 @@ import { commanderPrompts } from './commanderPrompt.js';
 import { SettingsMenu } from './SettingsMenu.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { HelpButton } from './HelpDialog.js';
+import { ManaChoice, type ManaChoicePrompt } from './ManaChoice.js';
 
 function isOwnZone(obj: ProjectedObject, playerId: PlayerId, zone: string): boolean {
   return 'playerId' in obj.zone && obj.zone.playerId === playerId && obj.zone.zone === zone;
@@ -42,8 +43,10 @@ export function Table() {
   const dismissCommander = useUiStore((s) => s.dismissCommander);
   const followActivePlayer = useUiStore((s) => s.followActivePlayer);
   const dialogOpen = useUiStore((s) => s.openDialogs > 0);
+  const bumpMana = useUiStore((s) => s.bumpMana);
 
   const [menu, setMenu] = useState<{ obj: ProjectedObject; x: number; y: number } | null>(null);
+  const [manaChoice, setManaChoice] = useState<ManaChoicePrompt | null>(null);
   const openMenu = (obj: ProjectedObject) => (e: React.MouseEvent) => {
     e.preventDefault();
     setMenu({ obj, x: e.clientX, y: e.clientY });
@@ -216,7 +219,15 @@ export function Table() {
                   battlefield={inZone(player.id, 'battlefield')}
                   commandZone={inZone(player.id, 'commandZone')}
                   commanderCastCount={player.commanderCastCount}
-                  onTapToggle={(obj) => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id })}
+                  // Tapping your own permanent also fills your mana pad with what it makes
+                  // (§8.4 — the pad is client-local, so this never leaves the browser). One
+                  // symbol goes straight in; a dual asks which, at the cursor.
+                  onTapToggle={(obj, produces, e) => {
+                    act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id });
+                    if (!isSelf || obj.tapped || produces.length === 0) return;
+                    if (produces.length === 1) bumpMana(produces[0], 1);
+                    else setManaChoice({ colors: produces, x: e.clientX, y: e.clientY });
+                  }}
                   onCastCommander={
                     isSelf
                       ? (obj) => {
@@ -309,6 +320,14 @@ export function Table() {
             act({ t: 'PASS_TURN' });
           }}
           onCancel={() => setConfirmingPass(false)}
+        />
+      )}
+
+      {manaChoice && (
+        <ManaChoice
+          prompt={manaChoice}
+          onChoose={(color) => bumpMana(color, 1)}
+          onClose={() => setManaChoice(null)}
         />
       )}
 

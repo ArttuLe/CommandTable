@@ -510,6 +510,16 @@ button.vital:hover { border-color: var(--border-strong); }
 .zoom-preview { position: fixed; left: 3.5rem; top: 44%; transform: translateY(-50%); width: 420px; pointer-events: none; z-index: 20; box-shadow: var(--shadow); border-radius: 12px; overflow: hidden; }
 .zoom-preview img { width: 100%; display: block; }
 
+/* Which colour a dual just made (ManaChoice). A row of bare pips at the cursor rather than a
+   menu of words: the symbols are the same ones worn by the pad it fills. */
+.mana-choice {
+  position: fixed; z-index: 31; display: flex; gap: 0.25rem; padding: 0.3rem;
+  background: var(--surface-raised); border: 1px solid var(--border-strong);
+  border-radius: 999px; box-shadow: var(--shadow);
+}
+.mana-choice button { background: none; border: none; padding: 0; cursor: pointer; border-radius: 50%; }
+.mana-choice button:hover { box-shadow: 0 0 0 2px var(--accent); }
+
 .context-menu-backdrop { position: fixed; inset: 0; z-index: 30; }
 .context-menu { position: fixed; z-index: 31; background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: var(--radius); display: flex; flex-direction: column; min-width: 180px; box-shadow: var(--shadow); max-height: calc(100vh - 16px); overflow-y: auto; }
 .context-menu button { flex: none; text-align: left; background: none; border: none; color: var(--text); padding: 0.4rem 0.7rem; cursor: pointer; font-size: 0.8rem; }
