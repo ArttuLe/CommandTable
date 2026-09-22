@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { clearSession, loadSession, saveSession, storedSecret, type Storages } from './session.js';
+import { clearSession, loadSession, saveDecklist, saveSession, storedDecklist, storedSecret, type Storages } from './session.js';
 
 function memoryStorage(): Storage {
   const map = new Map<string, string>();
@@ -69,5 +69,32 @@ describe('session storage', () => {
     expect(storedSecret(storages)).toBe('');
     saveSession(SESSION, storages);
     expect(storedSecret(storages)).toBe('forest3');
+  });
+});
+
+describe('decklist storage', () => {
+  let storages: Storages;
+
+  beforeEach(() => {
+    storages = { local: memoryStorage(), tab: memoryStorage() };
+  });
+
+  it('is empty before anything is saved', () => {
+    expect(storedDecklist(storages)).toBe('');
+  });
+
+  it('round-trips a decklist', () => {
+    saveDecklist('1 Sol Ring\n99 Island', storages);
+    expect(storedDecklist(storages)).toBe('1 Sol Ring\n99 Island');
+  });
+
+  // Leaving a table is not the same as throwing your deck away — you will want it next game.
+  it('survives clearSession', () => {
+    saveSession(SESSION, storages);
+    saveDecklist('1 Sol Ring', storages);
+
+    clearSession(storages);
+
+    expect(storedDecklist(storages)).toBe('1 Sol Ring');
   });
 });

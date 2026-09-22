@@ -168,6 +168,10 @@ export function Table() {
   return (
     <div className="table">
       <header className="status-bar">
+        {/* Leads the bar as a quiet identifier — someone joining late asks for it mid-game, and
+            hunting for it shouldn't mean leaving the table. Subdued so it doesn't compete with
+            the turn pill, which is what everyone is actually watching. */}
+        <span className="room-code">{tableState.roomId}</span>
         <span className={`turn-pill ${isMyTurn ? 'mine' : ''}`}>{turnLabel(tableState.turn, tableState.players, playerId)}</span>
 
         {pendingUndoRequest && (

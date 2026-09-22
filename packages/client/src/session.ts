@@ -10,6 +10,7 @@
 
 const SESSION_KEY = 'command-table-session';
 const TAB_KEY = 'command-table-tab';
+const DECKLIST_KEY = 'command-table-decklist';
 
 export interface StoredSession {
   roomId: string;
@@ -58,6 +59,18 @@ export function loadSession(storages: Storages = defaultStorages()): LoadedSessi
 export function clearSession(storages: Storages = defaultStorages()): void {
   storages.local.removeItem(SESSION_KEY);
   storages.tab.removeItem(TAB_KEY);
+}
+
+// Your decklist outlives the game it was pasted into: ending a game returns everyone to the
+// lobby, and re-pasting a hundred lines to play again would be the most tedious part of the
+// evening. Kept out of the session blob on purpose — it is not tied to a room or a seat, and
+// clearSession (leaving a table) must not throw your deck away.
+export function saveDecklist(list: string, storages: Storages = defaultStorages()): void {
+  storages.local.setItem(DECKLIST_KEY, list);
+}
+
+export function storedDecklist(storages: Storages = defaultStorages()): string {
+  return storages.local.getItem(DECKLIST_KEY) ?? '';
 }
 
 // Home prefills the passphrase field so a returning player doesn't retype it.
