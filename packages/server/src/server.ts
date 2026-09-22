@@ -290,6 +290,28 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       return;
     }
 
+    // Host's escape hatch for a seat left behind by someone who is not coming back under the
+    // same name. Lobby only — mid-game a disconnected seat is sacred (§14.2).
+    case 'freeSeat': {
+      const room = requireRoom(socket, state);
+      if (!room || !state.playerId) return;
+      if (!room.isHost(state.playerId)) {
+        send(socket, { t: 'error', message: 'only the host can free a seat' });
+        return;
+      }
+      if (room.toState().started) {
+        send(socket, { t: 'error', message: 'cannot free a seat once the game has started' });
+        return;
+      }
+      if (!room.freeSeat(raw.seat)) {
+        send(socket, { t: 'error', message: 'that seat is not free to clear' });
+        return;
+      }
+      broadcastRoomState(room);
+      sessions.markDirty();
+      return;
+    }
+
     case 'ping': {
       send(socket, { t: 'pong' });
       return;

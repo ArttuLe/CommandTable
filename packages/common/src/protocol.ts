@@ -23,6 +23,7 @@ export type ClientMessage =
   | { t: 'undo'; targetRevision: number }
   | { t: 'undoVote'; targetRevision: number; approve: boolean }
   | { t: 'endGame' }
+  | { t: 'freeSeat'; seat: number }
   | { t: 'ping' };
 
 export type ServerMessage =

@@ -3,9 +3,10 @@
 // Stored in localStorage rather than sessionStorage so that closing the tab — or the whole
 // browser — isn't the same as leaving the table. localStorage is shared across tabs in one
 // profile though, so a second tab opened for local two-player testing would otherwise read the
-// first tab's session and try to take its seat. Hence the sessionStorage marker: it says "this
-// tab is the one that owns the stored session", which is exactly the difference between a
-// refresh (resume silently) and a fresh tab (offer to resume, and let it be ignored).
+// first tab's session and take its seat. Hence the sessionStorage marker: only the tab that owns
+// the session resumes it, and only silently, on refresh. Any other tab just shows the normal
+// join form — typing your name and the room code reclaims your seat anyway (roomManager.ts), so
+// there is nothing to prompt about.
 
 const SESSION_KEY = 'command-table-session';
 const TAB_KEY = 'command-table-tab';

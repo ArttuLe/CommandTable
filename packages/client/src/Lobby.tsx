@@ -53,6 +53,7 @@ export function Lobby() {
               <th>Conn.</th>
               <th>Ready</th>
               <th>Deck</th>
+              <th />
             </tr>
           </thead>
           <tbody>
@@ -66,6 +67,20 @@ export function Lobby() {
                 <td className={seat.ready ? 'ready-yes' : ''}>{seat.playerId ? (seat.ready ? '✓' : '—') : ''}</td>
                 <td>
                   {seat.playerId && <span className={`deck-pill deck-${seat.deckStatus}`}>{deckStatusLabel(seat.deckStatus)}</span>}
+                </td>
+                <td>
+                  {/* Someone who reconnects under the same name reclaims their seat on their own,
+                      so this is only for a seat nobody is coming back to. */}
+                  {isHost && seat.playerId && !seat.connected && (
+                    <button
+                      className="seat-free"
+                      title={`Free seat ${seat.seat + 1}`}
+                      aria-label={`Free seat ${seat.seat + 1}`}
+                      onClick={() => send({ t: 'freeSeat', seat: seat.seat })}
+                    >
+                      ✕
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

@@ -252,7 +252,8 @@ creation as an `X-Host-Secret` header, joining as the `secret` field on the `joi
   `{ t: 'deck', list }`, and once the host sends `{ t: 'start' }` (2+ seated players required),
   act on the table with `{ t: 'action', clientSeq, action }` or roll back with
   `{ t: 'undo', targetRevision }`. The host ends a game with `{ t: 'endGame' }`, which clears the
-  table and returns everyone to that room's lobby with seats and decklists intact. See
+  table and returns everyone to that room's lobby with seats and decklists intact, and clears an
+  abandoned lobby seat with `{ t: 'freeSeat', seat }`. See
   `packages/common/src/protocol.ts` and `packages/common/src/actions.ts` for the full `Action`
   union and message set.
 
@@ -393,6 +394,15 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
   logged plainly ("please review") and any player can immediately fix a wrong guess via the
   existing "Change controller…" context-menu action — judged sufficient without a dedicated
   prompt protocol.
+- **A lobby seat can be reclaimed by display name, which the doc doesn't describe:** §14.1/§14.2
+  make the rejoin token the only key to a seat, but that token lives in one browser. Someone who
+  loses it takes a new seat and leaves the old one behind as a ghost that keeps their name, ready
+  flag and decklist — and `buildSeatSetups` would deal it into the game as a phantom player. So
+  joining a **not-yet-started** room with a name matching a disconnected seat reclaims that seat.
+  Name matching is weak identification; it is accepted here because the room is already behind a
+  passphrase among people on a shared voice call, and the alternative is a broken game. It is
+  deliberately off once the game starts, where a held seat is sacred (§14.2) and this would be a
+  way to take one over — there, the host's `freeSeat` is the only escape hatch.
 - **Server-restart persistence (§14.5) is implemented, but undo history is not persisted:**
   `data/sessions.json` holds each room — seats, resolved decklists, rejoin tokens — alongside its
   current `TableState`, so a restart or a crash resumes the game instead of ending it. Rejoin

@@ -47,6 +47,11 @@ too, so the one your friend already has keeps working.
 The seat of a disconnected player is held and their board stays on the table; because there is no
 priority system, everyone else can keep playing meanwhile (§14.2).
 
+If someone loses their session entirely — a different browser, cleared history, a new machine —
+they just join the room again with **the same name they used before** and get their seat back,
+decklist included. That only applies before the game starts; once it has, a held seat stays with
+whoever holds it. For a seat nobody is coming back to, the host gets an ✕ next to it in the lobby.
+
 Two caveats. Undo history is not saved, so after a restart you can rewind back to that point but
 not past it. And a saved game is dropped after 24h.
 

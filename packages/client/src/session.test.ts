@@ -40,7 +40,7 @@ describe('session storage', () => {
   });
 
   // A reopened or second tab: the session is readable, but it is not this tab's seat to take
-  // silently — so the app offers to resume instead.
+  // silently, so nothing is resumed and the normal join form is shown.
   it('reports sameTab false for a tab without the marker', () => {
     saveSession(SESSION, storages);
     const otherTab: Storages = { local: storages.local, tab: memoryStorage() };

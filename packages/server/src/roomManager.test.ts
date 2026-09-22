@@ -271,3 +271,143 @@ describe('Room.endGame', () => {
     expect(room.join({ displayName: 'Bob', rejoinToken: bob.rejoinToken }).ok).toBe(true);
   });
 });
+
+// Without this, losing your rejoin token (different browser, cleared storage, or just typing the
+// room code fresh) means your old seat becomes a permanent ghost: it keeps your name, your ready
+// flag and your decklist, and buildSeatSetups would deal a phantom player into the game.
+describe('reclaiming a seat by name', () => {
+  function lobbyWithDisconnectedBob() {
+    const room = new Room('ABC123');
+    const alice = room.join({ displayName: 'Alice' });
+    const bob = room.join({ displayName: 'Bob' });
+    if (!alice.ok || !bob.ok) throw new Error('unreachable');
+    room.setResolvedDeck(bob.playerId, EMPTY_RESOLVED_DECKLIST);
+    room.setReady(bob.playerId, true);
+    room.setConnected(bob.playerId, false);
+    return { room, alice, bob };
+  }
+
+  it('returns a disconnected player to their own seat instead of opening a new one', () => {
+    const { room, bob } = lobbyWithDisconnectedBob();
+
+    const result = room.join({ displayName: 'Bob' });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.seat).toBe(1);
+    expect(room.occupiedSeatCount()).toBe(2);
+    expect(room.toState().seats[1].connected).toBe(true);
+  });
+
+  it('issues a working rejoin token to the reclaimed seat', () => {
+    const { room } = lobbyWithDisconnectedBob();
+
+    const reclaimed = room.join({ displayName: 'Bob' });
+    if (!reclaimed.ok) throw new Error('unreachable');
+    room.setConnected(reclaimed.playerId, false);
+    const again = room.join({ displayName: 'Bob', rejoinToken: reclaimed.rejoinToken });
+
+    expect(again.ok).toBe(true);
+    if (!again.ok) throw new Error('unreachable');
+    expect(again.seat).toBe(1);
+  });
+
+  it('keeps the decklist that seat had already submitted', () => {
+    const { room } = lobbyWithDisconnectedBob();
+
+    room.join({ displayName: 'Bob' });
+
+    expect(room.toState().seats[1].deckStatus).not.toBe('none');
+  });
+
+  it('matches names case- and whitespace-insensitively', () => {
+    const { room } = lobbyWithDisconnectedBob();
+
+    const result = room.join({ displayName: '  bob ' });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.seat).toBe(1);
+  });
+
+  // A second, genuinely different Bob must not evict the one who is sitting there.
+  it('does not take a seat whose player is still connected', () => {
+    const { room } = lobbyWithDisconnectedBob();
+
+    const result = room.join({ displayName: 'Alice' });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.seat).toBe(2);
+  });
+
+  // Mid-game a disconnected seat is sacred (§14.2): the board stays and play continues, so
+  // handing it to whoever types the right name would be a way to take over someone's position.
+  it('does not reclaim by name once the game has started', () => {
+    const { room } = lobbyWithDisconnectedBob();
+    room.start();
+
+    const result = room.join({ displayName: 'Bob' });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.seat).toBe(2);
+  });
+
+  it('still prefers an explicitly requested seat over a name match', () => {
+    const { room } = lobbyWithDisconnectedBob();
+
+    const result = room.join({ displayName: 'Bob', seat: 3 });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.seat).toBe(3);
+  });
+});
+
+describe('freeing a seat', () => {
+  function lobby() {
+    const room = new Room('ABC123');
+    const alice = room.join({ displayName: 'Alice' });
+    const bob = room.join({ displayName: 'Bob' });
+    if (!alice.ok || !bob.ok) throw new Error('unreachable');
+    room.setConnected(bob.playerId, false);
+    return { room, alice, bob };
+  }
+
+  it('opens a disconnected seat and drops its deck and ready flag', () => {
+    const { room, bob } = lobby();
+
+    expect(room.freeSeat(1)).toBe(true);
+
+    const seat = room.toState().seats[1];
+    expect(seat.playerId).toBeNull();
+    expect(seat.displayName).toBeNull();
+    expect(seat.ready).toBe(false);
+    expect(seat.deckStatus).toBe('none');
+    expect(room.occupiedSeatCount()).toBe(1);
+    expect(room.join({ displayName: 'Bob', rejoinToken: bob.rejoinToken }).ok).toBe(false);
+  });
+
+  it('refuses to free a seat whose player is connected', () => {
+    const { room } = lobby();
+    expect(room.freeSeat(0)).toBe(false);
+    expect(room.toState().seats[0].displayName).toBe('Alice');
+  });
+
+  it('refuses to free an already-open seat or one out of range', () => {
+    const { room } = lobby();
+    expect(room.freeSeat(2)).toBe(false);
+    expect(room.freeSeat(9)).toBe(false);
+  });
+
+  // Freeing the host's own seat would leave the room with no one able to start or free anything.
+  it('hands the host role to a remaining player when the host seat is freed', () => {
+    const { room, alice, bob } = lobby();
+    room.setConnected(alice.playerId, false);
+
+    expect(room.freeSeat(0)).toBe(true);
+
+    expect(room.toState().hostId).toBe(bob.playerId);
+  });
+});
