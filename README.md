@@ -246,16 +246,23 @@ creation as an `X-Host-Secret` header, joining as the `secret` field on the `joi
 npm run dev --workspace @command-table/client
 ```
 
-Serves on `:5173`, bound to all interfaces. It talks to the server on port 8080 of **whatever
-hostname the page was loaded from** (`packages/client/src/api.ts`), so `localhost`, a LAN
-address, and a tailnet name all work with no rebuild. Override the port with `VITE_SERVER_PORT`
-if you moved the server off 8080. Requires the server to be running with an ingested card index
-(see above).
+Serves on `:5173` (`CLIENT_PORT` to change it), bound to all interfaces, and fails rather than
+falling back to another port — `npm run host` prints the URL before Vite starts, so a silent
+fallback would advertise a dead link. It talks to the server on port 8080 of **whatever hostname
+the page was loaded from** (`packages/client/src/api.ts`), so `localhost`, a LAN address, and a
+tailnet name all work with no rebuild. Override the port with `VITE_SERVER_PORT` if you moved
+the server off 8080. Requires the server to be running with an ingested card index (see above).
 
 ## Playing with a friend
 
-Two people on different machines connect over Tailscale — no VPS, no port forwarding, whoever is
-hosting runs the server. See [playing-with-a-friend.md](playing-with-a-friend.md).
+```
+npm run host
+```
+
+Starts the server and the client together and prints the link and passphrase to send. Two people
+on different machines connect over Tailscale — no VPS, no port forwarding, whoever is hosting
+runs the server; guests just open the link. See
+[playing-with-a-friend.md](playing-with-a-friend.md).
 
 ## Testing
 

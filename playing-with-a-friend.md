@@ -16,20 +16,25 @@ Once, on both machines:
 
 Per game, on the hosting machine:
 
-3. Start the server and the client:
+3. `npm run host`. It starts the server and the client together and prints the link to send,
+   already assembled from your tailnet name, along with the passphrase:
 
    ```
-   npm run dev --workspace @command-table/server
-   npm run dev --workspace @command-table/client
+   Send your friend:  http://thinkpad.tail9c2f.ts.net:5173   (Tailscale)
+   Passphrase:        SWAMP7
    ```
 
-   Note the passphrase the server prints on startup, or set `HOST_SECRET` yourself.
-4. `tailscale status` gives your machine name. Send your friend
-   `http://<machine>.<tailnet>.ts.net:5173`, the passphrase, and the room code once you've made
-   a room.
+   Set `HOST_SECRET` to choose the passphrase instead of having one generated. If Tailscale
+   isn't running it falls back to a LAN address and says so — that link only reaches your own
+   network.
+4. Send your friend that link and passphrase, plus the room code once you've made a room.
 
 Guests need neither an ingested card index nor a checkout — just the URL, the passphrase, and a
-browser.
+browser. There is deliberately no `npm run guest`: a guest opens the link, and that is the whole
+guest experience.
+
+To run the two halves separately (debugging one of them, say), the underlying commands are still
+`npm run dev --workspace @command-table/server` and `... @command-table/client`.
 
 ## Why it is set up this way
 
