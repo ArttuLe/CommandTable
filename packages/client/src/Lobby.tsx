@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { DeckStatus, DeckWarningKind } from '@command-table/common';
+import { ConfirmDialog } from './ConfirmDialog.js';
 import { useStore } from './store.js';
 
 export function Lobby() {
@@ -7,7 +8,9 @@ export function Lobby() {
   const playerId = useStore((s) => s.playerId);
   const deckResult = useStore((s) => s.deckResult);
   const send = useStore((s) => s.send);
+  const leave = useStore((s) => s.leave);
   const [deckText, setDeckText] = useState('');
+  const [confirmLeave, setConfirmLeave] = useState(false);
 
   const isHost = roomState.hostId === playerId;
   const mySeat = roomState.seats.find((s) => s.playerId === playerId);
@@ -22,7 +25,23 @@ export function Lobby() {
             Start game
           </button>
         )}
+        <button className="btn btn-ghost" onClick={() => setConfirmLeave(true)}>
+          Leave
+        </button>
       </header>
+
+      {confirmLeave && (
+        <ConfirmDialog
+          title="Leave the table?"
+          message="Your seat is held. You can come back with the room code and passphrase."
+          confirmLabel="Leave"
+          onConfirm={() => {
+            setConfirmLeave(false);
+            leave();
+          }}
+          onCancel={() => setConfirmLeave(false)}
+        />
+      )}
 
       <section className="panel">
         <p className="panel-title">Seats</p>

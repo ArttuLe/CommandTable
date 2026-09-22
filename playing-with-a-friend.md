@@ -36,6 +36,23 @@ guest experience.
 To run the two halves separately (debugging one of them, say), the underlying commands are still
 `npm run dev --workspace @command-table/server` and `... @command-table/client`.
 
+## If something drops
+
+Refreshing the page, losing Wi-Fi, closing the laptop lid, or the host restarting the server all
+recover on their own — nobody re-enters a room code. Clients reconnect with backoff and replay
+their rejoin token, and the host's server snapshots in-flight games to `data/sessions.json`, so
+Ctrl-C and `npm run host` again resumes the table where it was. The passphrase survives a restart
+too, so the one your friend already has keeps working.
+
+The seat of a disconnected player is held and their board stays on the table; because there is no
+priority system, everyone else can keep playing meanwhile (§14.2).
+
+Two caveats. Undo history is not saved, so after a restart you can rewind back to that point but
+not past it. And a saved game is dropped after 24h.
+
+When you're done, the host ends the game from the gear menu — that returns everyone to the room's
+lobby with seats and decklists kept, ready for another game.
+
 ## Why it is set up this way
 
 - **No HTTPS, deliberately.** Tailscale already encrypts every packet between the two machines,
@@ -44,6 +61,9 @@ To run the two halves separately (debugging one of them, say), the underlying co
 - **Never port-forward :8080 or :5173 to the open internet.** The passphrase stops a stranger
   taking a seat, but the server does no rate limiting and no validation of inbound message
   shapes; it is built to sit on a trusted network. Tailscale is what keeps it there.
+- **The save file is as sensitive as the passphrase.** `data/sessions.json` contains live rejoin
+  tokens and the passphrase itself. It is gitignored and stays on the host's machine; it is not
+  something to paste into a chat when debugging.
 - **The host is still authoritative.** This is peer-to-peer only in the sense that there is no
   VPS — the hosting machine remains the referee that holds hidden information, so `projection.ts`
   (§9.1) is what keeps your hand out of your opponent's client, exactly as it does locally.

@@ -207,7 +207,7 @@ catch (a player who drew a card and could see it, then undid the draw, correctly
 still "knowing" what they saw).
 
 Not yet implemented: Phase 6/7's remaining polish (MDFC/saga layout handling, a real stack
-view, server-restart persistence per §14.5). Drag-and-drop and mobile support are deliberately
+view). Drag-and-drop and mobile support are deliberately
 not planned — see "Notable deviations from the design doc" below. See `packages/client/src`
 for what exists.
 
@@ -251,8 +251,23 @@ creation as an `X-Host-Secret` header, joining as the `secret` field on the `joi
 - `ws://localhost:8080/ws` — join with `{ t: 'join', roomId, displayName, secret }`, submit a deck with
   `{ t: 'deck', list }`, and once the host sends `{ t: 'start' }` (2+ seated players required),
   act on the table with `{ t: 'action', clientSeq, action }` or roll back with
-  `{ t: 'undo', targetRevision }`. See `packages/common/src/protocol.ts` and
-  `packages/common/src/actions.ts` for the full `Action` union and message set.
+  `{ t: 'undo', targetRevision }`. The host ends a game with `{ t: 'endGame' }`, which clears the
+  table and returns everyone to that room's lobby with seats and decklists intact. See
+  `packages/common/src/protocol.ts` and `packages/common/src/actions.ts` for the full `Action`
+  union and message set.
+
+### Saved games
+
+In-flight games are snapshotted to `data/sessions.json` (`SESSION_PATH` to move it), so a restart
+or a crash resumes them rather than ending them — see §14.5. The file holds each room's seats,
+resolved decklists, and **rejoin tokens**, plus the generated passphrase: the passphrase has to
+persist or a restart would mint a new one and lock out everyone holding the old one. Treat the
+file with the same care as the passphrase itself. It lives in gitignored `data/` on the host's
+own machine.
+
+Entries older than 24h are dropped on load, and a corrupt or unreadable file costs you the saved
+games but never the ability to start the server. Undo history is not persisted (see "Notable
+deviations" below).
 
 ## Running the client
 
@@ -378,14 +393,13 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
   logged plainly ("please review") and any player can immediately fix a wrong guess via the
   existing "Change controller…" context-menu action — judged sufficient without a dedicated
   prompt protocol.
-- **Server-restart persistence (§14.5, also §21 Open Question 3) is skipped, on purpose:**
-  `TableState` is plain JSON and trivial to snapshot, but reconnecting after a restart also
-  needs each player's rejoin token, which lives only in-memory on the lobby `Room` object and is
-  never serialized anywhere today — a TableState-only snapshot would let a restarted server show
-  a room existed without letting anyone actually rejoin it. The doc itself ranks this as the
-  highest-effort of three mitigations and calls it optional ("worth doing if games get long");
-  the cheaper mitigations (don't deploy mid-game, a health endpoint showing player count) cover
-  the realistic risk for now.
+- **Server-restart persistence (§14.5) is implemented, but undo history is not persisted:**
+  `data/sessions.json` holds each room — seats, resolved decklists, rejoin tokens — alongside its
+  current `TableState`, so a restart or a crash resumes the game instead of ending it. Rejoin
+  tokens had to be serialized too; without them a restored server would show that a room existed
+  without letting anyone actually rejoin it. `TableHistory`'s 50 snapshots are deliberately left
+  out, since persisting them would bloat the file ~50x: after a restore you can undo back to the
+  restart point but not past it.
 - **Casting a commander goes straight through the stack to the battlefield in one click:**
   clicking a command-zone commander sends `MOVE_OBJECT` to `{ zone: 'stack' }` (so §12.2's tax
   tracking fires, since that's keyed on the command-zone → stack transition specifically) and

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { RoomManager } from './roomManager.js';
+import { Room, RoomManager } from './roomManager.js';
+import { EMPTY_RESOLVED_DECKLIST } from './deckResolver.js';
 
 describe('RoomManager', () => {
   it('creates a room with 4 open seats and no host', () => {
@@ -157,5 +158,116 @@ describe('RoomManager', () => {
     const manager = new RoomManager();
     const ids = new Set(Array.from({ length: 20 }, () => manager.createRoom().roomId));
     expect(ids.size).toBe(20);
+  });
+});
+
+describe('Room persistence', () => {
+  function seatedRoom() {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    const alice = room.join({ displayName: 'Alice' });
+    const bob = room.join({ displayName: 'Bob' });
+    if (!alice.ok || !bob.ok) throw new Error('unreachable');
+    return { manager, room, alice, bob };
+  }
+
+  it('round-trips seats, host and started through a snapshot', () => {
+    const { room, alice } = seatedRoom();
+    room.setResolvedDeck(alice.playerId, { ...EMPTY_RESOLVED_DECKLIST, warnings: [{ kind: 'wrong_deck_size', expected: 100, actual: 99 }] });
+    room.start();
+
+    const restored = Room.fromSnapshot(JSON.parse(JSON.stringify(room.toSnapshot())));
+    const state = restored.toState();
+
+    expect(restored.roomId).toBe(room.roomId);
+    expect(state.hostId).toBe(alice.playerId);
+    expect(state.started).toBe(true);
+    expect(state.seats[0].displayName).toBe('Alice');
+    expect(state.seats[1].displayName).toBe('Bob');
+    expect(restored.buildSeatSetups()[0].resolved.warnings).toEqual([{ kind: 'wrong_deck_size', expected: 100, actual: 99 }]);
+  });
+
+  it('a rejoin token still works after a snapshot round-trip', () => {
+    const { room, bob } = seatedRoom();
+
+    const restored = Room.fromSnapshot(JSON.parse(JSON.stringify(room.toSnapshot())));
+    const result = restored.join({ displayName: 'Bob', rejoinToken: bob.rejoinToken });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.playerId).toBe(bob.playerId);
+    expect(result.seat).toBe(1);
+  });
+
+  // Nobody is connected to a process that just booted, however the snapshot was taken.
+  it('restores every seat as disconnected', () => {
+    const { room } = seatedRoom();
+
+    const restored = Room.fromSnapshot(room.toSnapshot());
+
+    expect(restored.toState().seats.every((s) => !s.connected)).toBe(true);
+  });
+
+  it('RoomManager.restore makes rooms reachable by id again', () => {
+    const { room } = seatedRoom();
+    const manager = new RoomManager();
+
+    manager.restore([room.toSnapshot()]);
+
+    expect(manager.getRoom(room.roomId)?.toState().seats[0].displayName).toBe('Alice');
+  });
+});
+
+describe('Room.endGame', () => {
+  function startedRoom() {
+    const manager = new RoomManager();
+    const room = manager.createRoom();
+    const alice = room.join({ displayName: 'Alice' });
+    const bob = room.join({ displayName: 'Bob' });
+    if (!alice.ok || !bob.ok) throw new Error('unreachable');
+    room.setResolvedDeck(alice.playerId, EMPTY_RESOLVED_DECKLIST);
+    room.setReady(alice.playerId, true);
+    room.setReady(bob.playerId, true);
+    room.start();
+    return { room, alice, bob };
+  }
+
+  it('reopens the room for another game', () => {
+    const { room } = startedRoom();
+    expect(room.canStart()).toBe(false);
+
+    room.endGame();
+
+    expect(room.toState().started).toBe(false);
+    expect(room.canStart()).toBe(true);
+  });
+
+  // Otherwise the next game could start off confirmations given for the previous one.
+  it('clears ready flags so the next game needs a fresh ready check', () => {
+    const { room } = startedRoom();
+
+    room.endGame();
+
+    expect(room.toState().seats.every((s) => !s.ready)).toBe(true);
+  });
+
+  it('keeps seats, host and resolved decks so nobody re-pastes a decklist', () => {
+    const { room, alice } = startedRoom();
+
+    room.endGame();
+
+    const state = room.toState();
+    expect(state.hostId).toBe(alice.playerId);
+    expect(state.seats[0].playerId).toBe(alice.playerId);
+    expect(state.seats[1].displayName).toBe('Bob');
+    expect(room.buildSeatSetups()).toHaveLength(2);
+  });
+
+  it('leaves rejoin tokens valid', () => {
+    const { room, bob } = startedRoom();
+
+    room.endGame();
+
+    expect(room.join({ displayName: 'Bob', rejoinToken: bob.rejoinToken }).ok).toBe(true);
   });
 });

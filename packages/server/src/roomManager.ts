@@ -13,12 +13,23 @@ import type { SeatSetup } from './tableFactory.js';
 const MAX_SEATS = 4;
 const MIN_PLAYERS_TO_START = 2;
 
-interface Seat {
+export interface Seat {
   playerId: PlayerId | null;
   displayName: string | null;
   connected: boolean;
   ready: boolean;
   resolvedDeck: ResolvedDecklist | null;
+}
+
+// What a Room needs to survive a server restart (design doc §14.5). `seats` carries the resolved
+// decklists so nobody re-pastes one, and `rejoinTokens` is the flattened token→player map —
+// without it a restored room would be visible but unrejoinable, which is worse than no snapshot.
+export interface RoomSnapshot {
+  roomId: RoomId;
+  seats: Seat[];
+  hostId: PlayerId | null;
+  started: boolean;
+  rejoinTokens: Record<string, PlayerId>;
 }
 
 export type JoinResult =
@@ -134,6 +145,39 @@ export class Room {
       }));
   }
 
+  // Ends the game but not the room: everyone stays seated with their decklist, so the same table
+  // can immediately play again. Ready flags are cleared so the next game needs a fresh ready check
+  // rather than starting off confirmations given for the previous one.
+  endGame(): void {
+    this.started = false;
+    for (const seat of this.seats) {
+      seat.ready = false;
+    }
+  }
+
+  toSnapshot(): RoomSnapshot {
+    return {
+      roomId: this.roomId,
+      seats: this.seats,
+      hostId: this.hostId,
+      started: this.started,
+      rejoinTokens: Object.fromEntries(this.playerIdByRejoinToken),
+    };
+  }
+
+  static fromSnapshot(snapshot: RoomSnapshot): Room {
+    const room = new Room(snapshot.roomId);
+    // connected is deliberately not restored — nobody is connected to a process that just booted.
+    room.seats = snapshot.seats.map((seat) => ({ ...seat, connected: false }));
+    room.hostId = snapshot.hostId;
+    room.started = snapshot.started;
+    room.playerIdByRejoinToken = new Map(Object.entries(snapshot.rejoinTokens));
+    room.seats.forEach((seat, index) => {
+      if (seat.playerId !== null) room.seatIndexByPlayer.set(seat.playerId, index);
+    });
+    return room;
+  }
+
   private seatFor(playerId: PlayerId): Seat | undefined {
     const index = this.seatIndexByPlayer.get(playerId);
     return index === undefined ? undefined : this.seats[index];
@@ -167,6 +211,16 @@ export class RoomManager {
     const room = new Room(roomId);
     this.rooms.set(roomId, room);
     return room;
+  }
+
+  allRooms(): Iterable<Room> {
+    return this.rooms.values();
+  }
+
+  restore(snapshots: RoomSnapshot[]): void {
+    for (const snapshot of snapshots) {
+      this.rooms.set(snapshot.roomId, Room.fromSnapshot(snapshot));
+    }
   }
 
   getRoom(roomId: RoomId): Room | undefined {
