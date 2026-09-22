@@ -14,6 +14,7 @@ import { NumberDialog } from './NumberDialog.js';
 import { CommanderName, type CommanderRef } from './commanders.js';
 import { isLethalCommanderDamage, isLethalLife, isLethalPoison, worstDamageTaken } from './vitals.js';
 import { TokenDialog } from './TokenDialog.js';
+import { ConfirmDialog } from './ConfirmDialog.js';
 
 interface ActionBarProps {
   playerId: PlayerId;
@@ -71,7 +72,7 @@ function MoreMenu({
 }) {
   const [open, setOpen] = useState(false);
   // Which of this menu's dialogs is up, if any. The menu itself closes as one opens.
-  const [dialog, setDialog] = useState<'peek' | 'token' | 'dice' | null>(null);
+  const [dialog, setDialog] = useState<'peek' | 'token' | 'dice' | 'allLife' | 'concede' | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const openZone = useUiStore((s) => s.openZone);
   const setLibraryDirty = useUiStore((s) => s.setLibraryDirty);
@@ -85,8 +86,8 @@ function MoreMenu({
 
   useCloseOnOutsideClick(open, ref, () => setOpen(false));
 
-  // Every item closes the menu; the prompts these open are blocking anyway, so closing first
-  // keeps the menu from hanging open behind a native dialog.
+  // Every item closes the menu; the dialogs some of them open are modal anyway, so closing first
+  // keeps the menu from hanging open behind one.
   const run = (fn: () => void) => () => {
     setOpen(false);
     fn();
@@ -117,16 +118,7 @@ function MoreMenu({
 
           <hr />
           <p className="popover-group">Table</p>
-          <button
-            onClick={run(() => {
-              const amount = Number(window.prompt("Adjust ALL players' life by how much?", '0'));
-              if (Number.isFinite(amount) && amount !== 0) {
-                act({ t: 'SET_LIFE', playerIds: players.map((p) => p.id), update: { mode: 'delta', amount } });
-              }
-            })}
-          >
-            Adjust all life…
-          </button>
+          <button onClick={run(() => setDialog('allLife'))}>Adjust all life…</button>
           <button onClick={run(() => act({ t: 'CLEAR_ALL_MARKERS' }))}>Clear all markers</button>
           <button onClick={run(() => setDialog('token'))}>Create token…</button>
 
@@ -136,12 +128,7 @@ function MoreMenu({
           <button onClick={run(() => act({ t: 'FLIP_COIN', playerId }))}>Flip coin</button>
 
           <hr />
-          <button
-            className="danger"
-            onClick={run(() => {
-              if (window.confirm('Concede the game?')) act({ t: 'CONCEDE', playerId });
-            })}
-          >
+          <button className="danger" onClick={run(() => setDialog('concede'))}>
             Concede
           </button>
         </div>
@@ -173,6 +160,35 @@ function MoreMenu({
           onSubmit={(sides) => {
             setDialog(null);
             act({ t: 'ROLL_DICE', playerId, sides });
+          }}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+
+      {dialog === 'allLife' && (
+        <NumberDialog
+          title="Adjust everyone's life"
+          label="By how much? (negative to lose life)"
+          initialValue={0}
+          submitLabel="Apply to all"
+          onSubmit={(amount) => {
+            setDialog(null);
+            if (amount !== 0) {
+              act({ t: 'SET_LIFE', playerIds: players.map((p) => p.id), update: { mode: 'delta', amount } });
+            }
+          }}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+
+      {dialog === 'concede' && (
+        <ConfirmDialog
+          title="Concede"
+          message="You will be out of the game. Your cards stay on the table for everyone to see."
+          confirmLabel="Concede"
+          onConfirm={() => {
+            setDialog(null);
+            act({ t: 'CONCEDE', playerId });
           }}
           onCancel={() => setDialog(null)}
         />

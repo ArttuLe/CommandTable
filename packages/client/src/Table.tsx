@@ -62,8 +62,9 @@ export function Table() {
     [act, isMyTurn]
   );
 
-  // §16.2 keyboard shortcuts for the high-frequency actions. Gated on not-typing-in-an-input so
-  // it doesn't fire while the chat box (or a browser-native prompt) has focus.
+  // §16.2 keyboard shortcuts for the high-frequency actions, listed by the `?` in the status bar
+  // (HelpDialog). Gated on not-typing-in-an-input so it doesn't fire while the chat box or a
+  // dialog's own field has focus.
   useEffect(() => {
     function isTypingTarget(target: EventTarget | null): boolean {
       return target instanceof HTMLElement && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);

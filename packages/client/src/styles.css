@@ -458,6 +458,10 @@ button.vital:hover { border-color: var(--border-strong); }
 }
 .field input:focus { outline: none; border-color: var(--accent); }
 .field-row { display: flex; gap: 0.5rem; }
+/* A dialog that asks you to pick one of a handful of things (which player now controls this)
+   rather than to type something. One button per choice, stacked. */
+.dialog-choices { display: flex; flex-direction: column; gap: 0.35rem; }
+.dialog-choices .btn { text-align: left; padding: 0.45rem 0.65rem; }
 
 /* Floats rather than sitting in the layout, so appearing mid-game doesn't shove the controls. */
 .selection-bar {
