@@ -78,8 +78,18 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
           </button>
         )}
         <button onClick={() => run(() => act({ t: 'TRANSFORM', objectId: obj.id }))}>Transform</button>
-        <button onClick={() => run(() => act({ t: 'TURN_FACE_DOWN', objectId: obj.id }))}>Turn face down</button>
-        <button onClick={() => run(() => act({ t: 'TURN_FACE_UP', objectId: obj.id }))}>Turn face up</button>
+        {/* One toggle where the object tells us which way it is facing. A redacted object doesn't
+            carry `faceDown` (§9.2 omits it), so there both directions stay on offer. */}
+        {isRedacted(obj) ? (
+          <>
+            <button onClick={() => run(() => act({ t: 'TURN_FACE_DOWN', objectId: obj.id }))}>Turn face down</button>
+            <button onClick={() => run(() => act({ t: 'TURN_FACE_UP', objectId: obj.id }))}>Turn face up</button>
+          </>
+        ) : (
+          <button onClick={() => run(() => act({ t: obj.faceDown ? 'TURN_FACE_UP' : 'TURN_FACE_DOWN', objectId: obj.id }))}>
+            {obj.faceDown ? 'Turn face up' : 'Turn face down'}
+          </button>
+        )}
 
         <hr />
         <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('hand') }))}>Move to hand</button>

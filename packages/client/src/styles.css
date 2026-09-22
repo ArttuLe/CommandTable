@@ -338,7 +338,21 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .card-tile { width: var(--card-w); height: var(--card-h); border: 1px solid var(--border-strong); border-radius: var(--radius); background: #2c313a; overflow: hidden; cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; text-align: center; padding: 2px; }
 .card-tile img { width: 100%; height: 100%; object-fit: cover; }
 .card-tile.tapped { transform: rotate(90deg); }
-.card-tile.face-down { background: #3f2f5e; }
+/* A card back, drawn rather than fetched: Scryfall ships no back in `image_uris`, and a single
+   shared asset would be one more request per hidden card for a flat colour and a border. */
+.card-tile.face-down {
+  background:
+    radial-gradient(ellipse at 50% 45%, #6b539b 0%, #4a3872 45%, #2e2350 100%);
+}
+/* The frame is a pseudo-element rather than an inset shadow so it survives the attacking ring
+   below, which owns `box-shadow` on this same element. */
+.card-tile.face-down::before {
+  content: ''; position: absolute; inset: 5px; border: 2px solid rgba(160, 138, 214, 0.5); border-radius: 3px;
+}
+.card-tile.face-down::after {
+  content: '✦'; color: rgba(214, 200, 255, 0.45); font-size: 2rem; line-height: 1;
+}
+.card-tile.face-down img { display: none; }
 .card-tile.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
 /* Attacking: a red ring rather than a badge, so it reads across the whole table at any zoom
    (see combat.ts). Drawn with box-shadow so it survives the tapped rotation and any outline the
