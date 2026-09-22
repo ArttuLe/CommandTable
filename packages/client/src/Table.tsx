@@ -17,6 +17,7 @@ import { libraryMoveAction } from './libraryMoves.js';
 import { commanderPrompts } from './commanderPrompt.js';
 import { SettingsMenu } from './SettingsMenu.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
+import { HelpButton } from './HelpDialog.js';
 
 function isOwnZone(obj: ProjectedObject, playerId: PlayerId, zone: string): boolean {
   return 'playerId' in obj.zone && obj.zone.playerId === playerId && obj.zone.zone === zone;
@@ -189,7 +190,10 @@ export function Table() {
 
         {/* Pushed to the far end of the bar by its own margin, so whatever the bar is currently
             asking you stays next to the turn pill where you're already looking. */}
-        <SettingsMenu />
+        <div className="status-tools">
+          <HelpButton />
+          <SettingsMenu />
+        </div>
       </header>
 
       <div className="table-main">

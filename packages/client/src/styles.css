@@ -130,9 +130,23 @@ input[type='checkbox'] { accent-color: var(--accent); }
    but tinted toward the command zone rather than the warning yellow of an undo vote. */
 .commander-prompt { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; background: #2f2540; border: 1px solid #5b4a80; padding: 0.3rem 0.6rem; border-radius: var(--radius); }
 
+/* The help mark and the gear ride together at the far end of the bar, so whatever the bar is
+   currently asking you stays next to the turn pill where you are already looking. */
+.status-tools { display: flex; align-items: center; gap: 0.2rem; margin-left: auto; }
+.help-button { font-size: 1.2rem; font-weight: 700; }
+.help-button.open { color: var(--accent); }
+
+/* The help dialog is a read-only table rather than a form, so its rows are tighter than .field. */
+.help-body { display: flex; flex-direction: column; gap: 0.5rem; }
+.help-body .popover-group { margin: 0 0 0.2rem; }
+.shortcut-list { margin: 0; font-size: 0.82rem; }
+.shortcut-row { display: flex; gap: 0.7rem; padding: 0.15rem 0; }
+.shortcut-row dt { flex-shrink: 0; width: 9.5rem; color: var(--accent); font-weight: 600; }
+.shortcut-row dd { margin: 0; color: var(--text-dim); }
+
 /* The gear, at the far end of the status bar. Standing preferences live here; one-off view
    commands (Fit, zoom) stay on the plane itself where the thing they act on is. */
-.settings-menu { position: relative; margin-left: auto; }
+.settings-menu { position: relative; }
 .settings-menu .gear { font-size: 1.7rem; line-height: 1; padding: 0 0.3rem; }
 .settings-menu .gear.open { color: var(--accent); }
 .settings-popover {
