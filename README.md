@@ -37,7 +37,9 @@ player taking it, highlighted past 21 lethal), and life/poison lethal-threshold
 highlighting (≤0 life, ≥10 poison) — plus a **minimal client** (early Phase 6 — React +
 TypeScript + Vite + Zustand, per §4) that now covers most of the action catalog, not just the
 headline ones. Beyond click-to-play/click-to-tap: a right-click context menu on any object
-(§16.2 — tap/untap, mark as attacking, transform, face down/up, move to any zone, add a counter
+(§16.2 — tap/untap, mark as attacking, transform, turn face down or up — one toggle, and the
+tile draws a CSS card back so the controller, who is allowed to see the card, can still tell it
+is face down — move to any zone, add a counter
 or marker, remove an existing marker, set an annotation, change controller, duplicate a token;
 the menu flips up or left when it would otherwise run off the window — see `menuPlacement.ts`),
 search library + peek top N (both open the hand dock's Library popover on the spot, since
@@ -54,19 +56,27 @@ lands, non-creature permanents, creatures — see `battlefieldZones.ts`; identic
 one overlapping stack with a count (`landStacks.ts`) so a ten-land board doesn't wrap onto a
 second row. Keyboard shortcuts
 (§16.2) cover the high-frequency actions — `D` draw, `U` untap all, `P` pass turn, `+`/`-` your
-own life, `L` the log rail — gated so they don't fire while a text input has focus. Passing on
+own life, `L` the log rail — gated so they don't fire while a text input has focus, and listed
+by the `?` beside the settings gear (`HelpDialog.tsx`, content in `shortcuts.ts`) along with the
+mouse gestures, since a shortcut nobody is told about is not a shortcut. Passing on
 someone else's turn (button or `P`) puts a confirmation dialog in front of it, since `PASS_TURN`
 ends whoever is active, not you. That dialog is the app's own (`ConfirmDialog.tsx`), not
 `window.confirm`; while it is up the keyboard shortcuts stand down so Escape and Enter belong
 to it. A
 client-local mana pad (§8.4) shares a strip above the hand with the graveyard / exile / library
-tiles: WUBRGC counters a player bumps by hand as they tap lands and
-spend mana, reset at will, never synced to the server or other players. Multi-select (§16.2)
+tiles: WUBRGC counters, reset at will, never synced to the server or other players. Tapping one
+of your own permanents fills it with whatever that card could add, read off its oracle text
+(`manaSources.ts`) — one symbol goes straight in, and anything that could make more than one
+asks which at the cursor (`ManaChoice.tsx`). It is deliberately approximate, and correcting it by
+hand is still a click on a pip. Multi-select (§16.2)
 covers the doc's two stated use cases — "tap five lands" and "sacrifice all my tokens" — via
 shift-click on any battlefield object, a selection bar with Tap/Untap/To graveyard/Clear, and
 Escape to clear; drag-box selection wasn't built since shift-click already satisfies the
-tedium checklist. Drag-and-drop and mobile support are deliberately not planned — see the
-deviation notes below, not the Phase 6/7 gap list.
+tedium checklist. The fixed chrome gives way on a narrow window — the card-size custom property
+steps down at 1100px and 820px, and the HUD's two centring grids become wrapping rows below
+900px (the bottom of `styles.css`) — since the table itself is a pan/zoom plane and needs no
+help. That is a desktop window being narrow, not touch support: drag-and-drop and mobile are
+deliberately not planned — see the deviation notes below, not the Phase 6/7 gap list.
 
 The §16.3 tedium checklist is now fully covered: passing turn untaps the incoming player's
 permanents and clears last turn's attackers as one undoable action (drawing for the turn stays
@@ -365,15 +375,16 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
   `useCard` resolves asynchronously per §4's "thin client" approach — no client-side cache
   warm-up step exists yet. `commanders.tsx` owns that fallback so the damage badges, the HUD's
   damage list and the status bar's command-zone prompt all name a commander the same way.
-- **The context menu and a few "More ⋯" items still use `window.prompt()`** for free-text/numeric
-  input (counter key+amount, marker name, annotation, change-controller target, ±N life across
-  all players) rather than a dialog. The paths that are worth the dialog have one — pass turn,
-  peek depth, dice sides, create token, ±N on your own life — built on a shared shell
-  (`Dialog.tsx`, plus `ConfirmDialog`,
-  `NumberDialog`, `TokenDialog`) that owns Escape, click-outside, and standing the table's
-  keyboard shortcuts down while it is up. The rest keep the native prompt for now: it is a real,
-  if minor, UX compromise, and it costs automated browser testing those paths (a JS prompt
-  blocks further extension commands), so they're verified by code review and manual play.
+- **No path asks a question through `window.prompt`/`window.confirm` any more.** Every one of them
+  is an in-app dialog on the shared shell (`Dialog.tsx` — Escape, click-outside, and standing the
+  table's keyboard shortcuts down while it is up), with four shapes above it: `ConfirmDialog`
+  (pass turn, concede), `NumberDialog` (peek depth, dice sides, ±N life for yourself or the whole
+  table), `TextDialog` (marker, annotation) and the two purpose-built forms, `TokenDialog` and
+  `CounterDialog` (a counter's key and amount together, where it used to be two prompts in a row
+  with the first thrown away if you cancelled the second). "Change controller" is a list of
+  players rather than a typed name, which used to fail silently when it matched nobody. The
+  context menu renders its dialog *instead of* itself — its backdrop would otherwise sit between
+  the dialog and the table and one click would dismiss both.
 - **Right-clicking any object works regardless of who controls it:** the context menu's zone
   moves target the object's `controllerId` (visible even on a redacted object) rather than
   requiring you to control it first — consistent with §10's "anyone can take any action at any
