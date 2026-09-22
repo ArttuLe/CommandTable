@@ -60,7 +60,7 @@ button { font-family: inherit; }
 
 /* Text fields get the same treatment as buttons, and for the same reason: left at the browser
    default they were white boxes on a dark table, which made the lobby read as a web form. */
-input[type='text'], input:not([type]), textarea {
+input[type='text'], input[type='password'], input:not([type]), textarea {
   background: var(--surface-sunken); color: var(--text); font-family: inherit; font-size: 0.9rem;
   border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.4rem 0.55rem;
 }
