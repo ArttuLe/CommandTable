@@ -19,6 +19,7 @@ import { SettingsMenu } from './SettingsMenu.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { HelpButton } from './HelpDialog.js';
 import { ManaChoice, type ManaChoicePrompt } from './ManaChoice.js';
+import { manaToRemove } from './manaSources.js';
 
 function isOwnZone(obj: ProjectedObject, playerId: PlayerId, zone: string): boolean {
   return 'playerId' in obj.zone && obj.zone.playerId === playerId && obj.zone.zone === zone;
@@ -44,6 +45,7 @@ export function Table() {
   const followActivePlayer = useUiStore((s) => s.followActivePlayer);
   const dialogOpen = useUiStore((s) => s.openDialogs > 0);
   const bumpMana = useUiStore((s) => s.bumpMana);
+  const resetMana = useUiStore((s) => s.resetMana);
 
   const [menu, setMenu] = useState<{ obj: ProjectedObject; x: number; y: number } | null>(null);
   const [manaChoice, setManaChoice] = useState<ManaChoicePrompt | null>(null);
@@ -62,6 +64,14 @@ export function Table() {
     [act, isMyTurn]
   );
 
+  // Untapping everything is the gesture that ends a turn's worth of mana, so it empties the pad
+  // with it — floating mana outlives an untap step in no game of Commander. Shared by the button
+  // and the `U` shortcut so the two can't drift.
+  const untapAll = useCallback(() => {
+    act({ t: 'UNTAP_ALL', playerId });
+    resetMana();
+  }, [act, playerId, resetMana]);
+
   // §16.2 keyboard shortcuts for the high-frequency actions, listed by the `?` in the status bar
   // (HelpDialog). Gated on not-typing-in-an-input so it doesn't fire while the chat box or a
   // dialog's own field has focus.
@@ -78,7 +88,7 @@ export function Table() {
           act({ t: 'DRAW', playerId, count: 1 });
           break;
         case 'u':
-          act({ t: 'UNTAP_ALL', playerId });
+          untapAll();
           break;
         case 'p':
           requestPassTurn();
@@ -104,7 +114,7 @@ export function Table() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [act, playerId, dialogOpen, requestPassTurn, toggleLogRail]);
+  }, [act, playerId, dialogOpen, requestPassTurn, toggleLogRail, untapAll]);
 
   const objects = Object.values(tableState.objects);
 
@@ -225,9 +235,18 @@ export function Table() {
                   // symbol goes straight in; a dual asks which, at the cursor.
                   onTapToggle={(obj, produces, e) => {
                     act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id });
-                    if (!isSelf || obj.tapped || produces.length === 0) return;
-                    if (produces.length === 1) bumpMana(produces[0], 1);
-                    else setManaChoice({ colors: produces, x: e.clientX, y: e.clientY });
+                    if (!isSelf || produces.length === 0) return;
+                    if (obj.tapped) {
+                      // Untapping takes back what tapping put in — clicking a land you didn't
+                      // mean to tap should leave the pad where it was. Which colour, when the
+                      // source makes several, is read off the pad (see manaToRemove).
+                      const color = manaToRemove(produces, useUiStore.getState().manaPad);
+                      if (color) bumpMana(color, -1);
+                    } else if (produces.length === 1) {
+                      bumpMana(produces[0], 1);
+                    } else {
+                      setManaChoice({ colors: produces, x: e.clientX, y: e.clientY });
+                    }
                   }}
                   onCastCommander={
                     isSelf
@@ -292,7 +311,13 @@ export function Table() {
           <ZoneDock zones={dockZones} onObjectContextMenu={openMenu} />
         </div>
         <div className="hud-row">
-          <ActionBar playerId={playerId} players={tableState.players} isMyTurn={isMyTurn} onPassTurn={requestPassTurn} />
+          <ActionBar
+            playerId={playerId}
+            players={tableState.players}
+            isMyTurn={isMyTurn}
+            onPassTurn={requestPassTurn}
+            onUntapAll={untapAll}
+          />
           {/* Overlapping fan rather than a second row: a big hand must not steal height from
               the table. */}
           <div className={`hand ${myHand.length > 8 ? 'crowded' : ''}`}>

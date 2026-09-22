@@ -22,9 +22,11 @@ interface ActionBarProps {
   isMyTurn: boolean;
   /** Owned by Table: passing out of turn has a dialog in front of it (see ConfirmDialog). */
   onPassTurn: () => void;
+  /** Also owned by Table: untapping everything empties the mana pad with it. */
+  onUntapAll: () => void;
 }
 
-export function ActionBar({ playerId, players, isMyTurn, onPassTurn }: ActionBarProps) {
+export function ActionBar({ playerId, players, isMyTurn, onPassTurn, onUntapAll }: ActionBarProps) {
   const act = useStore((s) => s.act);
 
   return (
@@ -32,7 +34,7 @@ export function ActionBar({ playerId, players, isMyTurn, onPassTurn }: ActionBar
       <button className="btn btn-lg" title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>
         Draw
       </button>
-      <button className="btn btn-lg" title="Shortcut: U" onClick={() => act({ t: 'UNTAP_ALL', playerId })}>
+      <button className="btn btn-lg" title="Shortcut: U" onClick={onUntapAll}>
         Untap all
       </button>
       <button

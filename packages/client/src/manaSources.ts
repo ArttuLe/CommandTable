@@ -1,4 +1,4 @@
-// What a permanent puts in your mana pad when you tap it.
+// What a permanent puts in your mana pad when you tap it, and takes back when you untap it.
 //
 // The pad (§8.4) is client-local and the server has no concept of mana, so this is read off the
 // card's own oracle text rather than tracked anywhere: every "Add …" clause on the card, reduced
@@ -35,4 +35,18 @@ export function producedMana(card: Card | null): ManaColor[] {
   }
 
   return produced;
+}
+
+/**
+ * Which colour to take back out of the pad when a source is untapped — undoing the tap that put
+ * it there, for the common case of tapping the wrong land and clicking it again.
+ *
+ * Nothing records which colour a dual actually made, so this picks one you are holding, in the
+ * source's own order. Storing the choice per object would be exact right up until the mana is
+ * spent, the object leaves the battlefield, or the pad is reset out from under it — three ways
+ * for a remembered colour to outlive the thing it described. Guessing from the pad is wrong less
+ * often than stale state is, and is wrong in a way one click on a pip corrects.
+ */
+export function manaToRemove(produces: ManaColor[], pad: Record<ManaColor, number>): ManaColor | null {
+  return produces.find((color) => pad[color] > 0) ?? null;
 }

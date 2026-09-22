@@ -64,11 +64,15 @@ ends whoever is active, not you. That dialog is the app's own (`ConfirmDialog.ts
 `window.confirm`; while it is up the keyboard shortcuts stand down so Escape and Enter belong
 to it. A
 client-local mana pad (§8.4) shares a strip above the hand with the graveyard / exile / library
-tiles: WUBRGC counters, reset at will, never synced to the server or other players. Tapping one
-of your own permanents fills it with whatever that card could add, read off its oracle text
-(`manaSources.ts`) — one symbol goes straight in, and anything that could make more than one
-asks which at the cursor (`ManaChoice.tsx`). It is deliberately approximate, and correcting it by
-hand is still a click on a pip. Multi-select (§16.2)
+tiles: WUBRGC counters, reset at will, never synced to the server or other players. It follows
+the board rather than waiting to be typed into: tapping one of your own permanents fills it with
+whatever that card could add, read off its oracle text (`manaSources.ts`) — one symbol goes
+straight in, anything that could make more than one asks which at the cursor (`ManaChoice.tsx`)
+— untapping one takes a mana back out, and "Untap all" (button or `U`) empties the pad, since
+floating mana doesn't outlive an untap step. Which colour comes back off a source that makes
+several is read off the pad (`manaToRemove`) rather than remembered per object, which would go
+stale the moment that mana was spent. It is deliberately approximate throughout, and correcting
+it by hand is still one click on a pip. Multi-select (§16.2)
 covers the doc's two stated use cases — "tap five lands" and "sacrifice all my tokens" — via
 shift-click on any battlefield object, a selection bar with Tap/Untap/To graveyard/Clear, and
 Escape to clear; drag-box selection wasn't built since shift-click already satisfies the
