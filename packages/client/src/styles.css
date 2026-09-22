@@ -393,6 +393,10 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .vital.lethal { background: #5a1e1e; color: #ffc9c9; border-color: #8a3030; }
 .vital-symbol { font-size: 0.9rem; }
 .vital-count { min-width: 1.6rem; text-align: center; font-weight: 600; font-size: 1.1rem; }
+/* Life's own number is also the button that sets it by any amount, so it has to opt out of the
+   round 1.7rem glyph shape the pill's −/+ buttons take from the rule above. */
+button.vital-count { width: auto; height: auto; padding: 0 0.15rem; border-radius: var(--radius); color: inherit; font-family: inherit; }
+button.vital-count:hover { background: rgba(255, 255, 255, 0.09); }
 /* The commander-damage pill is itself the button that opens the list, so it takes the pill
    styling a <button> would otherwise fight. */
 .damage-menu { position: relative; }

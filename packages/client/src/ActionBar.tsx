@@ -221,7 +221,12 @@ export function VitalsPad({
     <div className="vitals-pad">
       <span className={`vital ${isLethalLife(player.life) ? 'lethal' : ''}`}>
         <b className="vital-symbol">❤</b>
-        <span className="vital-count">{player.life}</span>
+        {/* The number is the button for any jump bigger than one. As a loose "±N…" beside the
+            pill it read as a third vital; inside the pill it is plainly life's own control, and
+            it is the thing you are already looking at when you need to change it by six. */}
+        <button className="vital-count" title="Set your life by any amount" onClick={() => setAdjusting(true)}>
+          {player.life}
+        </button>
         <button title="Shortcut: −" onClick={() => onLifeDelta(-1)}>
           −
         </button>
@@ -229,10 +234,6 @@ export function VitalsPad({
           +
         </button>
       </span>
-
-      <button className="btn btn-ghost" onClick={() => setAdjusting(true)}>
-        ±N…
-      </button>
 
       <span className={`vital ${isLethalPoison(poison) ? 'lethal' : ''}`}>
         <b className="vital-symbol">☠</b>
