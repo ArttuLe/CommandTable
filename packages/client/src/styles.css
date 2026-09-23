@@ -193,15 +193,17 @@ input[type='checkbox'] { accent-color: var(--accent); }
    only the same point while every board is exactly as tall as every other — the moment one mat
    outgrew its row the life readouts drifted off the seam and onto a board.
    The track is sized to hold the readouts and little else — whatever it has spare becomes a
-   moat between the mats and the boxes, since the crossroads centres itself in the track. Two
-   130px boxes plus the column gap need ~300px across; two rows of a now button-less readout,
-   plus the seam between them, ~225px down even when the badges wrap. */
+   moat between the mats and the boxes, since the crossroads centres itself in the track, so
+   these numbers are the distance between a board and the life total in front of it. Two 130px
+   boxes plus the column gap need ~280px across; two rows of a button-less readout, plus the
+   seam between them, ~200px down even when the badges wrap. Both tracks are cut to just over
+   that: the readouts belong to the boards either side of them, and a moat said otherwise. */
 .mats { position: relative; display: grid; gap: 0; padding: 40px; }
-.mats.quad { grid-template-columns: 1040px 340px 1040px;
-  grid-template-rows: minmax(700px, auto) 240px minmax(700px, auto);
+.mats.quad { grid-template-columns: 1040px 300px 1040px;
+  grid-template-rows: minmax(700px, auto) 215px minmax(700px, auto);
   grid-template-areas: "top-left . top-right" ". cross ." "bottom-left . bottom-right"; }
 .mats.stacked { grid-template-columns: 1240px;
-  grid-template-rows: minmax(700px, auto) 240px minmax(700px, auto);
+  grid-template-rows: minmax(700px, auto) 215px minmax(700px, auto);
   grid-template-areas: "top" "cross" "bottom"; }
 
 /* Each mat faces its owner: column-reverse puts the header, command zone and lands against the
@@ -258,7 +260,7 @@ input[type='checkbox'] { accent-color: var(--accent); }
 /* The row gap is the seam between the two halves of the table — wider than the column gap so
    each readout still reads as belonging to the board behind it, now that nothing sits between
    them (the damage matrix that used to hold the middle row is gone; see CrossroadsHub). */
-.crossroads { grid-area: cross; place-self: center; display: grid; gap: 2rem 1.2rem; z-index: 2; }
+.crossroads { grid-area: cross; place-self: center; display: grid; gap: 1.5rem 1.2rem; z-index: 2; }
 .crossroads.quad { grid-template-areas: "top-left . top-right" "bottom-left . bottom-right"; }
 .crossroads.stacked { grid-template-areas: "top" "bottom"; }
 
