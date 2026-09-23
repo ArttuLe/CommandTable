@@ -16,6 +16,11 @@ import { WS_URL } from './api.js';
 
 const REJOIN_TOKEN_KEY = 'command-table-rejoin-token';
 const ROOM_ID_KEY = 'command-table-room-id';
+const SECRET_KEY = 'command-table-secret';
+
+export function storedSecret(): string {
+  return sessionStorage.getItem(SECRET_KEY) ?? '';
+}
 
 interface DeckResult {
   warnings: DeckWarningKind[];
@@ -40,9 +45,10 @@ interface Store {
   errorMessage: string | null;
   pendingUndoRequest: UndoRequest | null;
 
-  join(roomId: string, displayName: string): void;
+  join(roomId: string, displayName: string, secret: string): void;
   send(message: ClientMessage): void;
   act(action: Action): void;
+  showError(message: string): void;
   dismissError(): void;
 }
 
@@ -60,7 +66,7 @@ export const useStore = create<Store>((set, get) => ({
   errorMessage: null,
   pendingUndoRequest: null,
 
-  join(roomId, displayName) {
+  join(roomId, displayName, secret) {
     const ws = new WebSocket(WS_URL);
     const rejoinToken = sessionStorage.getItem(REJOIN_TOKEN_KEY) ?? undefined;
     const knownRoomId = sessionStorage.getItem(ROOM_ID_KEY);
@@ -68,7 +74,7 @@ export const useStore = create<Store>((set, get) => ({
 
     ws.onopen = () => {
       set({ connected: true });
-      ws.send(JSON.stringify({ t: 'join', roomId, displayName, rejoinToken: rejoining ? rejoinToken : undefined }));
+      ws.send(JSON.stringify({ t: 'join', roomId, displayName, secret, rejoinToken: rejoining ? rejoinToken : undefined }));
     };
 
     ws.onclose = () => set({ connected: false });
@@ -79,6 +85,7 @@ export const useStore = create<Store>((set, get) => ({
         case 'joined':
           sessionStorage.setItem(REJOIN_TOKEN_KEY, msg.rejoinToken);
           sessionStorage.setItem(ROOM_ID_KEY, roomId);
+          sessionStorage.setItem(SECRET_KEY, secret);
           set({ roomId, playerId: msg.playerId, roomState: msg.roomState });
           break;
         case 'room':
@@ -111,6 +118,10 @@ export const useStore = create<Store>((set, get) => ({
 
   act(action) {
     get().send({ t: 'action', action, clientSeq: nextClientSeq++ });
+  },
+
+  showError(message) {
+    set({ errorMessage: message });
   },
 
   dismissError() {

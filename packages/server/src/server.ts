@@ -15,9 +15,11 @@ import { applyAction } from './actionApplier.js';
 import { projectFor } from './projection.js';
 import { TableHistory } from './tableHistory.js';
 import { applyUndo } from './undo.js';
+import { checkSecret, resolveHostSecret } from './hostSecret.js';
 
 const PORT = Number(process.env.PORT ?? 8080);
 const DB_PATH = process.env.CARD_DB_PATH ?? './data/cards.sqlite3';
+const HOST_SECRET = resolveHostSecret(process.env);
 
 const cardIndex = new CardIndex(new Database(DB_PATH, { readonly: true }));
 const roomManager = new RoomManager();
@@ -81,6 +83,10 @@ function unregisterSocket(roomId: RoomId, playerId: PlayerId, socket: WebSocket)
 function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMessage): void {
   switch (raw.t) {
     case 'join': {
+      if (!checkSecret(HOST_SECRET, raw.secret)) {
+        send(socket, { t: 'error', message: 'wrong passphrase' });
+        return;
+      }
       const room = roomManager.getRoom(raw.roomId);
       if (!room) {
         send(socket, { t: 'error', message: 'room not found' });
@@ -267,11 +273,25 @@ function requireRoom(socket: WebSocket, state: ConnectionState): Room | undefine
 
 const httpServer = createServer((req, res) => {
   // Permissive CORS: per design doc §2 this is a private, non-commercial, known-friend-group
-  // tool with no auth anywhere else in the stack either — locking this down buys no real
-  // protection while making the dev client (a separate Vite origin) fail every fetch.
+  // tool, and the client is served from a different origin (Vite's port) than this one, on a
+  // hostname that varies with whoever is hosting. An origin allowlist can't be written down
+  // ahead of time; the passphrase below is what actually gates access.
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Host-Secret');
+
+  // The passphrase header makes room creation a non-simple request, so the browser preflights it.
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
 
   if (req.method === 'POST' && req.url === '/api/rooms') {
+    if (!checkSecret(HOST_SECRET, req.headers['x-host-secret'] as string | undefined)) {
+      res.writeHead(403);
+      res.end();
+      return;
+    }
     const room = roomManager.createRoom();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ roomId: room.roomId }));
@@ -325,4 +345,5 @@ wss.on('connection', (socket) => {
 
 httpServer.listen(PORT, () => {
   console.log(`Command Table server listening on :${PORT}`);
+  console.log(`Passphrase: ${HOST_SECRET}  (share it with your table; set HOST_SECRET to choose your own)`);
 });
