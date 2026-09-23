@@ -167,7 +167,9 @@ only way to tell was to read the log — and, before the host starts the game, t
 in its place. Below it the plane, with the chat and log rails either side of it. Along the
 bottom, in fixed chrome at a constant size no matter how far the table is zoomed out: your mana
 pad, the three actions you take every turn (Draw / Untap all / **Pass turn**, plus a "More ⋯"
-popover holding the ten you take a few times a game), your hand, and Graveyard / Exile / Library
+popover holding the ten you take a few times a game — the settings gear's "show every action"
+lays those ten out as a grid in the flank the hand was already holding empty, for players who
+would rather not click through a menu for Shuffle), your hand, and Graveyard / Exile / Library
 as buttons that open their contents as a card grid. Card size is one knob — `--card-w`/`--card-h`
 in `:root`, currently 156×218px — which the zone heights, the hand's height, its fan overlap and
 the floating bars' offsets all derive from, so legibility is tuned in one place rather than six.
