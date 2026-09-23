@@ -26,7 +26,8 @@ const TONES: Record<string, LabelTone> = {
   deathtouch: 'black',
   menace: 'black',
 
-  // Counters that were only ever a word plus a number, moved here where the word is the point.
+  // Counters that were only ever a word plus a number, moved here where the word is the point
+  // (see also loyalty, below).
   stun: 'blue',
   shield: 'white',
 
@@ -37,9 +38,11 @@ const TONES: Record<string, LabelTone> = {
   reach: 'green',
 
   // Not keywords — table state someone has to remember between turns, which is exactly what a
-  // marker is for.
+  // marker is for. Loyalty is here because the number is the nameless counter's job now; the
+  // word is all that was left of it.
   monarch: 'gold',
   initiative: 'gold',
+  loyalty: 'gold',
 };
 
 /** What to offer in the picker, in the order it reads best — grouped by tone, not alphabetised. */
@@ -63,6 +66,7 @@ export const LABEL_PRESETS: string[] = [
   'reach',
   'monarch',
   'initiative',
+  'loyalty',
 ];
 
 /** Case and stray spaces are the player's business, not the pill's. */

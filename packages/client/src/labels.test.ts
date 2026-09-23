@@ -14,6 +14,11 @@ describe('labelTone', () => {
     expect(labelTone('  FIRST STRIKE  ')).toBe('white');
   });
 
+  it('colours loyalty like the other table state that carries a number', () => {
+    expect(labelTone('loyalty')).toBe('gold');
+    expect(LABEL_PRESETS).toContain('loyalty');
+  });
+
   it('falls back to neutral for anything the table invented', () => {
     expect(labelTone('goaded by Alice')).toBe('neutral');
     expect(labelTone('')).toBe('neutral');

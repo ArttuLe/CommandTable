@@ -7,9 +7,8 @@ describe('counterKind', () => {
     expect(counterKind('-1/-1')).toBe('debuff');
   });
 
-  it('recognises loyalty however it was typed into the prompt', () => {
-    expect(counterKind('loyalty')).toBe('loyalty');
-    expect(counterKind('Loyalty')).toBe('loyalty');
+  it('leaves the nameless counter neutral, like any other name', () => {
+    expect(counterKind('counter')).toBe('other');
   });
 
   it('falls back to neutral for the long tail of counter names', () => {
@@ -29,8 +28,8 @@ describe('counterBadgeText', () => {
     expect(counterBadgeText('-1/-1', 1)).toBe('-1/-1');
   });
 
-  it('keeps loyalty a bare number — it is a total, not a modifier', () => {
-    expect(counterBadgeText('loyalty', 5)).toBe('5');
+  it('keeps the nameless counter a bare number — four zombies read as 4', () => {
+    expect(counterBadgeText('counter', 4)).toBe('4');
   });
 
   it('leaves the name off the long tail too — a badge is a count, not a caption', () => {

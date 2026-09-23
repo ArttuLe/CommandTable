@@ -24,7 +24,15 @@ interface ContextMenuProps {
 }
 
 /** The items that ask a question before they act. */
-type MenuDialog = 'counter' | 'marker' | 'annotation' | 'controller' | null;
+type MenuDialog = 'marker' | 'annotation' | 'controller' | null;
+
+/**
+ * The counter with no name. Four zombie tokens are one token tile reading `4`, and that is the
+ * common case by a mile — naming a counter put a dialog in front of the first click for a word
+ * the badge never showed anyway. Anything that does need a word of its own is a label
+ * (see labels.ts).
+ */
+const GENERIC_COUNTER = 'counter';
 
 export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
   const act = useStore((s) => s.act);
@@ -73,7 +81,6 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
         players={players}
         act={act}
         onDone={onClose}
-        onBack={() => setDialog(null)}
       />
     );
   }
@@ -169,19 +176,19 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
         </button>
 
         <hr />
-        {/* A stepper each for the two counters that come up every turn. They were add-only, so
-            taking a +1/+1 back off meant opening the generic dialog and typing -1. The server
-            drops a counter that reaches zero, so "−" on the last one clears the badge. */}
+        {/* Three steppers, always there, none of them behind a dialog: the two counters that come
+            up every turn, and the nameless one that counts whatever this card is standing in for.
+            The server drops a counter that reaches zero, so "−" on the last one clears the badge. */}
         <CounterStepper counterKey="+1/+1" obj={obj} act={act} />
         <CounterStepper counterKey="-1/-1" obj={obj} act={act} />
-        {/* Everything else the object is currently carrying, so any counter can be taken off
-            where it is read — the same courtesy the labels below already had. */}
+        <CounterStepper counterKey={GENERIC_COUNTER} label="Counter" obj={obj} act={act} />
+        {/* Anything else the object is still carrying — a named counter from before there was a
+            nameless one — so it can still be taken off where it is read. */}
         {Object.keys(live.counters)
-          .filter((key) => key !== '+1/+1' && key !== '-1/-1')
+          .filter((key) => key !== '+1/+1' && key !== '-1/-1' && key !== GENERIC_COUNTER)
           .map((key) => (
             <CounterStepper key={key} counterKey={key} obj={obj} act={act} />
           ))}
-        <button onClick={() => setDialog('counter')}>Add counter…</button>
 
         {live.markers.filter(isLabelMarker).map((marker) => (
           <button key={marker} onClick={() => run(() => act({ t: 'CLEAR_MARKER', objectId: obj.id, marker }))}>
@@ -206,63 +213,9 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
 }
 
 /**
- * Offered first in the counter picker; the catalog still takes anything (§8.2).
- *
- * The three numbers a player actually counts. Stun, shield and the rest used to be here too, but
- * a counter badge is a bare count now — one of those reading "1" says nothing on its own, and as
- * a named pill it is exactly a label (see LABEL_PRESETS).
- */
-const COMMON_COUNTERS = ['+1/+1', '-1/-1', 'loyalty'];
-
-/**
- * Pick which counter, and nothing else. The first one goes straight on, and from then on the
- * counter has a stepper row in the menu like +1/+1 does — so "how many" is answered by clicking
- * + until the number is right, which is also how a count that keeps changing gets maintained.
- *
- * That count is the point of a freeform counter: four zombie tokens are one token with a
- * `zombies 4` on it, not four tiles to move around the board one at a time.
- */
-function PickCounter({ onSubmit, onCancel }: { onSubmit: (key: string) => void; onCancel: () => void }) {
-  const [custom, setCustom] = useState(false);
-
-  if (custom) {
-    return (
-      <TextDialog
-        title="Add counter"
-        label="Counter name"
-        placeholder="zombies, charge, oil…"
-        submitLabel="Add"
-        onSubmit={onSubmit}
-        onCancel={onCancel}
-      />
-    );
-  }
-
-  return (
-    <Dialog title="Add counter" onCancel={onCancel}>
-      <div className="dialog-choices">
-        {COMMON_COUNTERS.map((preset) => (
-          <button key={preset} className="btn" onClick={() => onSubmit(preset)}>
-            {preset}
-          </button>
-        ))}
-      </div>
-      <div className="dialog-actions">
-        <button type="button" className="btn btn-ghost" onClick={() => setCustom(true)}>
-          Custom…
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    </Dialog>
-  );
-}
-
-/**
- * The label picker. Same idea as the counter one, minus the "how many" — a label is on or off —
- * and with the pills drawn in the colour they will have on the card, so the list doubles as the
- * legend for what you are about to see (see labels.ts).
+ * The label picker. A label is on or off, so there is no "how many" to ask — and the pills are
+ * drawn in the colour they will have on the card, so the list doubles as the legend for what you
+ * are about to see (see labels.ts).
  */
 function PickLabel({ onSubmit, onCancel }: { onSubmit: (marker: string) => void; onCancel: () => void }) {
   const [custom, setCustom] = useState(false);
@@ -309,10 +262,13 @@ function PickLabel({ onSubmit, onCancel }: { onSubmit: (marker: string) => void;
  */
 function CounterStepper({
   counterKey,
+  label = counterKey,
   obj,
   act,
 }: {
   counterKey: string;
+  /** What the row reads, when the key itself isn't it — the nameless counter says "Counter". */
+  label?: string;
   obj: ProjectedObject;
   act: (action: Action) => void;
 }) {
@@ -324,13 +280,13 @@ function CounterStepper({
 
   return (
     <div className="menu-stepper">
-      <span className="menu-stepper-label">{counterKey}</span>
+      <span className="menu-stepper-label">{label}</span>
       {/* Nothing to take away at zero — and the server would ignore it anyway. */}
-      <button onClick={() => bump(-1)} disabled={value === 0} title={`Remove a ${counterKey} counter`}>
+      <button onClick={() => bump(-1)} disabled={value === 0} title={`Remove a ${label} counter`}>
         −
       </button>
       <span className="menu-stepper-value">{value}</span>
-      <button onClick={() => bump(1)} title={`Add a ${counterKey} counter`}>
+      <button onClick={() => bump(1)} title={`Add a ${label} counter`}>
         +
       </button>
     </div>
@@ -344,9 +300,8 @@ function CounterStepper({
  * Rendered *instead of* the menu rather than beside it: the menu's backdrop would otherwise sit
  * between the dialog and the table, and one click would close both.
  *
- * `onDone` puts the menu away, which is what most of these want — you moved the object, or named
- * its new controller, and there is nothing left to say. `onBack` returns to the menu instead, for
- * the counter picker, whose whole point is the stepper waiting on the other side of it.
+ * `onDone` puts the menu away, which is what all of these want — you moved the object, or named
+ * its new controller, and there is nothing left to say.
  */
 function MenuDialogs({
   which,
@@ -354,14 +309,12 @@ function MenuDialogs({
   players,
   act,
   onDone,
-  onBack,
 }: {
   which: Exclude<MenuDialog, null>;
   obj: ProjectedObject;
   players: PlayerState[];
   act: (action: Action) => void;
   onDone: () => void;
-  onBack: () => void;
 }) {
   const submit = (action: Action) => {
     act(action);
@@ -369,20 +322,6 @@ function MenuDialogs({
   };
 
   switch (which) {
-    case 'counter':
-      // Name only, then straight back to the menu, where the new counter now has the same
-      // stepper +1/+1 has. Asking "how many?" as a second dialog meant a count that changes
-      // every turn was a two-dialog trip each time; one click on + is the whole gesture.
-      return (
-        <PickCounter
-          onSubmit={(key) => {
-            act({ t: 'SET_COUNTER', objectId: obj.id, key, update: { mode: 'delta', amount: 1 } });
-            onBack();
-          }}
-          onCancel={onBack}
-        />
-      );
-
     case 'marker':
       return (
         <PickLabel

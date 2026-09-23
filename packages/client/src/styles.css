@@ -396,7 +396,6 @@ input[type='checkbox'] { accent-color: var(--accent); }
 }
 .counter-buff { background: #2f9e5e; }
 .counter-debuff { background: var(--danger); }
-.counter-loyalty { background: #b07d16; }
 .counter-other { background: rgba(18, 20, 25, 0.92); }
 /* Buff/debuff are the only badges with more than a number in them — "+3/+3" at 0.8rem overran
    the tile. Everything else is a bare count and keeps the larger type. */

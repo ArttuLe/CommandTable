@@ -39,8 +39,10 @@ TypeScript + Vite + Zustand, per §4) that now covers most of the action catalog
 headline ones. Beyond click-to-play/click-to-tap: a right-click context menu on any object
 (§16.2 — tap/untap, mark as attacking, transform, turn face down or up — one toggle, and the
 tile draws a CSS card back so the controller, who is allowed to see the card, can still tell it
-is face down — move to any zone, declare a block or a spell target, step counters up and down,
-add or remove a label, set an annotation, change controller, duplicate a token;
+is face down — move to any zone, declare a block or a spell target, step counters up and down
+(three steppers, none behind a dialog: +1/+1, -1/-1, and a nameless `Counter` — four zombie
+tokens are one tile reading `4`, and anything that needs a word of its own is a label rather
+than a counter), add or remove a label, set an annotation, change controller, duplicate a token;
 the menu flips up or left when it would otherwise run off the window — see `menuPlacement.ts`),
 search library + peek/scry the top N (both open the hand dock's Library popover on the spot, since
 flipping card visibility server-side is otherwise invisible; each revealed card carries
