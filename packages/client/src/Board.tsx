@@ -1,7 +1,8 @@
-import { isRedacted, type GameObject, type PlayerState, type ProjectedObject } from '@command-table/common';
+import { blockMarker, isRedacted, targetMarker, type GameObject, type PlayerState, type ProjectedObject } from '@command-table/common';
 import { CardTile } from './CardTile.js';
 import { useCards } from './useCard.js';
 import { useUiStore } from './uiStore.js';
+import { useStore } from './store.js';
 import { ZONES, groupByZone, typeLineOf } from './battlefieldZones.js';
 import { producedMana } from './manaSources.js';
 import type { ManaColor } from './uiStore.js';
@@ -147,13 +148,35 @@ function BattlefieldSlot({
 }) {
   const selected = useUiStore((s) => s.selectedIds.has(obj.id));
   const toggleSelected = useUiStore((s) => s.toggleSelected);
+  const pointing = useUiStore((s) => s.pointing);
+  const cancelPointing = useUiStore((s) => s.cancelPointing);
+  const act = useStore((s) => s.act);
+
+  // While "Target…" or "Blocking…" is armed, the next click points the arrow instead of tapping
+  // the permanent. Which marker it writes is the only difference between the two modes.
+  function onClick(e: React.MouseEvent) {
+    if (pointing) {
+      // Pointing at yourself is the gesture for "never mind", and avoids an arrow with no length.
+      if (pointing.fromId !== obj.id) {
+        const marker = pointing.kind === 'block' ? blockMarker(obj.id) : targetMarker(obj.id);
+        act({ t: 'SET_MARKER', objectId: pointing.fromId, marker });
+      }
+      cancelPointing();
+      return;
+    }
+    if (e.shiftKey) toggleSelected(obj.id);
+    else onTapToggle(obj, produces, e);
+  }
 
   return (
     <CardTile
       obj={obj}
       selected={selected}
-      onClick={(e) => (e.shiftKey ? toggleSelected(obj.id) : onTapToggle(obj, produces, e))}
+      onClick={onClick}
       onContextMenu={onContextMenu}
+      // Only on the battlefield: a label matters where the permanent is, and the zone popovers
+      // are for reading a pile, not editing it.
+      onRemoveLabel={(marker) => act({ t: 'CLEAR_MARKER', objectId: obj.id, marker })}
     />
   );
 }

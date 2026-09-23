@@ -1,10 +1,18 @@
 // §8.1 object actions (Phase 3), continuing from MOVE_OBJECT in actionApplier.ts.
 
 import { randomUUID } from 'node:crypto';
-import type { Action, GameObject, PlayerId, TableState } from '@command-table/common';
+import {
+  ATTACKING_MARKER,
+  parseBlockMarker,
+  type Action,
+  type GameObject,
+  type PlayerId,
+  type TableState,
+} from '@command-table/common';
 import {
   applyCounterUpdate,
   defaultVisibilityFor,
+  markersOnArrival,
   err,
   ok,
   requireObject,
@@ -49,7 +57,16 @@ export function setCounter(state: TableState, action: Extract<Action, { t: 'SET_
   const existing = requireObject(state, action.objectId);
   if (!existing) return err(`no such object: ${action.objectId}`);
   const value = applyCounterUpdate(existing.counters[action.key] ?? 0, action.update);
-  return ok(withObject(state, { ...existing, counters: { ...existing.counters, [action.key]: value } }));
+
+  // A counter at zero is a counter that isn't there. Keeping the key meant a removed +1/+1 left
+  // a `0` badge sitting on the tile forever, since the client draws a badge per key. Removing
+  // more than are present clears it rather than going negative — no counter has a negative
+  // count, and the alternative is a badge reading "-3 stun".
+  const counters = { ...existing.counters };
+  if (value > 0) counters[action.key] = value;
+  else delete counters[action.key];
+
+  return ok(withObject(state, { ...existing, counters }));
 }
 
 export function attach(state: TableState, action: Extract<Action, { t: 'ATTACH' }>): ApplyResult {
@@ -88,13 +105,45 @@ export function clearAllMarkers(state: TableState): ApplyResult {
   return ok({ ...next, revision: next.revision + 1 });
 }
 
-// Shared with PASS_TURN's attacking sweep — doesn't bump revision itself so the caller can fold
-// it into one action's single bump, like untapControlledBy above.
-export function clearMarkerFromAll(state: TableState, marker: string): TableState {
+// Shared with PASS_TURN's combat sweep — doesn't bump revision itself so the caller can fold it
+// into one action's single bump, like untapControlledBy above. Takes a predicate rather than a
+// literal marker because block and target markers carry an id in the string (see markers.ts), so
+// there is no one string to match.
+export function clearMarkersFromAll(state: TableState, matches: (marker: string) => boolean): TableState {
   let next = state;
   for (const obj of Object.values(state.objects)) {
-    if (obj.markers.includes(marker)) {
+    if (obj.markers.some(matches)) {
+      next = withObject(next, { ...obj, markers: obj.markers.filter((m) => !matches(m)) }, false);
+    }
+  }
+  return next;
+}
+
+/** The same, for one player's permanents — summoning sickness wears off per player, not table-wide. */
+export function clearMarkerFromControlledBy(state: TableState, playerId: PlayerId, marker: string): TableState {
+  let next = state;
+  for (const obj of Object.values(state.objects)) {
+    if (obj.controllerId === playerId && obj.markers.includes(marker)) {
       next = withObject(next, { ...obj, markers: obj.markers.filter((m) => m !== marker) }, false);
+    }
+  }
+  return next;
+}
+
+/**
+ * Taps everything that fought this turn, as the turn ends.
+ *
+ * A creature that attacked or blocked is tapped by the time the turn is over, and doing it by
+ * hand for every combatant was the most repetitive click in a game of Commander. Anything already
+ * untapped by its controller — vigilance, an untap effect — is left alone rather than re-tapped:
+ * nothing here enforces rules (§1.1), so a player's own correction has to win.
+ */
+export function tapCombatants(state: TableState): TableState {
+  let next = state;
+  for (const obj of Object.values(state.objects)) {
+    if (obj.tapped || !('playerId' in obj.zone) || obj.zone.zone !== 'battlefield') continue;
+    if (obj.markers.some((m) => m === ATTACKING_MARKER || parseBlockMarker(m))) {
+      next = withObject(next, { ...obj, tapped: true }, false);
     }
   }
   return next;
@@ -156,7 +205,8 @@ export function createToken(state: TableState, action: Extract<Action, { t: 'CRE
       counters: {},
       attachedTo: null,
       annotation: null,
-      markers: [],
+      // A token made onto the battlefield is as summoning-sick as a creature cast onto it.
+      markers: markersOnArrival(action.zone),
     };
     next = withObject(next, obj, false);
   }
@@ -187,7 +237,7 @@ export function createCopy(state: TableState, action: Extract<Action, { t: 'CREA
     counters: {},
     attachedTo: null,
     annotation: null,
-    markers: [],
+    markers: markersOnArrival(action.zone),
   };
   return ok(withObject(state, copy));
 }

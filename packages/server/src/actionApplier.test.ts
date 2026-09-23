@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from './actionApplier.js';
-import type { GameObject, TableState } from '@command-table/common';
+import { SUMMONING_SICK_MARKER, blockMarker, targetMarker, type GameObject, type TableState } from '@command-table/common';
 
 const ALICE = 'alice';
 const BOB = 'bob';
@@ -31,13 +31,14 @@ function makeState(objects: GameObject[]): TableState {
     roomId: 'ROOM1',
     objects: Object.fromEntries(objects.map((o) => [o.id, o])),
     players: [
-      { id: ALICE, displayName: 'Alice', seat: 0, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
-      { id: BOB, displayName: 'Bob', seat: 1, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
+      { id: ALICE, displayName: 'Alice', seat: 0, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active', keptHand: false },
+      { id: BOB, displayName: 'Bob', seat: 1, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active', keptHand: false },
     ],
     turn: { turnNumber: 1, activePlayerId: ALICE, phase: 'main' },
     log: [],
     revision: 0,
     createdAt: 0,
+    setupComplete: true,
   };
 }
 
@@ -157,6 +158,36 @@ describe('applyAction: MOVE_OBJECT treats a zone change as a new object', () => 
       flipped: false,
       currentFace: 0,
     });
+  });
+
+  it('marks a permanent summoning-sick as it arrives on a battlefield', () => {
+    const state = makeState([card({ id: 'c1', zone: { playerId: ALICE, zone: 'hand' } })]);
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'c1', toZone: { playerId: ALICE, zone: 'battlefield' } });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['c1'].markers).toEqual([SUMMONING_SICK_MARKER]);
+  });
+
+  it('does not mark anything arriving anywhere else', () => {
+    const state = makeState([card({ id: 'c1', zone: { playerId: ALICE, zone: 'battlefield' } })]);
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'c1', toZone: { playerId: ALICE, zone: 'graveyard' } });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['c1'].markers).toEqual([]);
+  });
+
+  it('leaves markers alone when the object never left its zone', () => {
+    // Reordering a library is a MOVE_OBJECT that isn't a zone change, so nothing is reset.
+    const state = makeState([card({ id: 'c1', zone: { playerId: ALICE, zone: 'library' }, markers: ['flying'] })]);
+    const result = applyAction(state, {
+      t: 'MOVE_OBJECT',
+      objectId: 'c1',
+      toZone: { playerId: ALICE, zone: 'library' },
+      toPosition: 3,
+    });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['c1'].markers).toEqual(['flying']);
   });
 
   it('returns a stolen permanent to its owner when it leaves the battlefield', () => {
@@ -285,7 +316,7 @@ describe('applyAction: PASS_TURN', () => {
   it('skips eliminated or conceded players', () => {
     const state = makeState([]);
     state.players[1].status = 'eliminated';
-    state.players.push({ id: 'carol', displayName: 'Carol', seat: 2, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' });
+    state.players.push({ id: 'carol', displayName: 'Carol', seat: 2, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active', keptHand: false });
 
     const result = applyAction(state, { t: 'PASS_TURN' });
     if (!result.ok) throw new Error('unreachable');
@@ -313,6 +344,58 @@ describe('applyAction: PASS_TURN', () => {
     if (!result.ok) throw new Error('unreachable');
     expect(result.state.objects['attacker'].markers).toEqual([]);
     expect(result.state.objects['goaded'].markers).toEqual(['goaded']);
+  });
+
+  it('clears block and target markers along with the attackers', () => {
+    const state = makeState([
+      card({ id: 'blocker', zone: { playerId: BOB, zone: 'battlefield' }, markers: [blockMarker('attacker'), 'flying'] }),
+      card({ id: 'spell', zone: { zone: 'stack' }, markers: [targetMarker('blocker')] }),
+    ]);
+    const result = applyAction(state, { t: 'PASS_TURN' });
+
+    if (!result.ok) throw new Error('unreachable');
+    // The label survives: it describes the card, not the turn.
+    expect(result.state.objects['blocker'].markers).toEqual(['flying']);
+    expect(result.state.objects['spell'].markers).toEqual([]);
+  });
+
+  it('taps whatever fought, since a creature that attacked or blocked is tapped by end of turn', () => {
+    const state = makeState([
+      card({ id: 'attacker', controllerId: ALICE, zone: { playerId: ALICE, zone: 'battlefield' }, markers: ['attacking'] }),
+      card({ id: 'blocker', controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' }, markers: [blockMarker('attacker')] }),
+      card({ id: 'bystander', controllerId: ALICE, zone: { playerId: ALICE, zone: 'battlefield' } }),
+    ]);
+    const result = applyAction(state, { t: 'PASS_TURN' });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['attacker'].tapped).toBe(true);
+    // Bob is the incoming player, so his untap step runs after the tap — a creature that blocked
+    // on someone else's turn is untapped again by the time his own turn starts.
+    expect(result.state.objects['blocker'].tapped).toBe(false);
+    expect(result.state.objects['bystander'].tapped).toBe(false);
+  });
+
+  it('leaves a vigilant attacker untapped if the player already untapped it', () => {
+    // Nothing here enforces rules (§1.1) — tapping is a convenience, and a player who says a
+    // creature has vigilance just untaps it. What must not happen is the tap coming back.
+    const state = makeState([
+      card({ id: 'attacker', controllerId: ALICE, zone: { playerId: ALICE, zone: 'battlefield' }, markers: ['attacking'], tapped: true }),
+    ]);
+    const result = applyAction(state, { t: 'PASS_TURN' });
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['attacker'].tapped).toBe(true);
+  });
+
+  it('wakes up the incoming player\'s summoning-sick permanents, and nobody else\'s', () => {
+    const state = makeState([
+      card({ id: 'bobsNew', controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' }, markers: [SUMMONING_SICK_MARKER, 'flying'] }),
+      card({ id: 'alicesNew', controllerId: ALICE, zone: { playerId: ALICE, zone: 'battlefield' }, markers: [SUMMONING_SICK_MARKER] }),
+    ]);
+    const result = applyAction(state, { t: 'PASS_TURN' });
+
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.state.objects['bobsNew'].markers).toEqual(['flying']);
+    expect(result.state.objects['alicesNew'].markers).toEqual([SUMMONING_SICK_MARKER]);
   });
 
   // The draw is the player's own (`D`, or the Draw button) — passing turn must not take it for

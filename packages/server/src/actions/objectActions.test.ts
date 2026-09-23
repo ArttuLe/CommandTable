@@ -31,13 +31,14 @@ function makeState(objects: GameObject[]): TableState {
     roomId: 'ROOM1',
     objects: Object.fromEntries(objects.map((o) => [o.id, o])),
     players: [
-      { id: ALICE, displayName: 'Alice', seat: 0, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
-      { id: BOB, displayName: 'Bob', seat: 1, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
+      { id: ALICE, displayName: 'Alice', seat: 0, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active', keptHand: false },
+      { id: BOB, displayName: 'Bob', seat: 1, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active', keptHand: false },
     ],
     turn: { turnNumber: 1, activePlayerId: ALICE, phase: 'main' },
     log: [],
     revision: 0,
     createdAt: 0,
+    setupComplete: true,
   };
 }
 
@@ -84,6 +85,24 @@ describe('SET_COUNTER', () => {
     const state = makeState([card({ id: 'c1' })]);
     const next = unwrap(state, { t: 'SET_COUNTER', objectId: 'c1', key: 'stun', update: { mode: 'delta', amount: 3 } });
     expect(next.objects['c1'].counters['stun']).toBe(3);
+  });
+
+  it('drops a counter that has been removed rather than leaving a zero behind', () => {
+    const state = makeState([card({ id: 'c1', counters: { '+1/+1': 2, stun: 1 } })]);
+    const next = unwrap(state, { t: 'SET_COUNTER', objectId: 'c1', key: '+1/+1', update: { mode: 'delta', amount: -2 } });
+    expect(next.objects['c1'].counters).toEqual({ stun: 1 });
+  });
+
+  it('drops it on an absolute zero too', () => {
+    const state = makeState([card({ id: 'c1', counters: { stun: 3 } })]);
+    const next = unwrap(state, { t: 'SET_COUNTER', objectId: 'c1', key: 'stun', update: { mode: 'set', amount: 0 } });
+    expect(next.objects['c1'].counters).toEqual({});
+  });
+
+  it('never goes negative — removing more than are there just clears it', () => {
+    const state = makeState([card({ id: 'c1', counters: { '+1/+1': 1 } })]);
+    const next = unwrap(state, { t: 'SET_COUNTER', objectId: 'c1', key: '+1/+1', update: { mode: 'delta', amount: -5 } });
+    expect(next.objects['c1'].counters).toEqual({});
   });
 });
 
