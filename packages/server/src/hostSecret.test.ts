@@ -31,4 +31,16 @@ describe('resolveHostSecret', () => {
   it('ignores an empty HOST_SECRET rather than leaving the table open', () => {
     expect(resolveHostSecret({ HOST_SECRET: '' })).not.toHaveLength(0);
   });
+
+  it('reuses a persisted secret when HOST_SECRET is unset, so a restart does not lock players out', () => {
+    expect(resolveHostSecret({}, 'forest3')).toBe('forest3');
+  });
+
+  it('lets an explicit HOST_SECRET override a persisted one', () => {
+    expect(resolveHostSecret({ HOST_SECRET: 'chosen' }, 'forest3')).toBe('chosen');
+  });
+
+  it('generates a secret when there is neither an env var nor a persisted one', () => {
+    expect(resolveHostSecret({}, undefined).length).toBeGreaterThan(0);
+  });
 });

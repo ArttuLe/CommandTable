@@ -13,12 +13,23 @@ import type { SeatSetup } from './tableFactory.js';
 const MAX_SEATS = 4;
 const MIN_PLAYERS_TO_START = 2;
 
-interface Seat {
+export interface Seat {
   playerId: PlayerId | null;
   displayName: string | null;
   connected: boolean;
   ready: boolean;
   resolvedDeck: ResolvedDecklist | null;
+}
+
+// What a Room needs to survive a server restart (design doc §14.5). `seats` carries the resolved
+// decklists so nobody re-pastes one, and `rejoinTokens` is the flattened token→player map —
+// without it a restored room would be visible but unrejoinable, which is worse than no snapshot.
+export interface RoomSnapshot {
+  roomId: RoomId;
+  seats: Seat[];
+  hostId: PlayerId | null;
+  started: boolean;
+  rejoinTokens: Record<string, PlayerId>;
 }
 
 export type JoinResult =
@@ -44,6 +55,18 @@ export class Room {
   join(params: { displayName: string; seat?: number; rejoinToken?: string }): JoinResult {
     if (params.rejoinToken) {
       return this.rejoin(params.rejoinToken, params.displayName);
+    }
+
+    // A rejoin token is the strong key to a seat, but it lives in one browser. Someone who lost
+    // it — different machine, cleared storage, or simply typing the room code fresh — would
+    // otherwise take a new seat and leave their old one behind as a ghost that keeps their name,
+    // ready flag and decklist, and gets dealt into the game as a phantom player. Matching on name
+    // in the lobby is weak identification, but the room is already behind a passphrase and a
+    // shared table, and the alternative is a broken game. Never after the game starts: a
+    // disconnected seat is then sacred (§14.2), so this must not become a way to take one over.
+    const reclaimable = params.seat === undefined && !this.started ? this.disconnectedSeatNamed(params.displayName) : undefined;
+    if (reclaimable !== undefined) {
+      return this.reseat(reclaimable, params.displayName);
     }
 
     const seatIndex = params.seat !== undefined ? params.seat : this.firstOpenSeat();
@@ -75,15 +98,70 @@ export class Room {
   private rejoin(rejoinToken: string, displayName: string): JoinResult {
     const playerId = this.playerIdByRejoinToken.get(rejoinToken);
     if (!playerId) {
-      return { ok: false, reason: 'invalid rejoin token' };
+      return { ok: false, reason: 'your saved seat is no longer held — join again with the same name' };
     }
     const seatIndex = this.seatIndexByPlayer.get(playerId);
     if (seatIndex === undefined) {
-      return { ok: false, reason: 'invalid rejoin token' };
+      return { ok: false, reason: 'your saved seat is no longer held — join again with the same name' };
     }
     this.seats[seatIndex].connected = true;
     this.seats[seatIndex].displayName = displayName;
     return { ok: true, playerId, seat: seatIndex, rejoinToken };
+  }
+
+  private disconnectedSeatNamed(displayName: string): number | undefined {
+    const wanted = displayName.trim().toLowerCase();
+    const index = this.seats.findIndex(
+      (s) => s.playerId !== null && !s.connected && s.displayName?.trim().toLowerCase() === wanted,
+    );
+    return index === -1 ? undefined : index;
+  }
+
+  // Gives the seat a fresh identity rather than reusing the old playerId: the returning browser
+  // has no memory of the old one, and anything still holding the old token should not keep it.
+  private reseat(seatIndex: number, displayName: string): JoinResult {
+    const seat = this.seats[seatIndex];
+    const previousId = seat.playerId;
+    const playerId = randomUUID();
+    const rejoinToken = randomUUID();
+
+    if (previousId !== null) {
+      this.seatIndexByPlayer.delete(previousId);
+      for (const [token, id] of this.playerIdByRejoinToken) {
+        if (id === previousId) this.playerIdByRejoinToken.delete(token);
+      }
+      if (this.hostId === previousId) this.hostId = playerId;
+    }
+
+    seat.playerId = playerId;
+    seat.displayName = displayName;
+    seat.connected = true;
+    this.seatIndexByPlayer.set(playerId, seatIndex);
+    this.playerIdByRejoinToken.set(rejoinToken, playerId);
+
+    return { ok: true, playerId, seat: seatIndex, rejoinToken };
+  }
+
+  // The escape hatch for whatever name matching gets wrong — someone who left for good, or came
+  // back under a different name. Only ever a disconnected seat, so it cannot evict a live player.
+  freeSeat(seatIndex: number): boolean {
+    if (seatIndex < 0 || seatIndex >= MAX_SEATS) return false;
+    const seat = this.seats[seatIndex];
+    if (seat.playerId === null || seat.connected) return false;
+
+    const freedId = seat.playerId;
+    this.seatIndexByPlayer.delete(freedId);
+    for (const [token, id] of this.playerIdByRejoinToken) {
+      if (id === freedId) this.playerIdByRejoinToken.delete(token);
+    }
+    this.seats[seatIndex] = emptySeat();
+
+    // Freeing the host's seat would leave nobody able to start the game or free anything else.
+    if (this.hostId === freedId) {
+      const heir = this.seats.find((s) => s.playerId !== null);
+      this.hostId = heir?.playerId ?? null;
+    }
+    return true;
   }
 
   private firstOpenSeat(): number | undefined {
@@ -134,6 +212,39 @@ export class Room {
       }));
   }
 
+  // Ends the game but not the room: everyone stays seated with their decklist, so the same table
+  // can immediately play again. Ready flags are cleared so the next game needs a fresh ready check
+  // rather than starting off confirmations given for the previous one.
+  endGame(): void {
+    this.started = false;
+    for (const seat of this.seats) {
+      seat.ready = false;
+    }
+  }
+
+  toSnapshot(): RoomSnapshot {
+    return {
+      roomId: this.roomId,
+      seats: this.seats,
+      hostId: this.hostId,
+      started: this.started,
+      rejoinTokens: Object.fromEntries(this.playerIdByRejoinToken),
+    };
+  }
+
+  static fromSnapshot(snapshot: RoomSnapshot): Room {
+    const room = new Room(snapshot.roomId);
+    // connected is deliberately not restored — nobody is connected to a process that just booted.
+    room.seats = snapshot.seats.map((seat) => ({ ...seat, connected: false }));
+    room.hostId = snapshot.hostId;
+    room.started = snapshot.started;
+    room.playerIdByRejoinToken = new Map(Object.entries(snapshot.rejoinTokens));
+    room.seats.forEach((seat, index) => {
+      if (seat.playerId !== null) room.seatIndexByPlayer.set(seat.playerId, index);
+    });
+    return room;
+  }
+
   private seatFor(playerId: PlayerId): Seat | undefined {
     const index = this.seatIndexByPlayer.get(playerId);
     return index === undefined ? undefined : this.seats[index];
@@ -167,6 +278,16 @@ export class RoomManager {
     const room = new Room(roomId);
     this.rooms.set(roomId, room);
     return room;
+  }
+
+  allRooms(): Iterable<Room> {
+    return this.rooms.values();
+  }
+
+  restore(snapshots: RoomSnapshot[]): void {
+    for (const snapshot of snapshots) {
+      this.rooms.set(snapshot.roomId, Room.fromSnapshot(snapshot));
+    }
   }
 
   getRoom(roomId: RoomId): Room | undefined {

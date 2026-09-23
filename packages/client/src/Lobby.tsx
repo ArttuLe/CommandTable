@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { DeckStatus, DeckWarningKind } from '@command-table/common';
+import { ConfirmDialog } from './ConfirmDialog.js';
+import { saveDecklist, storedDecklist } from './session.js';
 import { useStore } from './store.js';
 
 export function Lobby() {
@@ -7,7 +9,43 @@ export function Lobby() {
   const playerId = useStore((s) => s.playerId);
   const deckResult = useStore((s) => s.deckResult);
   const send = useStore((s) => s.send);
-  const [deckText, setDeckText] = useState('');
+  const leave = useStore((s) => s.leave);
+  const showError = useStore((s) => s.showError);
+  // Prefilled from the last deck submitted on this browser, so playing a second game after
+  // "End game" doesn't mean re-pasting a hundred lines.
+  const [deckText, setDeckText] = useState(storedDecklist);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // navigator.clipboard is only available in a secure context, and the whole point of this app is
+  // that it is served over plain http on a tailnet (playing-with-a-friend.md). The old
+  // execCommand path still works there, so it is the fallback rather than an error message.
+  async function copyRoomCode() {
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(roomState.roomId);
+      ok = true;
+    } catch {
+      const scratch = document.createElement('textarea');
+      scratch.value = roomState.roomId;
+      scratch.style.position = 'fixed';
+      scratch.style.opacity = '0';
+      document.body.appendChild(scratch);
+      scratch.select();
+      ok = document.execCommand('copy');
+      scratch.remove();
+    }
+
+    if (!ok) {
+      // The code is on screen next to this button, so failing to copy costs nothing but the
+      // convenience — say so rather than flashing a tick that didn't happen.
+      showError('Could not copy — the room code is right there to type.');
+      return;
+    }
+    // Stays ticked rather than reverting: it is a statement that the code is on your clipboard,
+    // and that stays true. A tick that vanished would just make you wonder if it worked.
+    setCopied(true);
+  }
 
   const isHost = roomState.hostId === playerId;
   const mySeat = roomState.seats.find((s) => s.playerId === playerId);
@@ -16,13 +54,39 @@ export function Lobby() {
     <div className="lobby">
       <header className="lobby-header">
         <h2>Room</h2>
-        <span className="room-code">{roomState.roomId}</span>
+        <span className="room-code">
+          {roomState.roomId}
+          <button
+            className="icon-button copy-code"
+            onClick={copyRoomCode}
+            title="Copy room code"
+            aria-label="Copy room code"
+          >
+            {copied ? '✓' : '⧉'}
+          </button>
+        </span>
         {isHost && (
           <button className="btn btn-lg btn-primary" onClick={() => send({ t: 'start' })}>
             Start game
           </button>
         )}
+        <button className="btn btn-ghost" onClick={() => setConfirmLeave(true)}>
+          Leave
+        </button>
       </header>
+
+      {confirmLeave && (
+        <ConfirmDialog
+          title="Leave the table?"
+          message="Your seat is held. You can come back with the room code and passphrase."
+          confirmLabel="Leave"
+          onConfirm={() => {
+            setConfirmLeave(false);
+            leave();
+          }}
+          onCancel={() => setConfirmLeave(false)}
+        />
+      )}
 
       <section className="panel">
         <p className="panel-title">Seats</p>
@@ -34,6 +98,7 @@ export function Lobby() {
               <th>Conn.</th>
               <th>Ready</th>
               <th>Deck</th>
+              <th />
             </tr>
           </thead>
           <tbody>
@@ -47,6 +112,20 @@ export function Lobby() {
                 <td className={seat.ready ? 'ready-yes' : ''}>{seat.playerId ? (seat.ready ? '✓' : '—') : ''}</td>
                 <td>
                   {seat.playerId && <span className={`deck-pill deck-${seat.deckStatus}`}>{deckStatusLabel(seat.deckStatus)}</span>}
+                </td>
+                <td>
+                  {/* Someone who reconnects under the same name reclaims their seat on their own,
+                      so this is only for a seat nobody is coming back to. */}
+                  {isHost && seat.playerId && !seat.connected && (
+                    <button
+                      className="seat-free"
+                      title={`Free seat ${seat.seat + 1}`}
+                      aria-label={`Free seat ${seat.seat + 1}`}
+                      onClick={() => send({ t: 'freeSeat', seat: seat.seat })}
+                    >
+                      ✕
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -66,7 +145,13 @@ export function Lobby() {
               placeholder={'Commander\n1 Atraxa, Praetors\' Voice\n\nDeck\n100 Sol Ring\n...'}
             />
           </label>
-          <button className="btn" onClick={() => send({ t: 'deck', list: deckText })}>
+          <button
+            className="btn"
+            onClick={() => {
+              saveDecklist(deckText);
+              send({ t: 'deck', list: deckText });
+            }}
+          >
             Submit deck
           </button>
 

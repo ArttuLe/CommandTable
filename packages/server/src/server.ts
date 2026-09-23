@@ -16,16 +16,44 @@ import { projectFor } from './projection.js';
 import { TableHistory } from './tableHistory.js';
 import { applyUndo } from './undo.js';
 import { checkSecret, resolveHostSecret } from './hostSecret.js';
+import { SessionStore, type SessionEntry } from './sessionStore.js';
 
 const PORT = Number(process.env.PORT ?? 8080);
 const DB_PATH = process.env.CARD_DB_PATH ?? './data/cards.sqlite3';
-const HOST_SECRET = resolveHostSecret(process.env);
+const SESSION_PATH = process.env.SESSION_PATH ?? './data/sessions.json';
 
 const cardIndex = new CardIndex(new Database(DB_PATH, { readonly: true }));
 const roomManager = new RoomManager();
 const socketsByRoom = new Map<RoomId, Map<PlayerId, WebSocket>>();
 const tablesByRoom = new Map<RoomId, TableState>();
 const historiesByRoom = new Map<RoomId, TableHistory>();
+
+// Saved games (§14.5). The callback is what gets written on every markDirty — the whole file is
+// rewritten from live state each time, so there is nothing to keep in sync by hand.
+const sessions = new SessionStore(SESSION_PATH, () => ({
+  hostSecret: HOST_SECRET,
+  entries: [...roomManager.allRooms()].map((room): SessionEntry => ({
+    room,
+    table: tablesByRoom.get(room.roomId) ?? null,
+  })),
+}));
+
+// Loading has to come before the secret is resolved: the passphrase a previous run generated is
+// saved alongside the games, and reusing it is what makes a restart invisible to the players
+// still holding it.
+const restored = sessions.load();
+const HOST_SECRET = resolveHostSecret(process.env, restored?.hostSecret);
+
+if (restored) {
+  roomManager.restore(Object.values(restored.sessions).map((s) => s.room));
+  for (const saved of Object.values(restored.sessions)) {
+    if (!saved.table) continue;
+    tablesByRoom.set(saved.room.roomId, saved.table);
+    // History starts fresh from the restore point — snapshots aren't persisted (see
+    // sessionStore.ts), so you can undo back to the restart but not past it.
+    historiesByRoom.set(saved.room.roomId, new TableHistory(saved.table));
+  }
+}
 
 // A rewind (§15.2: rolling back further, or after others have acted) needs majority consent of
 // connected players. The doc specifies the requester-facing `undoRequest` broadcast but not how
@@ -89,12 +117,14 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       }
       const room = roomManager.getRoom(raw.roomId);
       if (!room) {
-        send(socket, { t: 'error', message: 'room not found' });
+        // Tagged only when they were trying to resume: a client holding a stale token needs to
+        // clear it and start over, where someone mistyping a room code just needs the toast.
+        send(socket, { t: 'error', message: 'room not found', code: raw.rejoinToken ? 'rejoin-failed' : undefined });
         return;
       }
       const result = room.join({ displayName: raw.displayName, seat: raw.seat, rejoinToken: raw.rejoinToken });
       if (!result.ok) {
-        send(socket, { t: 'error', message: result.reason });
+        send(socket, { t: 'error', message: result.reason, code: raw.rejoinToken ? 'rejoin-failed' : undefined });
         return;
       }
       state.roomId = room.roomId;
@@ -102,6 +132,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       registerSocket(room.roomId, result.playerId, socket);
       send(socket, { t: 'joined', playerId: result.playerId, roomState: room.toState(), rejoinToken: result.rejoinToken });
       broadcastRoomState(room);
+      sessions.markDirty();
       if (tablesByRoom.has(room.roomId)) {
         send(socket, { t: 'state', state: projectFor(tablesByRoom.get(room.roomId)!, result.playerId) });
       }
@@ -116,6 +147,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       room.setResolvedDeck(state.playerId, resolved);
       send(socket, { t: 'deckResult', warnings: resolved.warnings, unresolved: resolved.unresolved });
       broadcastRoomState(room);
+      sessions.markDirty();
       return;
     }
 
@@ -124,6 +156,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       if (!room || !state.playerId) return;
       room.setReady(state.playerId, raw.ready);
       broadcastRoomState(room);
+      sessions.markDirty();
       return;
     }
 
@@ -144,6 +177,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       room.start();
       broadcastRoomState(room);
       broadcastTableState(room.roomId);
+      sessions.markDirty();
       return;
     }
 
@@ -164,6 +198,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       tablesByRoom.set(room.roomId, result.state);
       history.record(state.playerId, result.state);
       broadcastTableState(room.roomId);
+      sessions.markDirty();
       return;
     }
 
@@ -235,6 +270,48 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       return;
     }
 
+    // Ends the game, not the room. Everyone stays seated with their resolved decklist and drops
+    // back to this room's lobby, so the same table can start another game without re-entering a
+    // room code, passphrase, or decklist.
+    case 'endGame': {
+      const room = requireRoom(socket, state);
+      if (!room || !state.playerId) return;
+      if (!room.isHost(state.playerId)) {
+        send(socket, { t: 'error', message: 'only the host can end the game' });
+        return;
+      }
+      room.endGame();
+      tablesByRoom.delete(room.roomId);
+      historiesByRoom.delete(room.roomId);
+      pendingUndosByRoom.delete(room.roomId);
+      broadcastRoomState(room);
+      broadcastToRoom(room.roomId, { t: 'gameEnded' });
+      sessions.markDirty();
+      return;
+    }
+
+    // Host's escape hatch for a seat left behind by someone who is not coming back under the
+    // same name. Lobby only — mid-game a disconnected seat is sacred (§14.2).
+    case 'freeSeat': {
+      const room = requireRoom(socket, state);
+      if (!room || !state.playerId) return;
+      if (!room.isHost(state.playerId)) {
+        send(socket, { t: 'error', message: 'only the host can free a seat' });
+        return;
+      }
+      if (room.toState().started) {
+        send(socket, { t: 'error', message: 'cannot free a seat once the game has started' });
+        return;
+      }
+      if (!room.freeSeat(raw.seat)) {
+        send(socket, { t: 'error', message: 'that seat is not free to clear' });
+        return;
+      }
+      broadcastRoomState(room);
+      sessions.markDirty();
+      return;
+    }
+
     case 'ping': {
       send(socket, { t: 'pong' });
       return;
@@ -248,6 +325,7 @@ function performUndo(room: Room, current: TableState, target: TableState, actorI
   historiesByRoom.get(room.roomId)?.record(actorId, outcome.state);
   broadcastTableState(room.roomId);
   broadcastToRoom(room.roomId, { t: 'undoResolved', targetRevision: target.revision, applied: true });
+  sessions.markDirty();
 }
 
 function broadcastToRoom(roomId: RoomId, message: ServerMessage): void {
@@ -343,7 +421,19 @@ wss.on('connection', (socket) => {
   });
 });
 
+// Ctrl-C on `npm run host` shouldn't cost the last second of play.
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(signal, () => {
+    sessions.flush();
+    process.exit(0);
+  });
+}
+
 httpServer.listen(PORT, () => {
   console.log(`Command Table server listening on :${PORT}`);
+  const restoredCount = Object.keys(restored?.sessions ?? {}).length;
+  if (restoredCount > 0) {
+    console.log(`Restored ${restoredCount} saved table(s) from ${SESSION_PATH}`);
+  }
   console.log(`Passphrase: ${HOST_SECRET}  (share it with your table; set HOST_SECRET to choose your own)`);
 });

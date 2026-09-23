@@ -5,8 +5,12 @@
 import { timingSafeEqual } from 'node:crypto';
 import { generateRoomCode } from './roomCode.js';
 
-export function resolveHostSecret(env: { HOST_SECRET?: string }): string {
-  return env.HOST_SECRET || generateRoomCode();
+// `persisted` is the passphrase a previous run generated and saved (sessionStore.ts). Reusing it
+// is what lets a restart be invisible to players: a freshly generated one would be correct but
+// would lock out everyone holding the old one, defeating the point of restoring their games.
+// An explicit HOST_SECRET always wins — the host asked for that one.
+export function resolveHostSecret(env: { HOST_SECRET?: string }, persisted?: string): string {
+  return env.HOST_SECRET || persisted || generateRoomCode();
 }
 
 export function checkSecret(expected: string, provided: string | undefined): boolean {

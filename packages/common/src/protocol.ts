@@ -3,6 +3,10 @@
 // The doc specifies `undo`/`undoRequest` (§11.1, §15.2) but not how players vote on a rewind
 // that needs majority consent — it only says rewinds "apply on majority consent of connected
 // players." `undoVote` and `undoResolved` fill that gap.
+//
+// `endGame`/`gameEnded` are likewise unspecified: §14.5 gained a save file, so a table now needs
+// a way to say it is finished. It ends the game, not the room — everyone returns to that room's
+// lobby still seated, and the host can start another game.
 
 import type { PlayerId, RoomId } from './ids.js';
 import type { RoomState } from './room.js';
@@ -18,6 +22,8 @@ export type ClientMessage =
   | { t: 'action'; action: Action; clientSeq: number }
   | { t: 'undo'; targetRevision: number }
   | { t: 'undoVote'; targetRevision: number; approve: boolean }
+  | { t: 'endGame' }
+  | { t: 'freeSeat'; seat: number }
   | { t: 'ping' };
 
 export type ServerMessage =
@@ -28,5 +34,8 @@ export type ServerMessage =
   | { t: 'rejected'; clientSeq: number; reason: string }
   | { t: 'undoRequest'; requesterId: PlayerId; targetRevision: number; describes: string }
   | { t: 'undoResolved'; targetRevision: number; applied: boolean }
-  | { t: 'error'; message: string }
+  | { t: 'gameEnded' }
+  // `code` exists so the client can tell "your saved seat is gone, start over" from an ordinary
+  // toast without matching on prose. Only set where that distinction matters.
+  | { t: 'error'; message: string; code?: 'rejoin-failed' }
   | { t: 'pong' };

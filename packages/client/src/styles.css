@@ -60,7 +60,7 @@ button { font-family: inherit; }
 
 /* Text fields get the same treatment as buttons, and for the same reason: left at the browser
    default they were white boxes on a dark table, which made the lobby read as a web form. */
-input[type='text'], input:not([type]), textarea {
+input[type='text'], input[type='password'], input:not([type]), textarea {
   background: var(--surface-sunken); color: var(--text); font-family: inherit; font-size: 0.9rem;
   border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.4rem 0.55rem;
 }
@@ -91,7 +91,11 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .lobby-header .btn { margin-left: auto; }
 @media (max-width: 52rem) { .lobby { grid-template-columns: minmax(0, 1fr); } }
 
-.room-code { font-family: monospace; font-size: 1.05rem; letter-spacing: 0.14em; background: var(--surface-sunken); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.15rem 0.5rem; }
+/* inline-flex so the copy button sits inside the code's own box rather than beside it. The
+   right padding is tighter than the left to account for the button's own. */
+.room-code { display: inline-flex; align-items: center; gap: 0.35rem; font-family: monospace; font-size: 1.05rem; letter-spacing: 0.14em; background: var(--surface-sunken); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.15rem 0.25rem 0.15rem 0.5rem; }
+/* The code is letter-spaced; the glyph shouldn't inherit that or it sits off-centre. */
+.copy-code { font-size: 1.15rem; letter-spacing: normal; padding: 0 0.35rem; }
 
 .seats { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
 .seats th { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
@@ -130,6 +134,8 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .table-main { display: flex; flex: 1; min-height: 0; gap: 0.5rem; }
 
 .status-bar { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; min-height: 2rem; }
+/* Reference, not a headline: smaller and dimmer than the lobby's copy of the same code. */
+.status-bar .room-code { font-size: 0.8rem; letter-spacing: 0.1em; padding: 0.1rem 0.4rem; color: var(--text-dim); }
 .turn-pill {
   display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 600;
   padding: 0.3rem 0.8rem; border-radius: 999px;
@@ -304,7 +310,16 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .more-popover button.danger { color: #ffb4ae; }
 .more-popover button.danger:hover { background: var(--danger); color: #fff; }
 .more-popover hr { border: none; border-top: 1px solid var(--border); margin: 0.2rem 0; width: 100%; }
+.seat-free { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 0 0.3rem; font-size: 0.8rem; line-height: 1; }
+.seat-free:hover { color: var(--danger); }
+
 .popover-group { margin: 0.35rem 0.7rem 0.15rem; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
+.popover-action { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; width: 100%; padding: 0.4rem 0.7rem; background: none; border: none; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.popover-action small { color: var(--text-dim); font-size: 0.7rem; }
+.popover-action:hover { background: #343a44; }
+.popover-action.danger { color: #ffb4ae; }
+.popover-action.danger:hover { background: var(--danger); color: #fff; }
+.popover-action.danger:hover small { color: #fff; }
 
 /* A hand that outgrows the row overlaps rather than wrapping — a second row would eat the
    table's height, which is the one thing the fixed chrome must not do. */
@@ -532,6 +547,7 @@ button.vital:hover { border-color: var(--border-strong); }
 .toast-chat { border-left-color: var(--accent); }
 .toast-random { border-left-color: var(--accent-turn); }
 
+.reconnect-banner { position: fixed; top: 0.5rem; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--border); color: var(--text-dim); padding: 0.5rem 1rem; border-radius: var(--radius); z-index: 41; }
 .error-toast { position: fixed; top: 0.5rem; left: 50%; transform: translateX(-50%); background: var(--danger); color: #fff; padding: 0.5rem 1rem; border-radius: var(--radius); cursor: pointer; z-index: 40; }
 
 /* Middle of the left edge rather than the far corner: at eye level, and never under the cursor

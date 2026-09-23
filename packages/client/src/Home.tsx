@@ -31,6 +31,7 @@ export function Home() {
   return (
     <div className="home panel">
       <h1>Command Table</h1>
+
       <label>
         Your name
         <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Alice" />
