@@ -5,12 +5,41 @@
 // README.md. Actions whose text depends on the outcome rather than the input (dice, coin flips,
 // chat) supply their own text via ApplyResult.log instead of going through this table.
 
-import type { Action } from '@command-table/common';
+import type { Action, ZoneRef } from '@command-table/common';
+
+/**
+ * Where a MOVE_OBJECT put the card. The zone is the one part of a move this layer *can* name —
+ * it is on the action itself, unlike the card, which would need the CardIndex (see the note
+ * above). "a hand" rather than "their hand": a move may be someone else's, and the actor's name
+ * is already prefixed to the line.
+ */
+function moveDestination(toZone: ZoneRef, toPosition?: number): string {
+  switch (toZone.zone) {
+    case 'hand':
+      return 'to a hand';
+    case 'graveyard':
+      return 'to a graveyard';
+    case 'exile':
+      return 'to exile';
+    case 'battlefield':
+      return 'to the battlefield';
+    case 'commandZone':
+      return 'to the command zone';
+    case 'stack':
+      return 'to the stack';
+    case 'limbo':
+      return 'out of the game';
+    case 'library':
+      // Top vs. anywhere-else is the distinction that matters after a scry; the exact index is
+      // noise, since nobody can see it anyway.
+      return toPosition === 0 ? 'to the top of a library' : 'into a library';
+  }
+}
 
 export function describeAction(action: Action): string {
   switch (action.t) {
     case 'MOVE_OBJECT':
-      return 'moved a card';
+      return `moved a card ${moveDestination(action.toZone, action.toPosition)}`;
     case 'SHUFFLE_LIBRARY':
       return 'shuffled their library';
     case 'DRAW':
@@ -71,6 +100,10 @@ export function describeAction(action: Action): string {
       return 'updated commander damage';
     case 'MULLIGAN':
       return 'took a mulligan';
+    case 'KEEP_HAND':
+      return 'kept their opening hand';
+    case 'BEGIN_PLAY':
+      return 'started the game';
     case 'ROLL_DICE':
     case 'FLIP_COIN':
     case 'CONCEDE':

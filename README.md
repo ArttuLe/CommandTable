@@ -39,13 +39,14 @@ TypeScript + Vite + Zustand, per §4) that now covers most of the action catalog
 headline ones. Beyond click-to-play/click-to-tap: a right-click context menu on any object
 (§16.2 — tap/untap, mark as attacking, transform, turn face down or up — one toggle, and the
 tile draws a CSS card back so the controller, who is allowed to see the card, can still tell it
-is face down — move to any zone, add a counter
-or marker, remove an existing marker, set an annotation, change controller, duplicate a token;
+is face down — move to any zone, declare a block or a spell target, step counters up and down,
+add or remove a label, set an annotation, change controller, duplicate a token;
 the menu flips up or left when it would otherwise run off the window — see `menuPlacement.ts`),
-search library + peek top N (both open the hand dock's Library popover on the spot, since
+search library + peek/scry the top N (both open the hand dock's Library popover on the spot, since
 flipping card visibility server-side is otherwise invisible; each revealed card carries
 Hand / Play / Top / Bottom buttons, which is what makes a peek usable as a scry, and a search
-shuffles itself on the way out — see `libraryMoves.ts`), roll dice / flip a coin, create tokens
+shuffles itself on the way out — see `libraryMoves.ts`), mill N off your own library,
+roll dice / flip a coin, create tokens
 (name / type line / P / T / quantity as one form, with the type line following the name until
 you edit it — `TokenDialog.tsx`, rules in `tokenForm.ts`), and a chat box for `SAY`. Hover-zoom made the
 cut despite being "later polish" in spirit, since the doc calls it "non-negotiable" (§16.1)
@@ -68,8 +69,8 @@ tiles: WUBRGC counters, reset at will, never synced to the server or other playe
 the board rather than waiting to be typed into: tapping one of your own permanents fills it with
 whatever that card could add, read off its oracle text (`manaSources.ts`) — one symbol goes
 straight in, anything that could make more than one asks which at the cursor (`ManaChoice.tsx`)
-— untapping one takes a mana back out, and "Untap all" (button or `U`) empties the pad, since
-floating mana doesn't outlive an untap step. Which colour comes back off a source that makes
+— untapping one takes a mana back out, and both "Untap all" (button or `U`) and passing the turn
+empty the pad, since floating mana outlives neither. Which colour comes back off a source that makes
 several is read off the pad (`manaToRemove`) rather than remembered per object, which would go
 stale the moment that mana was spent. It is deliberately approximate throughout, and correcting
 it by hand is still one click on a pip. Multi-select (§16.2)
@@ -88,7 +89,10 @@ manual on purpose — see the deviation notes). Life can be adjusted by an arbit
 across all players at once (not just ±1 per player), commander damage takes the matching life
 with it, "clear all markers" is a one-click sidebar action, the two most common counter types
 (+1/+1, -1/-1) are one click from the context menu rather than two sequential prompts, and a
-token is duplicated from that same menu instead of being re-typed into the form.
+token is duplicated from that same menu instead of being re-typed into the form. Creature tokens
+print the power/toughness their creator typed in — the form collected it and then never showed
+it, so a board of 1/1s and 4/4s looked identical. Real cards don't get the badge; they print
+their own P/T on their art.
 
 A commander that lands in your graveyard or exile puts a standing offer in the status bar —
 "To command zone" or "Leave it" (`commanderPrompt.ts`, §12). It reads the table rather than
@@ -142,7 +146,9 @@ controls. The view refits only when the number of boards changes, never mid-turn
 settings gear's "follow the active player" is on, in which case each turn the plane glides to
 the new active player's mat and zooms in on it (`focusView` in `planeView.ts` frames the rect;
 the easing is a CSS transition added for the glide and removed after, so dragging stays
-frame-tight). It's off by default and panning by hand still works in between. Panning is
+frame-tight). It's off by default; middle-clicking the table does the same glide once, on
+demand, to whoever is active at that moment — captured, not tracked, so the view stays put
+afterwards. Panning by hand still works in between. Panning is
 deliberately unbounded — "Fit" is one click away, which beats edge-clamping math that fights the
 user near the borders. This is **not** WebGL or canvas, on purpose: a 4-player Commander table
 peaks at a couple of hundred card elements, and the entire pan/zoom is one CSS transform on one
@@ -155,7 +161,8 @@ seating rules in `seating.ts` — the client's first two tested modules.
 
 The screen is three bands. A slim status bar on top reports whose turn it is and nothing else —
 `TurnTracker` has shipped in every projection since Phase 2 but went unrendered until now, so the
-only way to tell was to read the log. Below it the plane, with the log rail beside it. Along the
+only way to tell was to read the log — and, before the host starts the game, the opening-hand step
+in its place. Below it the plane, with the chat and log rails either side of it. Along the
 bottom, in fixed chrome at a constant size no matter how far the table is zoomed out: your mana
 pad, the three actions you take every turn (Draw / Untap all / **Pass turn**, plus a "More ⋯"
 popover holding the ten you take a few times a game), your hand, and Graveyard / Exile / Library
@@ -176,9 +183,27 @@ on their life readout at the crossroads so it reads even when their mat is panne
 rule lives in `turnStatus.ts` behind unit tests. `TurnTracker.phase` is deliberately not shown —
 nothing mutates it (there's no `SET_PHASE` action), so it would permanently read "main".
 
-Log and chat are a collapsible right rail rather than a modal. The modal's problem wasn't where
-it sat but that nothing reached you until you opened it: a chat message or a dice roll was
-invisible until someone went looking. Collapsed, the rail is a strip with an unread count, and
+Combat is drawn rather than listed. An attacker keeps its red ring; a blocker gets an arrow to
+the attacker it is blocking, and a spell on the stack gets a dashed arrow to what it is pointed
+at. Both are declared by pointing: "Blocking…" and "Target…" arm a mode where the next card you
+click becomes the other end (clicking the card itself means "never mind"), which is the gesture
+you would make across a real table and beats picking a name out of a list.
+Each arrow takes the colour of the board it starts from — your accent, everyone else's the turn
+colour — so an opponent's blockers match their own mat instead of all combat being one red.
+The arrows are an SVG layer *inside* the pan/zoom plane, so they inherit its transform and stay
+glued to their cards through every pan and zoom with nothing to recompute; it measures the two
+tiles (`data-object-id`) and hands the boxes to `arrows.ts`, which is pure. A creature that
+arrived this turn carries a ☾ until its controller's next turn begins, and everything that
+attacked or blocked is tapped automatically when the turn is passed. All of it rides on markers —
+see the deviations section below.
+
+The log is a collapsible right rail rather than a modal, with chat as its mirror image on the
+left. The modal's problem wasn't where it sat but that nothing reached you until you opened it: a
+chat message or a dice roll was invisible until someone went looking. Splitting chat out solved
+the sequel to that: a message shared its scroll with every tap and untap at the table, so it could
+scroll out of sight between being sent and being read. Chat lines still appear in the log as well
+— §15.1 makes the log the referee, and a record with the talking cut out isn't a record — so the
+chat rail is a view of the same entries, not a second store. Collapsed, each rail is a strip with an unread count, and
 new entries pop as transient toasts in the top-right corner, clear of the rail itself (they shift
 left when it's open), newest on top. Each carries its own five-second deadline that one shared
 timer waits on, and fades out rather than vanishing. `LogEntry.kind` (`'chat' | 'random'`, absent for ordinary
@@ -221,10 +246,16 @@ packages/
             projection boundary, table history + undo
   client/   Minimal React client: Home (create/join room) → Lobby (seats, decklist, ready/start)
             → Table (a pan/zoom plane of per-player boards, the read-only crossroads life
-            readout, a collapsible log rail, and a fixed bottom band of hand + vitals + mana +
+            readout, collapsible chat and log rails either side of it, an SVG arrow overlay for
+            blocks and spell targets, and a fixed bottom band of hand + vitals + mana +
             zones + actions, wired
             straight to the WebSocket via a Zustand store)
 ```
+
+The client keeps its geometry and its rules-of-thumb in pure modules with their own tests, apart
+from the components that use them: `planeView.ts` (pan/zoom), `arrows.ts` (arrow geometry),
+`combat.ts` (reading combat off markers), `counters.ts`/`labels.ts` (how a badge reads),
+`seating.ts`, `battlefieldZones.ts`. A component measures the DOM and paints; these decide.
 
 ## Setup
 
@@ -303,6 +334,10 @@ npm test
 Vitest across all packages. `deckResolver.integration.test.ts` runs against the real ingested
 SQLite index and is skipped automatically if `npm run ingest` hasn't been run yet.
 
+Note that `npm run typecheck` covers `common` and `server` only — the root `tsconfig.json`
+references those two. The client is typechecked by its own build, so check it with
+`npx tsc -b packages/client` (or `npm run build`) before assuming a client change compiles.
+
 ## Notable deviations from the design doc
 
 - **Printing fidelity:** ingests Scryfall's *Oracle Cards* bulk file (one row per card, not per
@@ -319,6 +354,30 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
   `card_face_aliases` table so front-face lookups resolve correctly — not called out explicitly
   in the design doc's §5/§6, but required for real decks with any transform/MDFC cards, which are
   common in Commander.
+- **Blocking and targeting encoded into marker strings:** §7.3 is explicit that there is no combat
+  state in the model — "attackers and blockers are `markers` on objects" — but a blocker has to
+  say *which* attacker it is blocking for the arrows to be drawable at all.
+  Rather than add relation fields to `GameObject` and the actions to set them, the relationship
+  goes into the marker itself: `block:<attackerId>` and `target:<objectId>`, with the
+  format owned by `packages/common/src/markers.ts` and parsed nowhere else. Markers are freeform
+  by design, so this needs no new action, no protocol change, and no projection or undo work.
+- **Summoning sickness is marked by the server, filtered by the client:** `MOVE_OBJECT` and the
+  token/copy actions put a `summoning-sick` marker on anything arriving on a battlefield, and
+  `PASS_TURN` clears it from the incoming player's permanents alongside their untap. The applier
+  has no card data (it never names a card — see `actionDescriptions.ts`), so it cannot tell a
+  creature from a land and marks both; the client draws the indicator only on creatures.
+- **`PASS_TURN` also taps combatants:** anything carrying an attacking or block marker is tapped
+  as the turn ends, before the markers are swept. Already-untapped permanents are left alone, so
+  a player who untapped a vigilant attacker keeps that correction (§1.1 — nothing enforces rules).
+- **An opening-hand step the doc doesn't have:** §14.1 deals seven cards and drops straight into
+  turn 1, leaving no moment to mulligan in. `TableState.setupComplete` and `PlayerState.keptHand`
+  mark out that moment, with `KEEP_HAND` and `BEGIN_PLAY` as ordinary actions so they flow through
+  the existing log and undo. It gates nothing: the host can begin play whatever anyone has kept.
+  The mulligan itself is still the doc's redraw-seven, not the London mulligan.
+- **Ending a game un-submits every deck:** `Room.endGame` clears the resolved decklist along with
+  the ready flags, so the next game's lobby is the same blank slate as the first. The decklist
+  *text* is kept in the browser's localStorage and refilled into the box, so this costs a click,
+  not a re-paste.
 - **`PASS_TURN` pulled into Phase 2:** the doc's §17 phase list doesn't assign this action to any
   phase, but `TableState` structurally requires a `TurnTracker` (§7.3) and leaving it a field with
   no way to advance seemed worse than implementing the (one-line) mutation alongside it.
@@ -427,9 +486,12 @@ SQLite index and is skipped automatically if `npm run ingest` hasn't been run ye
   is an in-app dialog on the shared shell (`Dialog.tsx` — Escape, click-outside, and standing the
   table's keyboard shortcuts down while it is up), with four shapes above it: `ConfirmDialog`
   (pass turn, concede), `NumberDialog` (peek depth, dice sides, ±N life for yourself or the whole
-  table), `TextDialog` (marker, annotation) and the two purpose-built forms, `TokenDialog` and
-  `CounterDialog` (a counter's key and amount together, where it used to be two prompts in a row
-  with the first thrown away if you cancelled the second). "Change controller" is a list of
+  table), `TextDialog` (marker, annotation) and one purpose-built form, `TokenDialog`. Adding a
+  counter or a label is one pick from a list. A counter asks for a name and nothing else: the
+  first one goes straight on and the menu then carries a −/+ stepper for it, like `+1/+1` has, so
+  a count that changes every turn is one click rather than a trip through a dialog. That stepper
+  is also how a pile of identical tokens is kept — four zombies are one tile with a `zombies 4`
+  counter, not four tiles. "Change controller" is a list of
   players rather than a typed name, which used to fail silently when it matched nobody. The
   context menu renders its dialog *instead of* itself — its backdrop would otherwise sit between
   the dialog and the table and one click would dismiss both.

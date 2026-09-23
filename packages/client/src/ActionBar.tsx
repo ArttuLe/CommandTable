@@ -74,7 +74,7 @@ function MoreMenu({
 }) {
   const [open, setOpen] = useState(false);
   // Which of this menu's dialogs is up, if any. The menu itself closes as one opens.
-  const [dialog, setDialog] = useState<'peek' | 'token' | 'dice' | 'allLife' | 'concede' | null>(null);
+  const [dialog, setDialog] = useState<'peek' | 'mill' | 'token' | 'dice' | 'allLife' | 'concede' | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const openZone = useUiStore((s) => s.openZone);
   const setLibraryDirty = useUiStore((s) => s.setLibraryDirty);
@@ -115,7 +115,11 @@ function MoreMenu({
           >
             Search library
           </button>
-          <button onClick={run(() => setDialog('peek'))}>Peek top…</button>
+          <button onClick={run(() => setDialog('peek'))}>Peek / Scry…</button>
+          {/* `MILL` has been in the action catalog since Phase 3 with nothing calling it. Your
+              own library, like the rest of this group — mill effects are aimed at their
+              controller far more often than not, and a card is always movable by hand. */}
+          <button onClick={run(() => setDialog('mill'))}>Mill…</button>
           <button onClick={run(() => act({ t: 'MULLIGAN', playerId }))}>Mulligan</button>
 
           <hr />
@@ -138,15 +142,30 @@ function MoreMenu({
 
       {dialog === 'peek' && (
         <NumberDialog
-          title="Peek at the top of your library"
+          title="Peek / Scry the top of your library"
           label="How many cards?"
           initialValue={1}
           min={1}
-          submitLabel="Peek"
+          submitLabel="Look"
           onSubmit={(count) => {
             setDialog(null);
             act({ t: 'PEEK_TOP', playerId, count });
             lookAtLibrary('peek');
+          }}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+
+      {dialog === 'mill' && (
+        <NumberDialog
+          title="Mill"
+          label="How many cards?"
+          initialValue={1}
+          min={1}
+          submitLabel="Mill"
+          onSubmit={(count) => {
+            setDialog(null);
+            act({ t: 'MILL', playerId, count });
           }}
           onCancel={() => setDialog(null)}
         />
