@@ -174,7 +174,10 @@ as buttons that open their contents as a card grid. Card size is one knob — `-
 in `:root`, currently 156×218px — which the zone heights, the hand's height, its fan overlap and
 the floating bars' offsets all derive from, so legibility is tuned in one place rather than six.
 A hand over eight cards overlaps into a fan rather than wrapping to a second row, which would
-steal height from the table.
+steal height from the table. Hovering a card in hand lifts it clear of its neighbours the way
+every digital card game does — it is the gesture you make to read a card before deciding to play
+it, and the hand stays vertically centred against the controls beside it so it doesn't drift as
+those grow.
 
 Home and the lobby share that same token set — one `.panel` idiom, the `.btn` family, and a
 baseline for text inputs so they aren't browser-default white boxes on a dark table. The lobby is

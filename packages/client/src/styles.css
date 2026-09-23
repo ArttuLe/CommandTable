@@ -285,9 +285,23 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .hud { display: flex; flex-direction: column; gap: 0.4rem; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-top-width: 3px; border-radius: var(--radius-lg); padding: 0.5rem; }
 .hud.my-turn { border-top-color: var(--accent); }
 /* Equal flanks either side of the hand, so it sits at the true centre of the window rather
-   than centred in whatever space the action bar and the zone dock happen to leave over. */
-.hud-row { display: grid; grid-template-columns: minmax(9rem, 1fr) minmax(0, auto) minmax(9rem, 1fr); align-items: flex-start; gap: 0.75rem; }
-.hud-row .hand { justify-content: center; min-height: var(--card-h); align-content: flex-start; }
+   than centred in whatever space the action bar and the zone dock happen to leave over — and
+   centred down the row as well as across it, since the controls beside it are a grid whose
+   height depends on which of them are showing, and a hand pinned to the top edge drifted away
+   from them as that grid grew. */
+.hud-row { display: grid; grid-template-columns: minmax(9rem, 1fr) minmax(0, auto) minmax(9rem, 1fr); align-items: center; gap: 0.75rem; }
+.hud-row .hand { justify-content: center; min-height: var(--card-h); align-content: center; }
+
+/* The lift. A card in hand rises, grows and casts a shadow under the cursor, the way it does in
+   every digital card game — worth the four lines because the hand is the one place on the table
+   where you point at a card to read it before deciding to play it, and the movement is what says
+   "this one" while the zoom preview catches up. It leaves the row rather than pushing its
+   neighbours: a hand that reflowed on hover would move the card out from under the cursor. */
+.hud-row .hand .card-tile { transition: transform 0.14s ease-out, box-shadow 0.14s ease-out; }
+.hud-row .hand .card-tile:hover {
+  transform: translateY(-18px) scale(1.06); z-index: 3;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.55);
+}
 /* Your vitals on the left, mana in the middle, your zones on the right, sharing one strip above
    the hand. Same three-column grid as `.hud-row` below it, so the mana pad sits at the true
    centre of the window — directly over the hand — instead of wherever the flanks leave room.
@@ -340,9 +354,8 @@ input[type='checkbox'] { accent-color: var(--accent); }
 /* A hand that outgrows the row overlaps rather than wrapping — a second row would eat the
    table's height, which is the one thing the fixed chrome must not do. */
 .hand.crowded { flex-wrap: nowrap; overflow: visible; }
-.hand.crowded .card-tile { margin-right: calc(var(--card-w) * -0.44); transition: transform 0.12s, margin 0.12s; }
+.hand.crowded .card-tile { margin-right: calc(var(--card-w) * -0.44); }
 .hand.crowded .card-tile:last-child { margin-right: 0; }
-.hand.crowded .card-tile:hover { transform: translateY(-10px); z-index: 3; }
 
 /* Riding in the mana strip, the tiles are pills rather than boxes: a stack of count-over-label
    would make the whole strip as tall as the tallest tile, which is height the hand wants. */
