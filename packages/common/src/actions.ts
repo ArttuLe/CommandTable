@@ -54,6 +54,11 @@ export type Action =
   | { t: 'SET_PLAYER_COUNTER'; playerId: PlayerId; key: string; update: CounterUpdate }
   | { t: 'SET_COMMANDER_DAMAGE'; toPlayerId: PlayerId; fromCommanderObjectId: ObjectId; update: CounterUpdate }
   | { t: 'MULLIGAN'; playerId: PlayerId }
+  // The two halves of the opening-hand step (see TableState.setupComplete). Actions rather than
+  // protocol messages, so they go through the same log and undo machinery as everything else —
+  // a host who begins play early can be rewound like any other misclick.
+  | { t: 'KEEP_HAND'; playerId: PlayerId }
+  | { t: 'BEGIN_PLAY' }
   | { t: 'ROLL_DICE'; playerId: PlayerId; sides: number }
   | { t: 'FLIP_COIN'; playerId: PlayerId }
   | { t: 'CONCEDE'; playerId: PlayerId }

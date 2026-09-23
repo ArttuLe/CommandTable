@@ -7,6 +7,14 @@ import type { Visibility } from './objects.js';
 // client can style them apart and surface them while the log rail is collapsed.
 export type LogKind = 'chat' | 'random';
 
+/**
+ * The actor on entries the table itself wrote rather than a player — currently just the setup
+ * line at the top of a new game. It is a PlayerId no player can hold, and the client already
+ * falls back to printing an unrecognised actorId verbatim, so this needs no rendering special
+ * case: the line reads "Table shuffled every library…".
+ */
+export const SYSTEM_ACTOR: PlayerId = 'Table';
+
 export interface LogEntry {
   revision: number;
   timestamp: number;

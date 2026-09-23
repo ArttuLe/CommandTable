@@ -14,6 +14,7 @@ function stateAt(revision: number): TableState {
     log: [],
     revision,
     createdAt: 0,
+    setupComplete: true,
   };
 }
 

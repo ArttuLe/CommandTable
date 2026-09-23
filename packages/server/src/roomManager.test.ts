@@ -251,7 +251,7 @@ describe('Room.endGame', () => {
     expect(room.toState().seats.every((s) => !s.ready)).toBe(true);
   });
 
-  it('keeps seats, host and resolved decks so nobody re-pastes a decklist', () => {
+  it('keeps seats and host, so nobody has to rejoin', () => {
     const { room, alice } = startedRoom();
 
     room.endGame();
@@ -261,6 +261,17 @@ describe('Room.endGame', () => {
     expect(state.seats[0].playerId).toBe(alice.playerId);
     expect(state.seats[1].displayName).toBe('Bob');
     expect(room.buildSeatSetups()).toHaveLength(2);
+  });
+
+  // The lobby is a fresh slate for the next game, and a deck still showing "ok" from the last one
+  // is the most misleading part of it — nobody can tell whether it is this game's deck. The
+  // client keeps the decklist *text* in localStorage, so re-submitting is a click, not a re-paste.
+  it('un-submits every deck, so the next game is deliberately confirmed', () => {
+    const { room } = startedRoom();
+
+    room.endGame();
+
+    expect(room.toState().seats.every((s) => s.deckStatus === 'none')).toBe(true);
   });
 
   it('leaves rejoin tokens valid', () => {

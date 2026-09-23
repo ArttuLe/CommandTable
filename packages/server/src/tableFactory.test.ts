@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createTableState, type SeatSetup } from './tableFactory.js';
-import type { Card, ResolvedDecklist } from '@command-table/common';
+import { SYSTEM_ACTOR, type Card, type ResolvedDecklist } from '@command-table/common';
 
 function makeCard(name: string, overrides: Partial<Card> = {}): Card {
   return {
@@ -144,6 +144,16 @@ describe('createTableState', () => {
     // With a 2-seat array, randomInt(2)=1 at i=1 swaps index 1 with itself: order unchanged.
     expect(state.players.map((p) => p.id)).toEqual(['alice', 'bob']);
     expect(state.turn.activePlayerId).toBe(state.players[0].id);
+  });
+
+  it('opens the log by saying the setup happened, since none of it is observable', () => {
+    const state = createTableState({ roomId: 'ROOM1', seats }, { randomInt: () => 0 });
+    expect(state.log).toHaveLength(1);
+    expect(state.log[0].actorId).toBe(SYSTEM_ACTOR);
+    expect(state.log[0].text).toContain('shuffled every library');
+    expect(state.log[0].visibility).toEqual({ kind: 'all' });
+    // Nothing to rewind to: it describes the table's own construction, not a player's move.
+    expect(state.log[0].undoable).toBe(false);
   });
 
   it('starts at revision 0 with turn number 1', () => {

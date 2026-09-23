@@ -32,14 +32,15 @@ function makeState(objects: GameObject[]): TableState {
     roomId: 'ROOM1',
     objects: Object.fromEntries(objects.map((o) => [o.id, o])),
     players: [
-      { id: ALICE, displayName: 'Alice', seat: 0, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
-      { id: BOB, displayName: 'Bob', seat: 1, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
-      { id: CAROL, displayName: 'Carol', seat: 2, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
+      { id: ALICE, displayName: 'Alice', seat: 0, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active', keptHand: false },
+      { id: BOB, displayName: 'Bob', seat: 1, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active', keptHand: false },
+      { id: CAROL, displayName: 'Carol', seat: 2, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active', keptHand: false },
     ],
     turn: { turnNumber: 1, activePlayerId: ALICE, phase: 'main' },
     log: [],
     revision: 0,
     createdAt: 0,
+    setupComplete: true,
   };
 }
 
@@ -136,5 +137,42 @@ describe('MULLIGAN', () => {
     state = unwrap(state, { t: 'MULLIGAN', playerId: ALICE });
     state = unwrap(state, { t: 'MULLIGAN', playerId: ALICE });
     expect(state.players.find((p) => p.id === ALICE)?.counters.mulligan).toBe(2);
+  });
+});
+
+describe('the opening-hand step', () => {
+  it('records that a player has settled on their hand', () => {
+    const state = makeState([]);
+    const next = unwrap(state, { t: 'KEEP_HAND', playerId: ALICE });
+
+    expect(next.players.find((p) => p.id === ALICE)?.keptHand).toBe(true);
+    expect(next.players.find((p) => p.id === BOB)?.keptHand).toBe(false);
+  });
+
+  it('un-keeps a hand that is then mulliganed away', () => {
+    let state = makeState([]);
+    state = unwrap(state, { t: 'KEEP_HAND', playerId: ALICE });
+    state = unwrap(state, { t: 'MULLIGAN', playerId: ALICE });
+
+    expect(state.players.find((p) => p.id === ALICE)?.keptHand).toBe(false);
+  });
+
+  it('rejects keeping a hand for a player who is not at the table', () => {
+    expect(applyAction(makeState([]), { t: 'KEEP_HAND', playerId: 'nobody' }).ok).toBe(false);
+  });
+
+  it('ends the setup step when the host begins play', () => {
+    const state = { ...makeState([]), setupComplete: false };
+    expect(unwrap(state, { t: 'BEGIN_PLAY' }).setupComplete).toBe(true);
+  });
+
+  // §1.1: never block a legal play. A player who has wandered off must not be able to hold the
+  // table hostage — the client warns the host instead.
+  it('lets the host begin play even with hands still unkept', () => {
+    const state = { ...makeState([]), setupComplete: false };
+    const next = unwrap(state, { t: 'BEGIN_PLAY' });
+
+    expect(next.setupComplete).toBe(true);
+    expect(next.players.every((p) => !p.keptHand)).toBe(true);
   });
 });

@@ -160,9 +160,12 @@ export const useStore = create<Store>((set, get) => {
           break;
         // The game ended but the room didn't: App's routing renders the lobby as soon as
         // tableState clears, and the `room` broadcast just before this refreshed the seats.
-        // deckResult is kept deliberately — the lobby shows those warnings.
+        //
+        // deckResult goes with it. It describes a deck submitted for the game that just ended,
+        // and the server has un-submitted that deck (Room.endGame), so leaving "Deck resolved
+        // with no warnings" on screen would be reporting on a submission that no longer exists.
         case 'gameEnded':
-          set({ tableState: null, pendingUndoRequest: null });
+          set({ tableState: null, pendingUndoRequest: null, deckResult: null });
           break;
         case 'pong':
           clearTimeout(pongTimer);

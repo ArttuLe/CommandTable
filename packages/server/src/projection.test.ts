@@ -36,13 +36,14 @@ function makeState(objects: GameObject[], log: LogEntry[] = []): TableState {
     roomId: 'ROOM1',
     objects: Object.fromEntries(objects.map((o) => [o.id, o])),
     players: [
-      { id: ALICE, displayName: 'Alice', seat: 0, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
-      { id: BOB, displayName: 'Bob', seat: 1, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active' },
+      { id: ALICE, displayName: 'Alice', seat: 0, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active', keptHand: false },
+      { id: BOB, displayName: 'Bob', seat: 1, connected: true, life: 40, counters: {}, commanderDamageTaken: {}, commanderCastCount: {}, commanderIds: [], status: 'active', keptHand: false },
     ],
     turn: { turnNumber: 1, activePlayerId: ALICE, phase: 'main' },
     log,
     revision: 1,
     createdAt: 0,
+    setupComplete: true,
   };
 }
 
