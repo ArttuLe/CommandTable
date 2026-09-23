@@ -3,6 +3,8 @@ import { CardTile } from './CardTile.js';
 import { useCards } from './useCard.js';
 import { useUiStore } from './uiStore.js';
 import { ZONES, groupByZone, typeLineOf } from './battlefieldZones.js';
+import { producedMana } from './manaSources.js';
+import type { ManaColor } from './uiStore.js';
 import { stackLands, stackNameOf } from './landStacks.js';
 import type { Seat } from './seating.js';
 import type { TurnHighlight } from './turnStatus.js';
@@ -16,7 +18,8 @@ export interface BoardProps {
   battlefield: ProjectedObject[];
   commandZone: ProjectedObject[];
   commanderCastCount: Record<string, number>;
-  onTapToggle: (obj: { id: string; tapped: boolean }) => void;
+  /** The second argument is what tapping would put in the mana pad (see manaSources.ts). */
+  onTapToggle: (obj: { id: string; tapped: boolean }, produces: ManaColor[], e: React.MouseEvent) => void;
   onCastCommander?: (obj: GameObject) => void;
   onObjectContextMenu: (obj: ProjectedObject) => (e: React.MouseEvent) => void;
 }
@@ -103,13 +106,25 @@ export function Board({
                 })).map((stack) => (
                   <div key={stack.key} className="land-stack">
                     {stack.objects.map((obj) => (
-                      <BattlefieldSlot key={obj.id} obj={obj} onTapToggle={onTapToggle} onContextMenu={onObjectContextMenu(obj)} />
+                      <BattlefieldSlot
+                        key={obj.id}
+                        obj={obj}
+                        produces={producedMana(cards.get(obj.id) ?? null)}
+                        onTapToggle={onTapToggle}
+                        onContextMenu={onObjectContextMenu(obj)}
+                      />
                     ))}
                     {stack.objects.length > 1 && <span className="stack-count">×{stack.objects.length}</span>}
                   </div>
                 ))
               : zones[zone.key].map((obj) => (
-                  <BattlefieldSlot key={obj.id} obj={obj} onTapToggle={onTapToggle} onContextMenu={onObjectContextMenu(obj)} />
+                  <BattlefieldSlot
+                    key={obj.id}
+                    obj={obj}
+                    produces={producedMana(cards.get(obj.id) ?? null)}
+                    onTapToggle={onTapToggle}
+                    onContextMenu={onObjectContextMenu(obj)}
+                  />
                 ))}
           </section>
         ))}
@@ -121,11 +136,13 @@ export function Board({
 /** Sending a permanent to the graveyard is right-click → "Move to graveyard" (see ContextMenu). */
 function BattlefieldSlot({
   obj,
+  produces,
   onTapToggle,
   onContextMenu,
 }: {
   obj: ProjectedObject;
-  onTapToggle: (obj: { id: string; tapped: boolean }) => void;
+  produces: ManaColor[];
+  onTapToggle: (obj: { id: string; tapped: boolean }, produces: ManaColor[], e: React.MouseEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }) {
   const selected = useUiStore((s) => s.selectedIds.has(obj.id));
@@ -135,7 +152,7 @@ function BattlefieldSlot({
     <CardTile
       obj={obj}
       selected={selected}
-      onClick={(e) => (e.shiftKey ? toggleSelected(obj.id) : onTapToggle(obj))}
+      onClick={(e) => (e.shiftKey ? toggleSelected(obj.id) : onTapToggle(obj, produces, e))}
       onContextMenu={onContextMenu}
     />
   );

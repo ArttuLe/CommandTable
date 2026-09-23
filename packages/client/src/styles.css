@@ -23,6 +23,17 @@
   --card-h: 218px;
 }
 
+/* Narrow windows. The fixed chrome — vitals, mana, zones, hand — is what runs out of room first,
+   since the table itself is a pan/zoom plane and simply scales. Card size is one knob, so turning
+   it down takes the hand, the zone popovers and the selection bar with it; the rest is a handful
+   of rules that were sized for a wide window, gathered at the bottom of this file. */
+@media (max-width: 1100px) {
+  :root { --card-w: 120px; --card-h: 168px; }
+}
+@media (max-width: 820px) {
+  :root { --card-w: 100px; --card-h: 140px; }
+}
+
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
 
@@ -130,9 +141,23 @@ input[type='checkbox'] { accent-color: var(--accent); }
    but tinted toward the command zone rather than the warning yellow of an undo vote. */
 .commander-prompt { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; background: #2f2540; border: 1px solid #5b4a80; padding: 0.3rem 0.6rem; border-radius: var(--radius); }
 
+/* The help mark and the gear ride together at the far end of the bar, so whatever the bar is
+   currently asking you stays next to the turn pill where you are already looking. */
+.status-tools { display: flex; align-items: center; gap: 0.2rem; margin-left: auto; }
+.help-button { font-size: 1.2rem; font-weight: 700; }
+.help-button.open { color: var(--accent); }
+
+/* The help dialog is a read-only table rather than a form, so its rows are tighter than .field. */
+.help-body { display: flex; flex-direction: column; gap: 0.5rem; }
+.help-body .popover-group { margin: 0 0 0.2rem; }
+.shortcut-list { margin: 0; font-size: 0.82rem; }
+.shortcut-row { display: flex; gap: 0.7rem; padding: 0.15rem 0; }
+.shortcut-row dt { flex-shrink: 0; width: 9.5rem; color: var(--accent); font-weight: 600; }
+.shortcut-row dd { margin: 0; color: var(--text-dim); }
+
 /* The gear, at the far end of the status bar. Standing preferences live here; one-off view
    commands (Fit, zoom) stay on the plane itself where the thing they act on is. */
-.settings-menu { position: relative; margin-left: auto; }
+.settings-menu { position: relative; }
 .settings-menu .gear { font-size: 1.7rem; line-height: 1; padding: 0 0.3rem; }
 .settings-menu .gear.open { color: var(--accent); }
 .settings-popover {
@@ -324,7 +349,21 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .card-tile { width: var(--card-w); height: var(--card-h); border: 1px solid var(--border-strong); border-radius: var(--radius); background: #2c313a; overflow: hidden; cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; text-align: center; padding: 2px; }
 .card-tile img { width: 100%; height: 100%; object-fit: cover; }
 .card-tile.tapped { transform: rotate(90deg); }
-.card-tile.face-down { background: #3f2f5e; }
+/* A card back, drawn rather than fetched: Scryfall ships no back in `image_uris`, and a single
+   shared asset would be one more request per hidden card for a flat colour and a border. */
+.card-tile.face-down {
+  background:
+    radial-gradient(ellipse at 50% 45%, #6b539b 0%, #4a3872 45%, #2e2350 100%);
+}
+/* The frame is a pseudo-element rather than an inset shadow so it survives the attacking ring
+   below, which owns `box-shadow` on this same element. */
+.card-tile.face-down::before {
+  content: ''; position: absolute; inset: 5px; border: 2px solid rgba(160, 138, 214, 0.5); border-radius: 3px;
+}
+.card-tile.face-down::after {
+  content: '✦'; color: rgba(214, 200, 255, 0.45); font-size: 2rem; line-height: 1;
+}
+.card-tile.face-down img { display: none; }
 .card-tile.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
 /* Attacking: a red ring rather than a badge, so it reads across the whole table at any zoom
    (see combat.ts). Drawn with box-shadow so it survives the tapped rotation and any outline the
@@ -379,6 +418,10 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .vital.lethal { background: #5a1e1e; color: #ffc9c9; border-color: #8a3030; }
 .vital-symbol { font-size: 0.9rem; }
 .vital-count { min-width: 1.6rem; text-align: center; font-weight: 600; font-size: 1.1rem; }
+/* Life's own number is also the button that sets it by any amount, so it has to opt out of the
+   round 1.7rem glyph shape the pill's −/+ buttons take from the rule above. */
+button.vital-count { width: auto; height: auto; padding: 0 0.15rem; border-radius: var(--radius); color: inherit; font-family: inherit; }
+button.vital-count:hover { background: rgba(255, 255, 255, 0.09); }
 /* The commander-damage pill is itself the button that opens the list, so it takes the pill
    styling a <button> would otherwise fight. */
 .damage-menu { position: relative; }
@@ -426,6 +469,10 @@ button.vital:hover { border-color: var(--border-strong); }
 }
 .field input:focus { outline: none; border-color: var(--accent); }
 .field-row { display: flex; gap: 0.5rem; }
+/* A dialog that asks you to pick one of a handful of things (which player now controls this)
+   rather than to type something. One button per choice, stacked. */
+.dialog-choices { display: flex; flex-direction: column; gap: 0.35rem; }
+.dialog-choices .btn { text-align: left; padding: 0.45rem 0.65rem; }
 
 /* Floats rather than sitting in the layout, so appearing mid-game doesn't shove the controls. */
 .selection-bar {
@@ -496,8 +543,59 @@ button.vital:hover { border-color: var(--border-strong); }
 .zoom-preview { position: fixed; left: 3.5rem; top: 44%; transform: translateY(-50%); width: 420px; pointer-events: none; z-index: 20; box-shadow: var(--shadow); border-radius: 12px; overflow: hidden; }
 .zoom-preview img { width: 100%; display: block; }
 
+/* Which colour a dual just made (ManaChoice). A row of bare pips at the cursor rather than a
+   menu of words: the symbols are the same ones worn by the pad it fills. */
+.mana-choice {
+  position: fixed; z-index: 31; display: flex; gap: 0.25rem; padding: 0.3rem;
+  background: var(--surface-raised); border: 1px solid var(--border-strong);
+  border-radius: 999px; box-shadow: var(--shadow);
+}
+.mana-choice button { background: none; border: none; padding: 0; cursor: pointer; border-radius: 50%; }
+.mana-choice button:hover { box-shadow: 0 0 0 2px var(--accent); }
+
 .context-menu-backdrop { position: fixed; inset: 0; z-index: 30; }
 .context-menu { position: fixed; z-index: 31; background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: var(--radius); display: flex; flex-direction: column; min-width: 180px; box-shadow: var(--shadow); max-height: calc(100vh - 16px); overflow-y: auto; }
 .context-menu button { flex: none; text-align: left; background: none; border: none; color: var(--text); padding: 0.4rem 0.7rem; cursor: pointer; font-size: 0.8rem; }
 .context-menu button:hover { background: #343a44; }
 .context-menu hr { border: none; border-top: 1px solid var(--border); margin: 0; width: 100%; }
+
+/* ── Narrow windows ─────────────────────────────────────────────────────────────────────────
+   The card-size knob is turned down at the top of this file; these are the rules that were
+   written against a wide window and have to give way with it. Nothing here re-lays-out the
+   table — the plane pans and zooms, so only the fixed chrome around it needs the help. */
+
+@media (max-width: 1100px) {
+  /* The rail and the preview are both fixed widths carved out of the table's own space. */
+  .log-rail { width: 240px; }
+  .toasts.rail-open { right: calc(240px + 1.5rem); }
+  .zoom-preview { width: 300px; left: 2rem; }
+  /* Three full-width buttons plus a menu is a lot of column for a small window. */
+  .action-bar { width: 7rem; }
+  .action-bar .btn-lg { padding: 0.4rem 0.6rem; font-size: 0.82rem; }
+}
+
+@media (max-width: 900px) {
+  /* The status bar carries a turn pill, whatever it is currently asking, and the tools. Wrapping
+     lets the question take a line of its own rather than squeezing the pill out of shape. */
+  .status-bar { flex-wrap: wrap; }
+
+  /* The HUD's two strips are three-column grids built to centre the hand and the mana pad in the
+     window. There is no longer room for empty balancing columns, so both become plain wrapping
+     rows and the hand centres itself. */
+  .hud-top { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem 0.75rem; }
+  .hud-top .zone-dock { justify-self: auto; }
+  .hud-row { grid-template-columns: auto minmax(0, 1fr); }
+  .hud-row .hand { justify-content: flex-start; }
+
+  .mana-pad { gap: 0.2rem; }
+  /* The life count is a button in this pill too, and it has to stay the width of its number. */
+  .mana-pip button, .vital button:not(.vital-count) { width: 1.4rem; height: 1.4rem; }
+  .zone-tile { height: 1.9rem; padding: 0 0.5rem; }
+
+  /* Full-width popovers from the zone dock would otherwise hang off the right edge. */
+  .zone-popover { width: 86vw; max-width: none; }
+
+  /* The preview is the first thing to go: it covers a third of a small window, and the hand it
+     is describing is right there. */
+  .zoom-preview { display: none; }
+}

@@ -14,6 +14,7 @@ import { NumberDialog } from './NumberDialog.js';
 import { CommanderName, type CommanderRef } from './commanders.js';
 import { isLethalCommanderDamage, isLethalLife, isLethalPoison, worstDamageTaken } from './vitals.js';
 import { TokenDialog } from './TokenDialog.js';
+import { ConfirmDialog } from './ConfirmDialog.js';
 
 interface ActionBarProps {
   playerId: PlayerId;
@@ -21,9 +22,11 @@ interface ActionBarProps {
   isMyTurn: boolean;
   /** Owned by Table: passing out of turn has a dialog in front of it (see ConfirmDialog). */
   onPassTurn: () => void;
+  /** Also owned by Table: untapping everything empties the mana pad with it. */
+  onUntapAll: () => void;
 }
 
-export function ActionBar({ playerId, players, isMyTurn, onPassTurn }: ActionBarProps) {
+export function ActionBar({ playerId, players, isMyTurn, onPassTurn, onUntapAll }: ActionBarProps) {
   const act = useStore((s) => s.act);
 
   return (
@@ -31,7 +34,7 @@ export function ActionBar({ playerId, players, isMyTurn, onPassTurn }: ActionBar
       <button className="btn btn-lg" title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>
         Draw
       </button>
-      <button className="btn btn-lg" title="Shortcut: U" onClick={() => act({ t: 'UNTAP_ALL', playerId })}>
+      <button className="btn btn-lg" title="Shortcut: U" onClick={onUntapAll}>
         Untap all
       </button>
       <button
@@ -71,7 +74,7 @@ function MoreMenu({
 }) {
   const [open, setOpen] = useState(false);
   // Which of this menu's dialogs is up, if any. The menu itself closes as one opens.
-  const [dialog, setDialog] = useState<'peek' | 'token' | 'dice' | null>(null);
+  const [dialog, setDialog] = useState<'peek' | 'token' | 'dice' | 'allLife' | 'concede' | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const openZone = useUiStore((s) => s.openZone);
   const setLibraryDirty = useUiStore((s) => s.setLibraryDirty);
@@ -85,8 +88,8 @@ function MoreMenu({
 
   useCloseOnOutsideClick(open, ref, () => setOpen(false));
 
-  // Every item closes the menu; the prompts these open are blocking anyway, so closing first
-  // keeps the menu from hanging open behind a native dialog.
+  // Every item closes the menu; the dialogs some of them open are modal anyway, so closing first
+  // keeps the menu from hanging open behind one.
   const run = (fn: () => void) => () => {
     setOpen(false);
     fn();
@@ -117,16 +120,7 @@ function MoreMenu({
 
           <hr />
           <p className="popover-group">Table</p>
-          <button
-            onClick={run(() => {
-              const amount = Number(window.prompt("Adjust ALL players' life by how much?", '0'));
-              if (Number.isFinite(amount) && amount !== 0) {
-                act({ t: 'SET_LIFE', playerIds: players.map((p) => p.id), update: { mode: 'delta', amount } });
-              }
-            })}
-          >
-            Adjust all life…
-          </button>
+          <button onClick={run(() => setDialog('allLife'))}>Adjust all life…</button>
           <button onClick={run(() => act({ t: 'CLEAR_ALL_MARKERS' }))}>Clear all markers</button>
           <button onClick={run(() => setDialog('token'))}>Create token…</button>
 
@@ -136,12 +130,7 @@ function MoreMenu({
           <button onClick={run(() => act({ t: 'FLIP_COIN', playerId }))}>Flip coin</button>
 
           <hr />
-          <button
-            className="danger"
-            onClick={run(() => {
-              if (window.confirm('Concede the game?')) act({ t: 'CONCEDE', playerId });
-            })}
-          >
+          <button className="danger" onClick={run(() => setDialog('concede'))}>
             Concede
           </button>
         </div>
@@ -173,6 +162,35 @@ function MoreMenu({
           onSubmit={(sides) => {
             setDialog(null);
             act({ t: 'ROLL_DICE', playerId, sides });
+          }}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+
+      {dialog === 'allLife' && (
+        <NumberDialog
+          title="Adjust everyone's life"
+          label="By how much? (negative to lose life)"
+          initialValue={0}
+          submitLabel="Apply to all"
+          onSubmit={(amount) => {
+            setDialog(null);
+            if (amount !== 0) {
+              act({ t: 'SET_LIFE', playerIds: players.map((p) => p.id), update: { mode: 'delta', amount } });
+            }
+          }}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+
+      {dialog === 'concede' && (
+        <ConfirmDialog
+          title="Concede"
+          message="You will be out of the game. Your cards stay on the table for everyone to see."
+          confirmLabel="Concede"
+          onConfirm={() => {
+            setDialog(null);
+            act({ t: 'CONCEDE', playerId });
           }}
           onCancel={() => setDialog(null)}
         />
@@ -221,7 +239,12 @@ export function VitalsPad({
     <div className="vitals-pad">
       <span className={`vital ${isLethalLife(player.life) ? 'lethal' : ''}`}>
         <b className="vital-symbol">❤</b>
-        <span className="vital-count">{player.life}</span>
+        {/* The number is the button for any jump bigger than one. As a loose "±N…" beside the
+            pill it read as a third vital; inside the pill it is plainly life's own control, and
+            it is the thing you are already looking at when you need to change it by six. */}
+        <button className="vital-count" title="Set your life by any amount" onClick={() => setAdjusting(true)}>
+          {player.life}
+        </button>
         <button title="Shortcut: −" onClick={() => onLifeDelta(-1)}>
           −
         </button>
@@ -229,10 +252,6 @@ export function VitalsPad({
           +
         </button>
       </span>
-
-      <button className="btn btn-ghost" onClick={() => setAdjusting(true)}>
-        ±N…
-      </button>
 
       <span className={`vital ${isLethalPoison(poison) ? 'lethal' : ''}`}>
         <b className="vital-symbol">☠</b>
