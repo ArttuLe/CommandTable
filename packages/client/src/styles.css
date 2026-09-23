@@ -397,8 +397,69 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .counter-buff { background: #2f9e5e; }
 .counter-debuff { background: var(--danger); }
 .counter-loyalty { background: #b07d16; }
-.counter-other { background: rgba(18, 20, 25, 0.92); font-size: 0.65rem; font-weight: 600; }
-.marker-badge { position: absolute; top: 0; right: 0; font-size: 0.6rem; background: rgba(0,0,0,0.75); padding: 0 2px; }
+.counter-other { background: rgba(18, 20, 25, 0.92); }
+/* Buff/debuff are the only badges with more than a number in them — "+3/+3" at 0.8rem overran
+   the tile. Everything else is a bare count and keeps the larger type. */
+.counter-buff, .counter-debuff { font-size: 0.65rem; }
+/* Big enough to read at "Fit" zoom, which is where most of the game is actually played — at 1rem
+   the moon was a speck and you had to zoom in to see which creatures could attack. */
+.sick-badge {
+  position: absolute; top: 2px; left: 2px; z-index: 2;
+  width: 1.6rem; height: 1.6rem; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; line-height: 1; color: #0b0d12; background: #d8c7ff;
+  border: 1px solid rgba(0, 0, 0, 0.6); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+/* Pushed to the right end of the counter strip, where a real card prints it. */
+.pt-badge {
+  margin-left: auto; padding: 0 0.3rem; border-radius: var(--radius);
+  font-size: 0.7rem; font-weight: 700; line-height: 1.3rem; color: #fff;
+  background: rgba(18, 20, 25, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.65); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+/* The opening-hand step takes the turn pill's place in the status bar, so it lays out as a row
+   there rather than as a banner of its own. */
+.setup-step { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; font-size: 0.85rem; }
+.setup-headline { display: flex; align-items: baseline; gap: 0.4rem; }
+.setup-actions { display: flex; gap: 0.35rem; }
+.setup-kept { color: #7fd6a4; font-weight: 600; }
+.setup-waiting { color: var(--text-dim); font-size: 0.78rem; }
+
+/* While a target arrow is armed, every card is a candidate — the cursor says so everywhere. */
+.table.targeting .card-tile { cursor: crosshair; }
+.targeting-hint { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--accent); }
+
+/* Arrows sit over the mats but take no clicks: the cards underneath still tap and right-click
+   normally. Inside the plane, so the plane's own transform carries them. */
+.arrow-layer { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.arrow path { fill: none; stroke-width: 3; stroke-linecap: round; }
+/* An arrow takes the colour of the board it starts from — yours the accent, anyone else's the
+   turn colour — so in a two-player game your opponent's blockers are the same orange as their
+   mat. They were all one red, which said "combat" but not whose. Block and target are told apart
+   by the dash, not the colour. */
+.arrow.mine path { stroke: var(--accent); }
+.arrow.theirs path { stroke: var(--accent-turn); }
+.arrow-head-mine { fill: var(--accent); }
+.arrow-head-theirs { fill: var(--accent-turn); }
+.arrow-target path { stroke-dasharray: 7 5; }
+
+/* Labels sit in their own strip along the top, mirroring the counter strip along the bottom.
+   They were absolutely positioned at one corner, so a creature with flying and deathtouch showed
+   deathtouch drawn over flying. Colour is the label's own (see labels.ts). */
+.card-labels { position: absolute; left: 2px; right: 2px; top: 2px; display: flex; flex-wrap: wrap; gap: 2px; }
+.label-pill {
+  padding: 0 0.3rem; border-radius: 999px; font-size: 0.6rem; font-weight: 700;
+  line-height: 1rem; text-transform: lowercase; white-space: nowrap;
+  border: 1px solid rgba(0, 0, 0, 0.55); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.label-pill.removable { cursor: pointer; }
+.label-pill.removable:hover { outline: 1px solid var(--danger); outline-offset: 1px; }
+.label-white { background: #f3efe2; color: #1b1b1b; }
+.label-blue { background: #2a7fc4; color: #fff; }
+.label-black { background: #1e1e22; color: #e8e4dc; }
+.label-red { background: #c0392b; color: #fff; }
+.label-green { background: #2f7d4f; color: #fff; }
+.label-gold { background: #c9a227; color: #221c05; }
+.label-neutral { background: rgba(18, 20, 25, 0.92); color: #e8e4dc; }
 
 .commander-tile { position: relative; display: inline-block; }
 .tax-badge {
@@ -488,6 +549,11 @@ button.vital:hover { border-color: var(--border-strong); }
    rather than to type something. One button per choice, stacked. */
 .dialog-choices { display: flex; flex-direction: column; gap: 0.35rem; }
 .dialog-choices .btn { text-align: left; padding: 0.45rem 0.65rem; }
+/* Labels wrap as pills in their own colours, so the picker doubles as the legend for what the
+   card is about to show. */
+.label-choices { flex-direction: row; flex-wrap: wrap; }
+.label-choices .label-pill { cursor: pointer; font-size: 0.75rem; line-height: 1.5rem; padding: 0 0.6rem; }
+.label-choices .label-pill:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Floats rather than sitting in the layout, so appearing mid-game doesn't shove the controls. */
 .selection-bar {
@@ -507,6 +573,13 @@ button.vital:hover { border-color: var(--border-strong); }
 .log-line.log-chat { background: #232b33; color: var(--text); }
 .log-chat-text { font-style: italic; }
 .log-line.log-random { color: var(--accent-turn); }
+
+/* Chat is the log rail's mirror image: same box, same collapsed strip, other side of the table.
+   Narrower, because a line of chat is a sentence and a line of log is a clause. */
+.chat-rail { display: flex; flex-direction: column; gap: 0.4rem; width: 260px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0.5rem; }
+.chat-rail .rail-header { justify-content: flex-start; gap: 0.3rem; }
+.chat-strip { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 2rem; flex-shrink: 0; padding: 0.5rem 0; background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; }
+.chat-strip:hover { color: var(--text); border-color: var(--border-strong); }
 
 .log-strip { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 2rem; flex-shrink: 0; padding: 0.5rem 0; background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; }
 .log-strip:hover { color: var(--text); border-color: var(--border-strong); }
@@ -574,6 +647,16 @@ button.vital:hover { border-color: var(--border-strong); }
 .context-menu button { flex: none; text-align: left; background: none; border: none; color: var(--text); padding: 0.4rem 0.7rem; cursor: pointer; font-size: 0.8rem; }
 .context-menu button:hover { background: #343a44; }
 .context-menu hr { border: none; border-top: 1px solid var(--border); margin: 0; width: 100%; }
+/* A counter and its two directions on one line. The −/+ are square so the row reads as a dial
+   rather than as two more menu items that happen to be short. */
+.menu-stepper { display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.7rem; font-size: 0.8rem; }
+.menu-stepper-label { flex: 1; white-space: nowrap; }
+.menu-stepper-value { min-width: 1.2rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.context-menu .menu-stepper button {
+  flex: none; width: 1.4rem; padding: 0; text-align: center; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--border-strong); font-size: 0.85rem; line-height: 1.3rem;
+}
+.context-menu .menu-stepper button:disabled { opacity: 0.35; cursor: default; background: var(--surface); }
 
 /* ── Narrow windows ─────────────────────────────────────────────────────────────────────────
    The card-size knob is turned down at the top of this file; these are the rules that were
@@ -583,6 +666,7 @@ button.vital:hover { border-color: var(--border-strong); }
 @media (max-width: 1100px) {
   /* The rail and the preview are both fixed widths carved out of the table's own space. */
   .log-rail { width: 240px; }
+  .chat-rail { width: 200px; }
   .toasts.rail-open { right: calc(240px + 1.5rem); }
   .zoom-preview { width: 300px; left: 2rem; }
   /* Three full-width buttons plus a menu is a lot of column for a small window. */

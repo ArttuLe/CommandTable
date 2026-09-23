@@ -27,14 +27,12 @@ export function LogRail({
   myId,
   open,
   onToggle,
-  onSend,
 }: {
   log: LogEntry[];
   players: PlayerState[];
   myId: PlayerId;
   open: boolean;
   onToggle: () => void;
-  onSend: (text: string) => void;
 }) {
   const [seenCount, setSeenCount] = useState(log.length);
   const listRef = useRef<HTMLDivElement>(null);
@@ -51,8 +49,8 @@ export function LogRail({
 
   if (!open) {
     return (
-      <button className="log-strip" onClick={onToggle} title="Open log & chat">
-        <span className="log-strip-label">Log &amp; chat</span>
+      <button className="log-strip" onClick={onToggle} title="Open the log">
+        <span className="log-strip-label">Log</span>
         {unread > 0 && <span className="unread-badge">{unread}</span>}
       </button>
     );
@@ -61,19 +59,19 @@ export function LogRail({
   return (
     <aside className="log-rail">
       <div className="rail-header">
-        <span>Log &amp; chat</span>
+        <span>Log</span>
         <button className="icon-button" onClick={onToggle} title="Collapse">
           ›
         </button>
       </div>
 
+      {/* Chat lines stay in here as well as in their own rail: §15.1 makes the log the referee,
+          and a record with the talking cut out of it isn't a record. Only the input box moved. */}
       <div className="log" ref={listRef}>
         {log.map((entry, i) => (
           <LogLine key={i} entry={entry} players={players} myId={myId} />
         ))}
       </div>
-
-      <ChatBox onSend={onSend} />
     </aside>
   );
 }
@@ -86,24 +84,6 @@ function LogLine({ entry, players, myId }: { entry: LogEntry; players: PlayerSta
       <strong style={{ color: `hsl(${playerHue(players, entry.actorId)} 65% 72%)` }}>{name}</strong>{' '}
       {entry.kind === 'chat' ? <span className="log-chat-text">{entry.text}</span> : entry.text}
     </p>
-  );
-}
-
-function ChatBox({ onSend }: { onSend: (text: string) => void }) {
-  const [text, setText] = useState('');
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!text.trim()) return;
-    onSend(text.trim());
-    setText('');
-  }
-  return (
-    <form className="chat-box" onSubmit={submit}>
-      <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Say something…" />
-      <button className="btn" type="submit">
-        Send
-      </button>
-    </form>
   );
 }
 

@@ -7,9 +7,13 @@ import { ContextMenu } from './ContextMenu.js';
 import { Plane } from './Plane.js';
 import { Board } from './Board.js';
 import { CrossroadsHub } from './CrossroadsHub.js';
+import { SetupStep } from './SetupStep.js';
+import { ArrowLayer } from './ArrowLayer.js';
+import { combatRelations } from './combat.js';
 import { CommanderName, type CommanderRef } from './commanders.js';
 import { ActionBar, ManaPad, SelectionBar, VitalsPad } from './ActionBar.js';
 import { LogRail, Toasts } from './LogRail.js';
+import { ChatRail } from './ChatRail.js';
 import { ZoneDock, type DockZone } from './ZoneDock.js';
 import { seating } from './seating.js';
 import { PASS_TURN_WARNING, turnHighlight, turnLabel } from './turnStatus.js';
@@ -36,9 +40,12 @@ export function Table() {
   const act = useStore((s) => s.act);
   const pendingUndoRequest = useStore((s) => s.pendingUndoRequest);
   const send = useStore((s) => s.send);
+  const roomState = useStore((s) => s.roomState);
 
   const logRailOpen = useUiStore((s) => s.logRailOpen);
   const toggleLogRail = useUiStore((s) => s.toggleLogRail);
+  const chatRailOpen = useUiStore((s) => s.chatRailOpen);
+  const toggleChatRail = useUiStore((s) => s.toggleChatRail);
   const setLibraryDirty = useUiStore((s) => s.setLibraryDirty);
   const dismissedCommanders = useUiStore((s) => s.dismissedCommanders);
   const dismissCommander = useUiStore((s) => s.dismissCommander);
@@ -46,6 +53,13 @@ export function Table() {
   const dialogOpen = useUiStore((s) => s.openDialogs > 0);
   const bumpMana = useUiStore((s) => s.bumpMana);
   const resetMana = useUiStore((s) => s.resetMana);
+  const pointing = useUiStore((s) => s.pointing);
+  const cancelPointing = useUiStore((s) => s.cancelPointing);
+
+  // Set by a middle-click on the table: glide to whoever is active *now*. The player is captured
+  // rather than read live, so that with following switched off the view stays where it was put
+  // instead of chasing the next turn. The nonce lets the same player be asked for twice running.
+  const [focusRequest, setFocusRequest] = useState<{ key: PlayerId; nonce: number } | null>(null);
 
   const [menu, setMenu] = useState<{ obj: ProjectedObject; x: number; y: number } | null>(null);
   const [manaChoice, setManaChoice] = useState<ManaChoicePrompt | null>(null);
@@ -59,9 +73,16 @@ export function Table() {
   // PASS_TURN advances the table from whoever is active, so out of turn it ends someone else's
   // turn — one dialog in front of both the button and the shortcut (see turnStatus.ts).
   const [confirmingPass, setConfirmingPass] = useState(false);
+  // Floating mana does not survive the end of a turn, so passing empties the pad the same way
+  // untapping does. It is client-local either way (§8.4), so this is a local reset and not an
+  // action — nobody else's pad is anyone's business.
+  const passTurn = useCallback(() => {
+    act({ t: 'PASS_TURN' });
+    resetMana();
+  }, [act, resetMana]);
   const requestPassTurn = useCallback(
-    () => (isMyTurn ? act({ t: 'PASS_TURN' }) : setConfirmingPass(true)),
-    [act, isMyTurn]
+    () => (isMyTurn ? passTurn() : setConfirmingPass(true)),
+    [isMyTurn, passTurn]
   );
 
   // Untapping everything is the gesture that ends a turn's worth of mana, so it empties the pad
@@ -105,6 +126,8 @@ export function Table() {
           break;
         case 'escape':
           useUiStore.getState().clearSelection();
+          // Escape is already "stop what you were about to do"; an armed arrow is that.
+          useUiStore.getState().cancelPointing();
           break;
         default:
           return;
@@ -134,6 +157,10 @@ export function Table() {
       obj: tableState.objects[id],
     }))
   );
+
+  // Every block and target arrow currently on the table (see combat.ts). Memoised on the objects
+  // map so the arrow layer isn't handed a new array on every unrelated re-render.
+  const relations = useMemo(() => combatRelations(tableState.objects, playerId), [tableState.objects, playerId]);
 
   const me = tableState.players.find((p) => p.id === playerId)!;
   const opposingCommanders = allCommanders.filter((c) => c.ownerId !== playerId);
@@ -166,13 +193,24 @@ export function Table() {
   ];
 
   return (
-    <div className="table">
+    <div className={`table ${pointing ? 'targeting' : ''}`}>
       <header className="status-bar">
         {/* Leads the bar as a quiet identifier — someone joining late asks for it mid-game, and
             hunting for it shouldn't mean leaving the table. Subdued so it doesn't compete with
             the turn pill, which is what everyone is actually watching. */}
         <span className="room-code">{tableState.roomId}</span>
-        <span className={`turn-pill ${isMyTurn ? 'mine' : ''}`}>{turnLabel(tableState.turn, tableState.players, playerId)}</span>
+        {/* Until the host starts the game, whose turn it is doesn't mean anything yet — the
+            opening-hand step takes the turn pill's place rather than sitting beside it. */}
+        {tableState.setupComplete ? (
+          <span className={`turn-pill ${isMyTurn ? 'mine' : ''}`}>{turnLabel(tableState.turn, tableState.players, playerId)}</span>
+        ) : (
+          <SetupStep
+            players={tableState.players}
+            playerId={playerId}
+            isHost={roomState?.hostId === playerId}
+            handCount={myHand.length}
+          />
+        )}
 
         {pendingUndoRequest && (
           <div className="undo-request">
@@ -206,6 +244,17 @@ export function Table() {
           </div>
         ))}
 
+        {/* An armed arrow changes what the next click does, so it has to say so — a crosshair
+            cursor alone is too quiet for a mode. */}
+        {pointing && (
+          <div className="targeting-hint">
+            <span>{pointing.kind === 'block' ? 'Click the attacker to block.' : 'Click the card to target.'}</span>
+            <button className="btn btn-ghost" onClick={cancelPointing}>
+              Cancel
+            </button>
+          </div>
+        )}
+
         {/* Pushed to the far end of the bar by its own margin, so whatever the bar is currently
             asking you stays next to the turn pill where you're already looking. */}
         <div className="status-tools">
@@ -215,9 +264,30 @@ export function Table() {
       </header>
 
       <div className="table-main">
+        {/* Chat on the left, the log on the right, the table between them — talking and the
+            record of play are different things and were sharing one scroll. */}
+        <ChatRail
+          log={tableState.log}
+          players={tableState.players}
+          open={chatRailOpen}
+          onToggle={toggleChatRail}
+          onSend={(text) => act({ t: 'SAY', playerId, text })}
+        />
+
         {/* Refit only when the number of boards changes — the plane's size changes then, and a
             view that re-centered itself every time someone played a card would be unusable. */}
-        <Plane fitKey={seats.length} focusKey={followActivePlayer ? tableState.turn.activePlayerId : null}>
+        <Plane
+          fitKey={seats.length}
+          // Following re-aims every turn on its own; a middle-click only ever aims once.
+          focus={
+            followActivePlayer
+              ? { key: tableState.turn.activePlayerId, nonce: focusRequest?.nonce ?? 0 }
+              : focusRequest
+          }
+          onFocusRequest={() =>
+            setFocusRequest((prev) => ({ key: tableState.turn.activePlayerId, nonce: (prev?.nonce ?? 0) + 1 }))
+          }
+        >
           <div className={`mats ${seats.length <= 2 ? 'stacked' : 'quad'}`}>
             {seats.map((seat) => {
               const player = tableState.players.find((p) => p.id === seat.playerId);
@@ -275,6 +345,10 @@ export function Table() {
               myId={playerId}
               allCommanders={allCommanders}
             />
+
+            {/* Last child of the mats so it paints over them, and inside the plane so it moves
+                with them. `revision` is what tells it a card may have shifted. */}
+            <ArrowLayer relations={relations} revision={tableState.revision} />
           </div>
         </Plane>
 
@@ -284,7 +358,6 @@ export function Table() {
           myId={playerId}
           open={logRailOpen}
           onToggle={toggleLogRail}
-          onSend={(text) => act({ t: 'SAY', playerId, text })}
         />
       </div>
 
@@ -347,7 +420,7 @@ export function Table() {
           confirmLabel="Pass turn"
           onConfirm={() => {
             setConfirmingPass(false);
-            act({ t: 'PASS_TURN' });
+            passTurn();
           }}
           onCancel={() => setConfirmingPass(false)}
         />
