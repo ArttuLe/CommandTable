@@ -301,12 +301,14 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .action-bar { display: flex; flex-direction: column; gap: 0.35rem; flex-shrink: 0; width: 8.5rem; align-self: center; }
 .action-bar .btn { width: 100%; }
 
-/* "Show every action": the More ⋯ catalog laid out flat, in the flank the action bar leaves
-   empty. Two columns rather than one long list, so ten buttons stay no taller than the hand.
-   The columns are sized to the labels rather than to the flank, which is a `1fr` and would
-   otherwise stretch "Shuffle" across a third of a wide window. */
-.action-panel { display: grid; grid-template-columns: repeat(2, 6.5rem); gap: 0.3rem; justify-self: start; align-self: center; align-content: center; }
+/* "Show every action": the same actions laid out flat, standing in for the strip above in the
+   same slot. Two columns rather than one long list, so thirteen buttons stay no taller than the
+   hand beside them; fixed columns rather than fractions of the flank, which is a `1fr` and
+   would otherwise stretch "Shuffle" across a third of a wide window. */
+.action-panel { display: grid; grid-template-columns: repeat(2, 6.5rem); gap: 0.3rem; flex-shrink: 0; justify-self: start; align-self: center; align-content: center; }
 .action-panel .popover-group { grid-column: 1 / -1; margin: 0.2rem 0 0; }
+/* Pass turn is the one button here that is still a big one. */
+.action-panel .btn-primary { grid-column: 1 / -1; }
 /* Narrow enough that "Clear all markers" takes two lines; the row's own height is set by the
    hand beside it, so a wrapped label costs nothing. */
 .action-panel .btn { padding: 0.3rem 0.35rem; font-size: 0.72rem; line-height: 1.2; }
@@ -685,6 +687,8 @@ button.vital:hover { border-color: var(--border-strong); }
   /* Three full-width buttons plus a menu is a lot of column for a small window. */
   .action-bar { width: 7rem; }
   .action-bar .btn-lg { padding: 0.4rem 0.6rem; font-size: 0.82rem; }
+  /* The grid gives way the same way, a column at a time rather than all at once. */
+  .action-panel { grid-template-columns: repeat(2, 5.5rem); }
 }
 
 @media (max-width: 900px) {
@@ -699,8 +703,6 @@ button.vital:hover { border-color: var(--border-strong); }
   .hud-top .zone-dock { justify-self: auto; }
   .hud-row { grid-template-columns: auto minmax(0, 1fr); }
   .hud-row .hand { justify-content: flex-start; }
-  /* No third column left to sit in, so it takes a line of its own under the hand. */
-  .action-panel { grid-column: 1 / -1; grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); justify-self: stretch; }
 
   .mana-pad { gap: 0.2rem; }
   /* The life count is a button in this pill too, and it has to stay the width of its number. */

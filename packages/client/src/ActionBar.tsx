@@ -6,8 +6,9 @@
 // "Pass turn" no easier to find than "Concede".
 //
 // That ranking is right until you know the app, at which point hiding Shuffle behind a menu is
-// just a click in the way. The "Show every action" setting lays the same ten out as a grid on the
-// other flank of the hand (ActionPanel) — same catalog (playerActions.ts), same dialogs, no menu.
+// just a click in the way. The "Show every action" setting swaps the strip for a grid of all
+// thirteen (ActionPanel) — same catalog (playerActions.ts), same dialogs, no menu — in the same
+// place, so the controls don't move out from under the cursor when it is turned on.
 
 import { Fragment, useEffect, useRef, useState } from 'react';
 import type { Action, PlayerId, PlayerState } from '@command-table/common';
@@ -31,9 +32,14 @@ interface ActionBarProps {
   onUntapAll: () => void;
 }
 
-export function ActionBar({ playerId, players, isMyTurn, onPassTurn, onUntapAll }: ActionBarProps) {
-  const act = useStore((s) => s.act);
+export function ActionBar(props: ActionBarProps) {
   const showAllActions = useUiStore((s) => s.showAllActions);
+  return showAllActions ? <ActionPanel {...props} /> : <ActionStrip {...props} />;
+}
+
+/** The default: three buttons and a menu holding the rest. */
+function ActionStrip({ playerId, players, isMyTurn, onPassTurn, onUntapAll }: ActionBarProps) {
+  const act = useStore((s) => s.act);
 
   return (
     <div className="action-bar">
@@ -50,8 +56,7 @@ export function ActionBar({ playerId, players, isMyTurn, onPassTurn, onUntapAll 
       >
         Pass turn
       </button>
-      {/* Everything it holds is out on the table instead when the setting is on (ActionPanel). */}
-      {!showAllActions && <MoreMenu playerId={playerId} players={players} act={act} />}
+      <MoreMenu playerId={playerId} players={players} act={act} />
     </div>
   );
 }
@@ -235,23 +240,29 @@ function MoreMenu({
 }
 
 /**
- * The same catalog with nothing hidden, for players who know what is in it. Sits in the flank of
- * the HUD row that the action bar doesn't use — a column that was already being held empty to
- * keep the hand centred — so turning the setting on costs the table no height and doesn't move
- * the hand (see styles.css, `.hud-row`).
+ * The same actions with nothing hidden, for players who know what is in the menu. It takes the
+ * strip's own place in the HUD row rather than the empty flank opposite it, so the setting
+ * changes what the controls are, not where to look for them — and it keeps the three you take
+ * every turn, which are still the three you take every turn.
  */
-export function ActionPanel({
-  playerId,
-  players,
-}: {
-  playerId: PlayerId;
-  players: PlayerState[];
-}) {
+function ActionPanel({ playerId, players, isMyTurn, onPassTurn, onUntapAll }: ActionBarProps) {
   const act = useStore((s) => s.act);
   const { groups, dialogs } = usePlayerActions(playerId, players, act);
 
   return (
     <div className="action-panel">
+      {/* Written out rather than folded into the catalog: two of the three are Table's to run,
+          and Pass turn wears the turn state. They keep the full width between them. */}
+      <button className="btn" title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>
+        Draw
+      </button>
+      <button className="btn" title="Shortcut: U" onClick={onUntapAll}>
+        Untap all
+      </button>
+      <button className={`btn btn-primary ${isMyTurn ? 'urgent' : ''}`} title="Shortcut: P" onClick={onPassTurn}>
+        Pass turn
+      </button>
+
       {groups.map((group) => (
         <Fragment key={group.title ?? 'tail'}>
           {group.title && <p className="popover-group">{group.title}</p>}

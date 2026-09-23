@@ -11,7 +11,7 @@ import { SetupStep } from './SetupStep.js';
 import { ArrowLayer } from './ArrowLayer.js';
 import { combatRelations } from './combat.js';
 import { CommanderName, type CommanderRef } from './commanders.js';
-import { ActionBar, ActionPanel, ManaPad, SelectionBar, VitalsPad } from './ActionBar.js';
+import { ActionBar, ManaPad, SelectionBar, VitalsPad } from './ActionBar.js';
 import { LogRail, Toasts } from './LogRail.js';
 import { ChatRail } from './ChatRail.js';
 import { ZoneDock, type DockZone } from './ZoneDock.js';
@@ -50,7 +50,6 @@ export function Table() {
   const dismissedCommanders = useUiStore((s) => s.dismissedCommanders);
   const dismissCommander = useUiStore((s) => s.dismissCommander);
   const followActivePlayer = useUiStore((s) => s.followActivePlayer);
-  const showAllActions = useUiStore((s) => s.showAllActions);
   const dialogOpen = useUiStore((s) => s.openDialogs > 0);
   const bumpMana = useUiStore((s) => s.bumpMana);
   const resetMana = useUiStore((s) => s.resetMana);
@@ -408,8 +407,6 @@ export function Table() {
               />
             ))}
           </div>
-          {/* The row's third column, otherwise held empty to keep the hand centred. */}
-          {showAllActions && <ActionPanel playerId={playerId} players={tableState.players} />}
         </div>
       </div>
 
