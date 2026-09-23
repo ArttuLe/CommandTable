@@ -19,13 +19,21 @@ describe('counterKind', () => {
 });
 
 describe('counterBadgeText', () => {
-  it('shows a bare number where the colour already says what the counter is', () => {
-    expect(counterBadgeText('+1/+1', 3)).toBe('3');
-    expect(counterBadgeText('-1/-1', 1)).toBe('1');
+  it('spells out what the counters add up to, rather than how many there are', () => {
+    expect(counterBadgeText('+1/+1', 3)).toBe('+3/+3');
+    expect(counterBadgeText('-1/-1', 2)).toBe('-2/-2');
+  });
+
+  it('shows a single +1/+1 as itself, not as a bare 1', () => {
+    expect(counterBadgeText('+1/+1', 1)).toBe('+1/+1');
+    expect(counterBadgeText('-1/-1', 1)).toBe('-1/-1');
+  });
+
+  it('keeps loyalty a bare number — it is a total, not a modifier', () => {
     expect(counterBadgeText('loyalty', 5)).toBe('5');
   });
 
-  it('keeps the name on counters that have no colour of their own', () => {
-    expect(counterBadgeText('stun', 2)).toBe('stun 2');
+  it('leaves the name off the long tail too — a badge is a count, not a caption', () => {
+    expect(counterBadgeText('stun', 2)).toBe('2');
   });
 });

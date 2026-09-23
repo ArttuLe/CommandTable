@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupByZone, zoneOf } from './battlefieldZones.js';
+import { groupByZone, powerToughness, zoneOf } from './battlefieldZones.js';
 
 describe('zoneOf', () => {
   it('sorts the three broad kinds of permanent', () => {
@@ -47,5 +47,27 @@ describe('groupByZone', () => {
 
   it('returns every zone even on an empty battlefield, since each one is always drawn', () => {
     expect(groupByZone([], () => null)).toEqual({ lands: [], permanents: [], creatures: [] });
+  });
+});
+
+describe('powerToughness', () => {
+  const token = (adhoc: { name: string; typeLine: string; power?: string; toughness?: string }) =>
+    ({ source: { kind: 'token', adhoc } }) as unknown as Parameters<typeof powerToughness>[0];
+
+  it('reads a token off the face its creator typed in', () => {
+    expect(powerToughness(token({ name: 'Soldier', typeLine: 'Token Creature — Soldier', power: '1', toughness: '1' }))).toBe('1/1');
+  });
+
+  it('keeps */* and other printed non-numbers verbatim', () => {
+    expect(powerToughness(token({ name: 'Zombie', typeLine: 'Token Creature — Zombie', power: '*', toughness: '*' }))).toBe('*/*');
+  });
+
+  it('says nothing for a token created without a power — the field is optional', () => {
+    expect(powerToughness(token({ name: 'Clue', typeLine: 'Token Artifact — Clue' }))).toBeNull();
+  });
+
+  it('says nothing for a real card, which prints its own P/T on its art', () => {
+    const plain = { source: { kind: 'card' } } as unknown as Parameters<typeof powerToughness>[0];
+    expect(powerToughness(plain)).toBeNull();
   });
 });
