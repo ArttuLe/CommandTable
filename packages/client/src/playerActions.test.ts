@@ -16,7 +16,7 @@ describe('playerActionGroups', () => {
     const { groups } = build();
     expect(groups.map((g) => [g.title, g.items.map((i) => i.label)])).toEqual([
       ['Library', ['Shuffle', 'Search library', 'Peek / Scry…', 'Mill…', 'Mulligan']],
-      ['Table', ['Adjust all life…', 'Clear all markers', 'Create token…']],
+      ['Table', ['Clear markers & counters', 'Create token…']],
       ['Random', ['Roll dice…', 'Flip coin']],
       [null, ['Concede']],
     ]);

@@ -99,8 +99,8 @@ function dispatch(state: TableState, action: Action, deps: ApplyDeps): ApplyResu
       return objectActions.setMarker(state, action);
     case 'CLEAR_MARKER':
       return objectActions.clearMarker(state, action);
-    case 'CLEAR_ALL_MARKERS':
-      return objectActions.clearAllMarkers(state);
+    case 'CLEAR_MARKERS_AND_COUNTERS':
+      return objectActions.clearMarkersAndCounters(state);
     case 'TRANSFORM':
       return objectActions.transform(state, action);
     case 'TURN_FACE_DOWN':

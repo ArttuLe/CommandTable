@@ -24,7 +24,6 @@ import { playerActionGroups, type PlayerDialog } from './playerActions.js';
 
 interface ActionBarProps {
   playerId: PlayerId;
-  players: PlayerState[];
   isMyTurn: boolean;
   /** Owned by Table: passing out of turn has a dialog in front of it (see ConfirmDialog). */
   onPassTurn: () => void;
@@ -38,7 +37,7 @@ export function ActionBar(props: ActionBarProps) {
 }
 
 /** The default: three buttons and a menu holding the rest. */
-function ActionStrip({ playerId, players, isMyTurn, onPassTurn, onUntapAll }: ActionBarProps) {
+function ActionStrip({ playerId, isMyTurn, onPassTurn, onUntapAll }: ActionBarProps) {
   const act = useStore((s) => s.act);
 
   return (
@@ -56,7 +55,7 @@ function ActionStrip({ playerId, players, isMyTurn, onPassTurn, onUntapAll }: Ac
       >
         Pass turn
       </button>
-      <MoreMenu playerId={playerId} players={players} act={act} />
+      <MoreMenu playerId={playerId} act={act} />
     </div>
   );
 }
@@ -79,7 +78,7 @@ function useCloseOnOutsideClick(open: boolean, ref: React.RefObject<HTMLElement>
  * The catalog, the dialog it currently has open, and that dialog's JSX — everything both the
  * popover and the panel need, so neither owns it.
  */
-function usePlayerActions(playerId: PlayerId, players: PlayerState[], act: (action: Action) => void) {
+function usePlayerActions(playerId: PlayerId, act: (action: Action) => void) {
   const [dialog, setDialog] = useState<PlayerDialog | null>(null);
   const openZone = useUiStore((s) => s.openZone);
   const setLibraryDirty = useUiStore((s) => s.setLibraryDirty);
@@ -142,22 +141,6 @@ function usePlayerActions(playerId: PlayerId, players: PlayerState[], act: (acti
         />
       )}
 
-      {dialog === 'allLife' && (
-        <NumberDialog
-          title="Adjust everyone's life"
-          label="By how much? (negative to lose life)"
-          initialValue={0}
-          submitLabel="Apply to all"
-          onSubmit={(amount) => {
-            close();
-            if (amount !== 0) {
-              act({ t: 'SET_LIFE', playerIds: players.map((p) => p.id), update: { mode: 'delta', amount } });
-            }
-          }}
-          onCancel={close}
-        />
-      )}
-
       {dialog === 'concede' && (
         <ConfirmDialog
           title="Concede"
@@ -194,16 +177,14 @@ function usePlayerActions(playerId: PlayerId, players: PlayerState[], act: (acti
 
 function MoreMenu({
   playerId,
-  players,
   act,
 }: {
   playerId: PlayerId;
-  players: PlayerState[];
   act: (action: Action) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const { groups, dialogs } = usePlayerActions(playerId, players, act);
+  const { groups, dialogs } = usePlayerActions(playerId, act);
 
   useCloseOnOutsideClick(open, ref, () => setOpen(false));
 
@@ -245,9 +226,9 @@ function MoreMenu({
  * changes what the controls are, not where to look for them — and it keeps the three you take
  * every turn, which are still the three you take every turn.
  */
-function ActionPanel({ playerId, players, isMyTurn, onPassTurn, onUntapAll }: ActionBarProps) {
+function ActionPanel({ playerId, isMyTurn, onPassTurn, onUntapAll }: ActionBarProps) {
   const act = useStore((s) => s.act);
-  const { groups, dialogs } = usePlayerActions(playerId, players, act);
+  const { groups, dialogs } = usePlayerActions(playerId, act);
 
   return (
     <div className="action-panel">

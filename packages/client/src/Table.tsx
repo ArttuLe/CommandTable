@@ -390,7 +390,6 @@ export function Table() {
         <div className="hud-row">
           <ActionBar
             playerId={playerId}
-            players={tableState.players}
             isMyTurn={isMyTurn}
             onPassTurn={requestPassTurn}
             onUntapAll={untapAll}

@@ -62,8 +62,8 @@ export function describeAction(action: Action): string {
       return `set the '${action.marker}' marker on a card`;
     case 'CLEAR_MARKER':
       return `cleared the '${action.marker}' marker from a card`;
-    case 'CLEAR_ALL_MARKERS':
-      return 'cleared all markers table-wide';
+    case 'CLEAR_MARKERS_AND_COUNTERS':
+      return 'cleared every marker and counter table-wide';
     case 'TRANSFORM':
       return 'transformed a card';
     case 'TURN_FACE_DOWN':

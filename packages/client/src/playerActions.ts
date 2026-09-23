@@ -11,7 +11,7 @@ import type { Action, PlayerId } from '@command-table/common';
 import type { LibraryLook } from './libraryMoves.js';
 
 /** The actions that ask a question before they act; each names a dialog in ActionBar. */
-export type PlayerDialog = 'peek' | 'mill' | 'token' | 'dice' | 'allLife' | 'concede';
+export type PlayerDialog = 'peek' | 'mill' | 'token' | 'dice' | 'concede';
 
 export interface PlayerActionItem {
   label: string;
@@ -65,8 +65,7 @@ export function playerActionGroups({
     {
       title: 'Table',
       items: [
-        { label: 'Adjust all life…', run: () => openDialog('allLife') },
-        { label: 'Clear all markers', run: () => act({ t: 'CLEAR_ALL_MARKERS' }) },
+        { label: 'Clear markers & counters', run: () => act({ t: 'CLEAR_MARKERS_AND_COUNTERS' }) },
         { label: 'Create token…', run: () => openDialog('token') },
       ],
     },

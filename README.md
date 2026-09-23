@@ -525,6 +525,13 @@ references those two. The client is typechecked by its own build, so check it wi
   reshuffles and draws 7 without bottoming N cards, so a mulligan currently costs nothing. The
   count is tracked (`counters.mulligan`) and shown in the board header, so players can enforce
   the bottoming by hand; §10's freeform stance means the client wouldn't block them either way.
+- **`CLEAR_ALL_MARKERS` is `CLEAR_MARKERS_AND_COUNTERS`, and spares summoning sickness:** §8.1
+  names the action for markers alone, but the markers/counters split is the model's and not the
+  player's — a card wearing three +1/+1 counters looks no different from one wearing a 'flying'
+  pill, and a sweep that took only half of them read as doing nothing. It now takes both. The one
+  thing it leaves alone is `summoning-sick`, which the server sets on arrival and clears when that
+  permanent's controller next untaps: it is bookkeeping rather than something a player stuck on
+  the card, and clearing it here would wake a creature that had just been played.
 - **Passing turn untaps and clears attackers, but deliberately does not draw:** the untap bundle
   is §16.3's, and sweeping the `attacking` markers keeps red rings from outliving their combat.
   A turn-start draw was built and then removed — it is the one turn-start step players want to
@@ -537,10 +544,10 @@ references those two. The client is typechecked by its own build, so check it wi
   one half — worth it against forgetting the second click every combat.
 - **Nothing in the client writes another player's life:** every readout at the crossroads is
   read-only and the vitals pad only ever targets `playerId`, so the damage you dealt is recorded
-  by the player who took it. `SET_LIFE` still takes a list of players and "Adjust all life…" in
-  `More ⋯` still uses it, which is the one remaining way a total moves for someone else — and it
-  moves everyone's at once. The gap this leaves is a disconnected player whose total has drifted:
-  nobody can correct it for them.
+  by the player who took it. `SET_LIFE` still takes a list of players, but nothing in the client
+  aims it at anyone but yourself any more — "Adjust all life…" was the last caller that did, and
+  it is gone. The gap this leaves is a disconnected player whose total has drifted: nobody can
+  correct it for them.
 - **A library search shuffles itself when you close the popover:** the popover used to carry a
   note asking you to remember. A peek never shuffles, since a scry depends on exactly the order
   it just showed you (`libraryDirtiedBy` in `libraryMoves.ts`).

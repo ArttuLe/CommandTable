@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   ATTACKING_MARKER,
+  SUMMONING_SICK_MARKER,
   parseBlockMarker,
   type Action,
   type GameObject,
@@ -95,12 +96,23 @@ export function clearMarker(state: TableState, action: Extract<Action, { t: 'CLE
   return ok(withObject(state, { ...existing, markers: existing.markers.filter((m) => m !== action.marker) }));
 }
 
-export function clearAllMarkers(state: TableState): ApplyResult {
+/**
+ * The board tidy-up: everything a player has stuck on a card comes off, table-wide.
+ *
+ * Counters are in scope as well as markers because the distinction is the model's, not the
+ * player's — a card wearing three +1/+1 counters and one wearing a 'flying' pill are both just
+ * cards with badges on them, and a sweep that took only half of them read as doing nothing at all.
+ *
+ * Summoning sickness is the one thing spared. The server sets it on arrival and clears it when
+ * that permanent's controller next untaps (see PASS_TURN), so it is bookkeeping rather than
+ * something a player put there — and clearing it here would wake a creature that just arrived.
+ */
+export function clearMarkersAndCounters(state: TableState): ApplyResult {
   let next = state;
   for (const obj of Object.values(state.objects)) {
-    if (obj.markers.length > 0) {
-      next = withObject(next, { ...obj, markers: [] }, false);
-    }
+    const markers = obj.markers.filter((marker) => marker === SUMMONING_SICK_MARKER);
+    if (markers.length === obj.markers.length && Object.keys(obj.counters).length === 0) continue;
+    next = withObject(next, { ...obj, markers, counters: {} }, false);
   }
   return ok({ ...next, revision: next.revision + 1 });
 }

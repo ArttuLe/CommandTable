@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from '../actionApplier.js';
-import type { GameObject, TableState } from '@command-table/common';
+import { SUMMONING_SICK_MARKER, type GameObject, type TableState } from '@command-table/common';
 
 const ALICE = 'alice';
 const BOB = 'bob';
@@ -136,14 +136,31 @@ describe('markers', () => {
     expect(state.objects['c1'].markers).toEqual(['goaded']);
   });
 
-  it('CLEAR_ALL_MARKERS clears markers on every object table-wide', () => {
+  it('CLEAR_MARKERS_AND_COUNTERS clears markers on every object table-wide', () => {
     const state = makeState([
       card({ id: 'a', markers: ['attacking'], controllerId: ALICE }),
-      card({ id: 'b', markers: ['blocking'], controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' } }),
+      card({ id: 'b', markers: ['flying'], controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' } }),
     ]);
-    const next = unwrap(state, { t: 'CLEAR_ALL_MARKERS' });
+    const next = unwrap(state, { t: 'CLEAR_MARKERS_AND_COUNTERS' });
     expect(next.objects['a'].markers).toEqual([]);
     expect(next.objects['b'].markers).toEqual([]);
+  });
+
+  // The badges a player actually wants gone are as often counters as markers — a card wearing
+  // three +1/+1 counters looks no different to them from one wearing a label.
+  it('CLEAR_MARKERS_AND_COUNTERS clears counters too', () => {
+    const state = makeState([card({ id: 'a', counters: { '+1/+1': 3, counter: 2 } })]);
+    const next = unwrap(state, { t: 'CLEAR_MARKERS_AND_COUNTERS' });
+    expect(next.objects['a'].counters).toEqual({});
+  });
+
+  // Summoning sickness is the server's own bookkeeping, set on arrival and cleared when that
+  // player's turn comes round. A player tidying their board must not be able to wake the
+  // creature they just played.
+  it('CLEAR_MARKERS_AND_COUNTERS spares the summoning-sickness marker', () => {
+    const state = makeState([card({ id: 'a', markers: [SUMMONING_SICK_MARKER, 'flying'] })]);
+    const next = unwrap(state, { t: 'CLEAR_MARKERS_AND_COUNTERS' });
+    expect(next.objects['a'].markers).toEqual([SUMMONING_SICK_MARKER]);
   });
 });
 

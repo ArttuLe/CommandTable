@@ -29,7 +29,10 @@ export type Action =
   | { t: 'UNATTACH'; objectId: ObjectId }
   | { t: 'SET_MARKER'; objectId: ObjectId; marker: string }
   | { t: 'CLEAR_MARKER'; objectId: ObjectId; marker: string }
-  | { t: 'CLEAR_ALL_MARKERS' }
+  // A table-wide reset of everything players stick on cards: labels, combat markers and counters
+  // alike. Summoning sickness is spared — the server sets and clears it on its own (see
+  // markers.ts), so it is machinery rather than something a player put there to be cleaned up.
+  | { t: 'CLEAR_MARKERS_AND_COUNTERS' }
   | { t: 'TRANSFORM'; objectId: ObjectId }
   | { t: 'TURN_FACE_DOWN'; objectId: ObjectId }
   | { t: 'TURN_FACE_UP'; objectId: ObjectId }
