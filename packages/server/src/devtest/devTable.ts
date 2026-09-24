@@ -1,16 +1,15 @@
-// Dev-only: a whole started table in one HTTP request, so a change can be looked at without a
+// Dev-only: a whole dealt table in one HTTP request, so a change can be looked at without a
 // room code, four decklist pastes and a host start (see the `/devtest` route in server.ts).
 //
 // Everything here goes through the machinery a real game uses — parseDecklist/resolveDecklist
-// for the decks, createTableState for the deal, applyAction for keep-and-begin — so the fixture
-// cannot drift from what starting a game normally produces. The only thing it invents is
-// pressing those buttons on the players' behalf.
+// for the decks, createTableState for the deal — so the fixture cannot drift from what starting
+// a game normally produces. It invents nothing: what comes back is a started room that has just
+// dealt, waiting on its opening hands exactly as a real one would be.
 
 import { readFileSync } from 'node:fs';
-import type { PlayerId, TableState } from '@command-table/common';
+import type { TableState } from '@command-table/common';
 import { parseDecklist } from '../decklistParser.js';
 import { resolveDecklist, type CardLookup } from '../deckResolver.js';
-import { applyAction, type ApplyResult } from '../actionApplier.js';
 import { createTableState } from '../tableFactory.js';
 import type { Room, RoomManager } from '../roomManager.js';
 
@@ -43,7 +42,6 @@ export function buildDevTable(
   const deckTexts = deps.deckTexts ?? devDeckTexts();
   const room = deps.roomManager.createRoom();
   const rejoinTokensByName = new Map<string, string>();
-  const playerIds: PlayerId[] = [];
 
   for (let seat = 0; seat < playerAmount; seat++) {
     const displayName = DEV_PLAYER_NAMES[seat];
@@ -52,23 +50,15 @@ export function buildDevTable(
     room.setResolvedDeck(joined.playerId, resolveDecklist(parseDecklist(deckTexts[seat % deckTexts.length]), deps.cardIndex));
     room.setReady(joined.playerId, true);
     rejoinTokensByName.set(displayName, joined.rejoinToken);
-    playerIds.push(joined.playerId);
   }
 
   room.start();
-  let table = createTableState({ roomId: room.roomId, seats: room.buildSeatSetups() });
-  // Past the opening-hand step: nobody is here to mulligan, and the point is to land on a board.
-  for (const playerId of playerIds) {
-    table = expectOk(applyAction(table, { t: 'KEEP_HAND', playerId }, playerId));
-  }
-  table = expectOk(applyAction(table, { t: 'BEGIN_PLAY' }, playerIds[0]));
+  // Stops at the opening-hand step rather than keeping and beginning on the players' behalf.
+  // That step is a screen like any other (SetupStep.tsx) and pressing through it here would be
+  // the one part of a start the dev route could never show — or an end-to-end test reach.
+  const table = createTableState({ roomId: room.roomId, seats: room.buildSeatSetups() });
 
   return { room, table, rejoinTokensByName };
-}
-
-function expectOk(result: ApplyResult): TableState {
-  if (!result.ok) throw new Error(`dev table setup rejected: ${result.reason}`);
-  return result.state;
 }
 
 /** The seat a `/devtest/:playerAmount/:playerName` URL is asking for, or undefined if there is none. */

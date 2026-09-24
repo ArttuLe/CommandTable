@@ -10,9 +10,11 @@
     "test": "vitest run",
     "typecheck": "tsc -b",
     "host": "tsx scripts/host.ts",
-    "dev": "tsx scripts/dev.ts"
+    "dev": "tsx scripts/dev.ts",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "1.59.1",
     "concurrently": "^10.0.5",
     "typescript": "^5.7.2",
     "vitest": "^5.0.1"
