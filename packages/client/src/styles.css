@@ -548,6 +548,11 @@ button.vital:hover { border-color: var(--border-strong); }
 .mana-R .mana-symbol { background: #f9aa8f; }
 .mana-G .mana-symbol { background: #9bd3ae; }
 .mana-C .mana-symbol { background: #cac5c0; }
+/* The running total wears the pip shape so it reads as part of the pool, but it is a readout,
+   not a control: no buttons, so it carries its own horizontal padding, and it is colourless
+   because no colour of mana owns it. */
+.mana-total { padding: 0.15rem 0.5rem; }
+.mana-total .mana-symbol { background: var(--border-strong); color: var(--text); font-weight: 700; }
 
 /* Confirmations the app asks itself, instead of window.confirm — see ConfirmDialog.tsx. Above
    every other overlay, since it is blocking by definition. */

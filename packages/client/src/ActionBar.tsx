@@ -411,6 +411,12 @@ export function ManaPad() {
           <button onClick={() => bumpMana(color, 1)}>+</button>
         </span>
       ))}
+      {/* What you can actually spend, next to the Reset that clears it. Counting six pips in
+          your head is the one sum the pad was meant to save you. */}
+      <span className={`mana-pip mana-total ${total > 0 ? 'has-mana' : ''}`} title="Total mana in your pool">
+        <b className="mana-symbol">Σ</b>
+        <span className="mana-count">{total}</span>
+      </span>
       <button className="btn btn-ghost" disabled={total === 0} onClick={resetMana}>
         Reset
       </button>

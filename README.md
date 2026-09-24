@@ -67,7 +67,8 @@ ends whoever is active, not you. That dialog is the app's own (`ConfirmDialog.ts
 `window.confirm`; while it is up the keyboard shortcuts stand down so Escape and Enter belong
 to it. A
 client-local mana pad (§8.4) shares a strip above the hand with the graveyard / exile / library
-tiles: WUBRGC counters, reset at will, never synced to the server or other players. It follows
+tiles: WUBRGC counters plus a running total, reset at will, never synced to the server or other
+players. It follows
 the board rather than waiting to be typed into: tapping one of your own permanents fills it with
 whatever that card could add, read off its oracle text (`manaSources.ts`) — one symbol goes
 straight in, anything that could make more than one asks which at the cursor (`ManaChoice.tsx`)
