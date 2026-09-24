@@ -271,7 +271,7 @@ packages/
   common/   Shared TypeScript types (cards, decklists, lobby/table state, wire protocol, actions, log)
   server/   Node WebSocket server: room manager, card index, decklist parser/resolver, ingestion,
             table factory, action applier (dispatch + actions/{object,zone,player,meta}Actions.ts),
-            projection boundary, table history + undo
+            projection boundary, table history + undo, and the dev-only devtest/ table fixture
   client/   Minimal React client: Home (create/join room) → Lobby (seats, decklist, ready/start)
             → Table (a pan/zoom plane of per-player boards, the read-only crossroads life
             readout, collapsible chat and log rails either side of it, an SVG arrow overlay for
@@ -352,6 +352,31 @@ Starts the server and the client together and prints the link and passphrase to 
 on different machines connect over Tailscale — no VPS, no port forwarding, whoever is hosting
 runs the server; guests just open the link. See
 [playing-with-a-friend.md](playing-with-a-friend.md).
+
+## Development
+
+```
+npm run dev
+```
+
+The local-only counterpart to `npm run host`: same two processes, but with the passphrase
+switched off and a dev-table route open. Dev tables are saved to `data/dev-sessions.json`, so
+they never mix with real games.
+
+`/devtest/:playerAmount/:playerName` boots straight into a started game — N seats filled with
+the precon decklists in `packages/server/src/devtest/decks/`, libraries shuffled, opening hands
+dealt and kept, turn 1 underway. Open `/devtest/4/Alice` in one tab and `/devtest/4/Bob` in
+another and both sit at the same table; the seat count picks the table, so `/devtest/2/Alice` is
+a different one. Names are Alice, Bob, Carol, Dave in seat order.
+
+It is built out of the same pieces a real start uses (`parseDecklist` → `resolveDecklist` →
+`createTableState` → `KEEP_HAND`/`BEGIN_PLAY` through `applyAction`), so the fixture cannot
+drift from what the host's Start button produces — see
+`packages/server/src/devtest/devTable.ts`.
+
+Both the missing passphrase and the route are gated on `DEV_MODE=1`, which only `npm run dev`
+sets; the client half is behind `import.meta.env.DEV` as well, so it is not in a built client.
+A machine running `npm run host` answers 404 there and still demands the passphrase.
 
 ## Testing
 

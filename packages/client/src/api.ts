@@ -35,3 +35,15 @@ export async function fetchCard(scryfallId: string): Promise<Card | null> {
   cardCache.set(scryfallId, card);
   return card;
 }
+
+// Dev-only (see devRoute.ts): asks the server for a seat at a table it has already built and
+// started. Returns the credentials the store's `resume` wants — a rejoin token is the only way
+// into a game that is already running.
+export async function joinDevTable(
+  playerAmount: number,
+  playerName: string
+): Promise<{ roomId: string; displayName: string; rejoinToken: string }> {
+  const res = await fetch(`${HTTP_BASE}/api/devtest/${playerAmount}/${encodeURIComponent(playerName)}`);
+  if (!res.ok) throw new Error(`no dev table at ${SERVER_HOST} — is that server running with DEV_MODE=1? (${res.status})`);
+  return res.json();
+}

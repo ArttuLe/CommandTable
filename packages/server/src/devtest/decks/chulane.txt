@@ -1,0 +1,65 @@
+// Dev-only fixture deck. See ../devTable.ts.
+
+Commander
+1 Chulane, Teller of Tales
+
+Deck
+1 Sol Ring
+1 Arcane Signet
+1 Talisman of Curiosity
+1 Talisman of Unity
+1 Talisman of Progress
+1 Commander's Sphere
+1 Birds of Paradise
+1 Llanowar Elves
+1 Elvish Mystic
+1 Fyndhorn Elves
+1 Sakura-Tribe Elder
+1 Wood Elves
+1 Farhaven Elf
+1 Solemn Simulacrum
+1 Eternal Witness
+1 Reclamation Sage
+1 Acidic Slime
+1 Mulldrifter
+1 Coiling Oracle
+1 Shrieking Drake
+1 Whitemane Lion
+1 Kor Skyfisher
+1 Man-o'-War
+1 Cloudblazer
+1 Charming Prince
+1 Spellseeker
+1 Trinket Mage
+1 Wall of Blossoms
+1 Fauna Shaman
+1 Seedborn Muse
+1 Craterhoof Behemoth
+1 Avenger of Zendikar
+1 Rhystic Study
+1 Mystic Remora
+1 Beast Whisperer
+1 Guardian Project
+1 Swords to Plowshares
+1 Path to Exile
+1 Beast Within
+1 Cyclonic Rift
+1 Counterspell
+1 Negate
+1 Cultivate
+1 Kodama's Reach
+1 Nature's Lore
+1 Command Tower
+1 Path of Ancestry
+1 Exotic Orchard
+1 Seaside Citadel
+1 Temple of Mystery
+1 Temple of Plenty
+1 Temple of Enlightenment
+1 Evolving Wilds
+1 Terramorphic Expanse
+1 Reliquary Tower
+1 Simic Growth Chamber
+14 Forest
+14 Island
+15 Plains
