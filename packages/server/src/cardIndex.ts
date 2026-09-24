@@ -5,6 +5,13 @@
 import type Database from 'better-sqlite3';
 import type { Card, CardFace } from '@command-table/common';
 
+// Layouts the bulk file carries that are not playable cards — stand-in rows (tokens, and the
+// placeholder 'front cards' from the f-prefixed sets) with a bare type line and no mana cost.
+// Hundreds of them share a name with a real card, so every by-name lookup has to exclude them or
+// LIMIT 1 can hand a decklist line a row it could never have meant. Held as one SQL literal so the
+// list stays in a single place as Scryfall adds more such layouts.
+const NON_PLAYABLE_LAYOUTS = "('token', 'double_faced_token', 'front_card', 'art_series')";
+
 interface CardRow {
   oracle_id: string;
   scryfall_id: string;
@@ -112,7 +119,7 @@ export class CardIndex {
   findByName(name: string): Card | undefined {
     const nameLower = name.toLowerCase();
     const row = this.db
-      .prepare<[string], CardRow>('SELECT * FROM cards WHERE name_lower = ? LIMIT 1')
+      .prepare<[string], CardRow>(`SELECT * FROM cards WHERE name_lower = ? AND layout NOT IN ${NON_PLAYABLE_LAYOUTS} LIMIT 1`)
       .get(nameLower);
     if (row) {
       return fromRow(row);
@@ -122,7 +129,7 @@ export class CardIndex {
       .prepare<
         [string],
         CardRow
-      >('SELECT cards.* FROM cards JOIN card_face_aliases ON cards.scryfall_id = card_face_aliases.scryfall_id WHERE card_face_aliases.name_lower = ? LIMIT 1')
+      >(`SELECT cards.* FROM cards JOIN card_face_aliases ON cards.scryfall_id = card_face_aliases.scryfall_id WHERE card_face_aliases.name_lower = ? AND cards.layout NOT IN ${NON_PLAYABLE_LAYOUTS} LIMIT 1`)
       .get(nameLower);
     return aliased ? fromRow(aliased) : undefined;
   }
@@ -145,7 +152,9 @@ export class CardIndex {
   }
 
   suggestNames(query: string, limit: number): string[] {
-    const rows = this.db.prepare<[], { name: string }>('SELECT DISTINCT name FROM cards').all();
+    // Non-playable rows are skipped here for the same reason findByName skips them: such a name looks
+    // like a helpful "did you mean …?" but would fail to resolve if the player took the suggestion.
+    const rows = this.db.prepare<[], { name: string }>(`SELECT DISTINCT name FROM cards WHERE layout NOT IN ${NON_PLAYABLE_LAYOUTS}`).all();
     const q = query.toLowerCase();
     return rows
       .map((r) => ({ name: r.name, distance: levenshtein(q, r.name.toLowerCase()) }))

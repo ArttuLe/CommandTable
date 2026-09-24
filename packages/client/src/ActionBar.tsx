@@ -1,14 +1,9 @@
 // The player's own control strip, sitting with their hand rather than in a global toolbar.
 //
-// Actions are split by how often they're used, not by category: the three you take every turn get
-// real buttons next to your cards, and the ten you take a few times a game live behind one
-// overflow menu. Previously all thirteen sat in one wrapping row at equal weight, which made
-// "Pass turn" no easier to find than "Concede".
-//
-// That ranking is right until you know the app, at which point hiding Shuffle behind a menu is
-// just a click in the way. The "Show every action" setting swaps the strip for a grid of all
-// thirteen (ActionPanel) — same catalog (playerActions.ts), same dialogs, no menu — in the same
-// place, so the controls don't move out from under the cursor when it is turned on.
+// Actions are ranked by how often they're used, not grouped by category: the four you reach for
+// every turn get real buttons next to your cards, and the ten you take a few times a game live
+// behind one "More ⋯" menu (playerActions.ts). Previously all thirteen sat in one wrapping row at
+// equal weight, which made "Pass turn" no easier to find than "Concede".
 
 import { Fragment, useEffect, useRef, useState } from 'react';
 import type { Action, PlayerId, PlayerState } from '@command-table/common';
@@ -29,21 +24,29 @@ interface ActionBarProps {
   onPassTurn: () => void;
   /** Also owned by Table: untapping everything empties the mana pad with it. */
   onUntapAll: () => void;
+  /** Table's too: the rewind is a table-wide thing, not one of your own actions. */
+  onUndo: () => void;
+  /** False at revision 0, where there is nothing behind the table to go back to. */
+  canUndo: boolean;
 }
 
-export function ActionBar(props: ActionBarProps) {
-  const showAllActions = useUiStore((s) => s.showAllActions);
-  return showAllActions ? <ActionPanel {...props} /> : <ActionStrip {...props} />;
-}
-
-/** The default: three buttons and a menu holding the rest. */
-function ActionStrip({ playerId, isMyTurn, onPassTurn, onUntapAll }: ActionBarProps) {
+export function ActionBar({ playerId, isMyTurn, onPassTurn, onUntapAll, onUndo, canUndo }: ActionBarProps) {
   const act = useStore((s) => s.act);
 
   return (
     <div className="action-bar">
       <button className="btn btn-lg" title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>
         Draw
+      </button>
+      {/* Out here rather than in the menu: it is the control you reach for the instant you
+          notice a mistake, and a mistake is exactly when hunting through a popover is worst. */}
+      <button
+        className="btn btn-lg"
+        title="Take back the last action — instant if it was yours, otherwise the table votes"
+        disabled={!canUndo}
+        onClick={onUndo}
+      >
+        Undo
       </button>
       <button className="btn btn-lg" title="Shortcut: U" onClick={onUntapAll}>
         Untap all
@@ -74,10 +77,7 @@ function useCloseOnOutsideClick(open: boolean, ref: React.RefObject<HTMLElement>
   }, [open, ref]);
 }
 
-/**
- * The catalog, the dialog it currently has open, and that dialog's JSX — everything both the
- * popover and the panel need, so neither owns it.
- */
+/** The catalog, the dialog it currently has open, and that dialog's JSX, in one place. */
 function usePlayerActions(playerId: PlayerId, act: (action: Action) => void) {
   const [dialog, setDialog] = useState<PlayerDialog | null>(null);
   const openZone = useUiStore((s) => s.openZone);
@@ -215,45 +215,6 @@ function MoreMenu({
           ))}
         </div>
       )}
-      {dialogs}
-    </div>
-  );
-}
-
-/**
- * The same actions with nothing hidden, for players who know what is in the menu. It takes the
- * strip's own place in the HUD row rather than the empty flank opposite it, so the setting
- * changes what the controls are, not where to look for them — and it keeps the three you take
- * every turn, which are still the three you take every turn.
- */
-function ActionPanel({ playerId, isMyTurn, onPassTurn, onUntapAll }: ActionBarProps) {
-  const act = useStore((s) => s.act);
-  const { groups, dialogs } = usePlayerActions(playerId, act);
-
-  return (
-    <div className="action-panel">
-      {/* Written out rather than folded into the catalog: two of the three are Table's to run,
-          and Pass turn wears the turn state. They keep the full width between them. */}
-      <button className="btn" title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>
-        Draw
-      </button>
-      <button className="btn" title="Shortcut: U" onClick={onUntapAll}>
-        Untap all
-      </button>
-      <button className={`btn btn-primary ${isMyTurn ? 'urgent' : ''}`} title="Shortcut: P" onClick={onPassTurn}>
-        Pass turn
-      </button>
-
-      {groups.map((group) => (
-        <Fragment key={group.title ?? 'tail'}>
-          {group.title && <p className="popover-group">{group.title}</p>}
-          {group.items.map((item) => (
-            <button key={item.label} className={`btn ${item.danger ? 'danger' : ''}`} onClick={item.run}>
-              {item.label}
-            </button>
-          ))}
-        </Fragment>
-      ))}
       {dialogs}
     </div>
   );

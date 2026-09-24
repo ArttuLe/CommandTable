@@ -95,7 +95,7 @@ export function Lobby() {
             <tr>
               <th>Seat</th>
               <th>Player</th>
-              <th>Conn.</th>
+              <th />
               <th>Ready</th>
               <th>Deck</th>
               <th />
@@ -201,7 +201,9 @@ function deckStatusLabel(status: DeckStatus): string {
     case 'none':
       return 'No deck';
     case 'ok':
-      return 'Ready';
+      // Not "Ready" — that is the column next door, and it means the player ticked the toggle.
+      // This one only says the decklist resolved against the card index.
+      return 'Resolved';
     case 'warnings':
       return 'Warnings';
   }

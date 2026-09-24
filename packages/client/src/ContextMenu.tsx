@@ -4,7 +4,7 @@
 // a redacted (hidden) object, unlike ownerId.
 
 import { useLayoutEffect, useRef, useState } from 'react';
-import { blockMarker, isRedacted, parseTargetMarker, targetMarker, type Action, type PlayerState, type ProjectedObject } from '@command-table/common';
+import { blockMarker, isRedacted, parseTargetMarker, targetMarker, type Action, type Card, type PlayerState, type ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
 import { ATTACKING_MARKER, blocksOf, isAttacking, isLabelMarker } from './combat.js';
 import { useCard } from './useCard.js';
@@ -33,6 +33,31 @@ type MenuDialog = 'marker' | 'annotation' | 'controller' | null;
  * (see labels.ts).
  */
 const GENERIC_COUNTER = 'counter';
+
+/** The zones a menu item can send an object to, as `MOVE_OBJECT` names them. */
+type MoveZone = 'hand' | 'graveyard' | 'exile' | 'library' | 'battlefield' | 'commandZone';
+
+/**
+ * Where an object can be sent. Six full-width "Move to X" rows were a quarter of a menu that had
+ * outgrown the screen; as chips they are one row, and the short names are the ones players say
+ * out loud anyway.
+ */
+const MOVE_TARGETS: { label: string; zone: MoveZone; toPosition?: number }[] = [
+  { label: 'Hand', zone: 'hand' },
+  { label: 'GY', zone: 'graveyard' },
+  { label: 'Exile', zone: 'exile' },
+  { label: 'Play', zone: 'battlefield' },
+  { label: 'Cmd', zone: 'commandZone' },
+  { label: 'Top', zone: 'library', toPosition: 0 },
+];
+
+/** What the menu's header calls this object. A redacted one has no name to give away. */
+function menuTitle(obj: ProjectedObject, card: Card | null): string {
+  if (isRedacted(obj)) return 'Hidden card';
+  if (card) return card.name;
+  if (obj.source.kind === 'token' && obj.source.adhoc) return obj.source.adhoc.name;
+  return 'Loading…';
+}
 
 export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
   const act = useStore((s) => s.act);
@@ -68,7 +93,7 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
     onClose();
   }
 
-  const toZone = (zone: 'hand' | 'graveyard' | 'exile' | 'library' | 'battlefield' | 'commandZone') => ({
+  const toZone = (zone: MoveZone) => ({
     playerId: obj.controllerId,
     zone,
   });
@@ -93,6 +118,10 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
         className="context-menu"
         style={{ left: pos?.left ?? x, top: pos?.top ?? y, visibility: pos ? 'visible' : 'hidden' }}
       >
+        {/* Which card you actually hit. On a thirty-permanent board zoomed out to fit, the tile
+            under the cursor is small enough that a menu of verbs with nothing naming its subject
+            is a guess — so the menu says it before it offers anything. */}
+        <div className="context-menu-title">{menuTitle(obj, card)}</div>
         <button onClick={() => run(() => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id }))}>
           {obj.tapped ? 'Untap' : 'Tap'}
         </button>
@@ -166,14 +195,17 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
         )}
 
         <hr />
-        <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('hand') }))}>Move to hand</button>
-        <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('graveyard') }))}>Move to graveyard</button>
-        <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('exile') }))}>Move to exile</button>
-        <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('battlefield') }))}>Move to battlefield</button>
-        <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('commandZone') }))}>Move to command zone</button>
-        <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('library'), toPosition: 0 }))}>
-          Move to top of library
-        </button>
+        <div className="menu-chips">
+          {MOVE_TARGETS.map(({ label, zone, toPosition }) => (
+            <button
+              key={zone}
+              title={`Move to ${label}`}
+              onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone(zone), toPosition }))}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         <hr />
         {/* Three steppers, always there, none of them behind a dialog: the two counters that come
@@ -190,11 +222,23 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
             <CounterStepper key={key} counterKey={key} obj={obj} act={act} />
           ))}
 
-        {live.markers.filter(isLabelMarker).map((marker) => (
-          <button key={marker} onClick={() => run(() => act({ t: 'CLEAR_MARKER', objectId: obj.id, marker }))}>
-            Remove label &apos;{marker}&apos;
+        {/* One row however many labels there are. A row each grew the menu without bound, and
+            the labels are already readable on the card — but this can't just go: clicking the
+            pill only removes it on the battlefield, so for a card in hand, in the command zone
+            or in a zone popover the menu is the only way a label comes off. */}
+        {live.markers.some(isLabelMarker) && (
+          <button
+            onClick={() =>
+              run(() => {
+                for (const marker of live.markers.filter(isLabelMarker)) {
+                  act({ t: 'CLEAR_MARKER', objectId: obj.id, marker });
+                }
+              })
+            }
+          >
+            Clear labels
           </button>
-        ))}
+        )}
         <button onClick={() => setDialog('marker')}>Add label…</button>
 
         {!isRedacted(obj) && <button onClick={() => setDialog('annotation')}>Set annotation…</button>}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PlayerId, ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
 import { useUiStore } from './uiStore.js';
@@ -25,9 +25,47 @@ import { ConfirmDialog } from './ConfirmDialog.js';
 import { HelpButton } from './HelpDialog.js';
 import { ManaChoice, type ManaChoicePrompt } from './ManaChoice.js';
 import { manaToRemove } from './manaSources.js';
+import { undoPromptText } from './undoPrompt.js';
+import { fanOverlap } from './handFan.js';
 
 function isOwnZone(obj: ProjectedObject, playerId: PlayerId, zone: string): boolean {
   return 'playerId' in obj.zone && obj.zone.playerId === playerId && obj.zone.zone === zone;
+}
+
+/**
+ * How tightly to fan the hand, measured rather than guessed (see handFan.ts).
+ *
+ * The hand's own width is the width the HUD's grid allotted it, which is exactly the space the
+ * fan has to stay inside; `--card-w` and the row's gap are read off the element so the fan
+ * follows the card-size steps at narrow windows without repeating their breakpoints here.
+ * Observed rather than measured once, because the window is resized mid-game and the flanks
+ * either side of the hand grow and shrink with what they are showing.
+ *
+ * Overlapping narrows the hand, which the observer then re-measures, so this has to be a loop
+ * that settles. It does because the column is sized by the grid and not by the hand (see
+ * `.hud-row` in styles.css): what is measured is the room available, which the overlap cannot
+ * change, so the next measurement asks the same question and gets the same answer. `handFan`'s
+ * pixel of slack covers the rounding at the exact boundary.
+ */
+function useFanOverlap(count: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [overlap, setOverlap] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const style = getComputedStyle(el);
+      const cardWidth = parseFloat(style.getPropertyValue('--card-w'));
+      setOverlap(fanOverlap(count, cardWidth, parseFloat(style.columnGap), el.clientWidth));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [count]);
+
+  return { ref, overlap };
 }
 
 /**
@@ -94,6 +132,15 @@ export function Table() {
     resetMana();
   }, [act, playerId, resetMana]);
 
+  // A revision is the table after an action, so taking the last one back means asking for the
+  // one before it. No confirmation in front of it: undoing your own last action is the common
+  // case and is instant, and anything further back already has the table's vote in front of it
+  // (see the server's `undo` handler).
+  const undoLast = useCallback(
+    () => send({ t: 'undo', targetRevision: tableState.revision - 1 }),
+    [send, tableState.revision]
+  );
+
   // §16.2 keyboard shortcuts for the high-frequency actions, listed by the `?` in the status bar
   // (HelpDialog). Gated on not-typing-in-an-input so it doesn't fire while the chat box or a
   // dialog's own field has focus.
@@ -125,6 +172,12 @@ export function Table() {
         case 'l':
           toggleLogRail();
           break;
+        case 'c':
+          toggleChatRail();
+          break;
+        case 'z':
+          undoLast();
+          break;
         case 'escape':
           useUiStore.getState().clearSelection();
           // Escape is already "stop what you were about to do"; an armed arrow is that.
@@ -138,7 +191,7 @@ export function Table() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [act, playerId, dialogOpen, requestPassTurn, toggleLogRail, untapAll]);
+  }, [act, playerId, dialogOpen, requestPassTurn, toggleChatRail, toggleLogRail, undoLast, untapAll]);
 
   const objects = Object.values(tableState.objects);
 
@@ -147,6 +200,7 @@ export function Table() {
 
   const inZone = (pid: PlayerId, zone: string) => objects.filter((o) => isOwnZone(o, pid, zone));
   const myHand = inZone(playerId, 'hand');
+  const fan = useFanOverlap(myHand.length);
 
   // §12.3: every commander on the table, for the crossroads damage badges and the commander
   // prompt; your own HUD only offers the ones that can actually hit you.
@@ -204,22 +258,17 @@ export function Table() {
             hunting for it shouldn't mean leaving the table. Subdued so it doesn't compete with
             the turn pill, which is what everyone is actually watching. */}
         <span className="room-code">{tableState.roomId}</span>
-        {/* Until the host starts the game, whose turn it is doesn't mean anything yet — the
-            opening-hand step takes the turn pill's place rather than sitting beside it. */}
-        {tableState.setupComplete ? (
-          <span className={`turn-pill ${isMyTurn ? 'mine' : ''}`}>{turnLabel(tableState.turn, tableState.players, playerId)}</span>
-        ) : (
-          <SetupStep
-            players={tableState.players}
-            playerId={playerId}
-            isHost={roomState?.hostId === playerId}
-            handCount={myHand.length}
-          />
-        )}
+        {/* Until the host starts the game, whose turn it is doesn't mean anything yet — the pill
+            says which moment the table is in instead. The opening-hand step itself is down in
+            the HUD, where you can see the hand it is asking about; the pill keeps its slot here
+            either way, so nothing shifts when the game begins. */}
+        <span className={`turn-pill ${tableState.setupComplete && isMyTurn ? 'mine' : ''}`}>
+          {tableState.setupComplete ? turnLabel(tableState.turn, tableState.players, playerId) : 'Opening hands'}
+        </span>
 
         {pendingUndoRequest && (
           <div className="undo-request">
-            <span>{pendingUndoRequest.describes}?</span>
+            <span>{undoPromptText(pendingUndoRequest, tableState.log, tableState.players)}</span>
             <button className="btn" onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: true })}>
               Approve
             </button>
@@ -248,17 +297,6 @@ export function Table() {
             </button>
           </div>
         ))}
-
-        {/* An armed arrow changes what the next click does, so it has to say so — a crosshair
-            cursor alone is too quiet for a mode. */}
-        {pointing && (
-          <div className="targeting-hint">
-            <span>{pointing.kind === 'block' ? 'Click the attacker to block.' : 'Click the card to target.'}</span>
-            <button className="btn btn-ghost" onClick={cancelPointing}>
-              Cancel
-            </button>
-          </div>
-        )}
 
         {/* Pushed to the far end of the bar by its own margin, so whatever the bar is currently
             asking you stays next to the turn pill where you're already looking. */}
@@ -369,6 +407,18 @@ export function Table() {
       {/* Fixed chrome, outside the plane: your hand has to stay readable no matter how far the
           table is zoomed out, and the actions you take every turn belong next to it. */}
       <div className={`hud ${isMyTurn ? 'my-turn' : ''}`}>
+        {/* A band of its own across the top of the HUD, directly above the cards it is asking
+            about: you cannot judge a mulligan without seeing your hand, so the decision sits
+            with it rather than in the status bar (where it read as chrome) or in a centred
+            modal (which would cover the very thing you are deciding on). */}
+        {!tableState.setupComplete && (
+          <SetupStep
+            players={tableState.players}
+            playerId={playerId}
+            isHost={roomState?.hostId === playerId}
+            handCount={myHand.length}
+          />
+        )}
         {/* Mana and your zones share the top strip: both are read-and-poke controls that want to
             be near the hand without stealing any of its height. */}
         <div className="hud-top">
@@ -398,10 +448,19 @@ export function Table() {
             isMyTurn={isMyTurn}
             onPassTurn={requestPassTurn}
             onUntapAll={untapAll}
+            onUndo={undoLast}
+            canUndo={tableState.revision > 0}
           />
           {/* Overlapping fan rather than a second row: a big hand must not steal height from
-              the table. */}
-          <div className={`hand ${myHand.length > 8 ? 'crowded' : ''}`}>
+              the table — and the overlap tightens only as far as it has to, so it doesn't steal
+              width from the controls either side of it instead (see handFan.ts). Crowding is
+              what the measurement found, not a card count: the hand overlaps exactly when it
+              would otherwise wrap, which an opening seven already does. */}
+          <div
+            ref={fan.ref}
+            className={`hand ${fan.overlap > 0 ? 'crowded' : ''}`}
+            style={{ '--fan-overlap': fan.overlap } as React.CSSProperties}
+          >
             {myHand.map((obj) => (
               <CardTile
                 key={obj.id}
@@ -414,6 +473,18 @@ export function Table() {
         </div>
       </div>
 
+      {/* An armed arrow changes what the next click does, so it has to say so — a crosshair
+          cursor alone is too quiet for a mode. It floats above the hand rather than sitting in
+          the status bar: the mode is about the next card you click, and your eye is down on the
+          board, hundreds of pixels from the top-left corner. */}
+      {pointing && (
+        <div className="targeting-hint">
+          <span>{pointing.kind === 'block' ? 'Click the attacker to block.' : 'Click the card to target.'}</span>
+          <button className="btn btn-ghost" onClick={cancelPointing}>
+            Cancel (Esc)
+          </button>
+        </div>
+      )}
       <SelectionBar />
       {/* A toast for each stream, beside the rail it belongs to and only while that rail is shut. */}
       <Toasts log={chatLog} players={tableState.players} myId={playerId} side="chat" enabled={!chatRailOpen} />

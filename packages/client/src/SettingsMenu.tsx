@@ -17,8 +17,6 @@ export function SettingsMenu() {
   const ref = useRef<HTMLDivElement>(null);
   const followActivePlayer = useUiStore((s) => s.followActivePlayer);
   const toggleFollowActivePlayer = useUiStore((s) => s.toggleFollowActivePlayer);
-  const showAllActions = useUiStore((s) => s.showAllActions);
-  const toggleShowAllActions = useUiStore((s) => s.toggleShowAllActions);
   const leave = useStore((s) => s.leave);
   const endGame = useStore((s) => s.endGame);
   const isHost = useStore((s) => s.roomState?.hostId !== null && s.roomState?.hostId === s.playerId);
@@ -50,13 +48,6 @@ export function SettingsMenu() {
             <span>
               Follow the active player
               <small>The table pans to whoever's turn it is and zooms in on their board.</small>
-            </span>
-          </label>
-          <label>
-            <input type="checkbox" checked={showAllActions} onChange={toggleShowAllActions} />
-            <span>
-              Show every action
-              <small>Everything behind More ⋯ is laid out beside your hand instead.</small>
             </span>
           </label>
 

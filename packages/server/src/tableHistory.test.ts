@@ -64,10 +64,53 @@ describe('TableHistory', () => {
     expect(history.canSelfUndo(ALICE)).toBe(false);
   });
 
-  it('currentRevision reflects the initial state until anything is recorded', () => {
+  it('undoTarget steps back from the most recent action', () => {
     const history = new TableHistory(stateAt(0));
-    expect(history.currentRevision()).toBe(0);
     history.record(ALICE, stateAt(1));
-    expect(history.currentRevision()).toBe(1);
+    history.record(BOB, stateAt(2));
+    expect(history.undoTarget()).toBe(1);
+  });
+
+  it('undoTarget steps back past what a revert already undid', () => {
+    const history = new TableHistory(stateAt(0));
+    history.record(BOB, stateAt(1));
+    history.record(ALICE, stateAt(2));
+    // Reverting to revision 1 lands on revision 3 carrying revision 1's content.
+    history.recordRevert(ALICE, stateAt(3), 1);
+    expect(history.undoTarget()).toBe(0);
+  });
+
+  it('undoTarget follows nested reverts back to the content they restored', () => {
+    const history = new TableHistory(stateAt(0));
+    history.record(ALICE, stateAt(1));
+    history.record(ALICE, stateAt(2));
+    history.record(ALICE, stateAt(3));
+    history.recordRevert(ALICE, stateAt(4), 2);
+    history.recordRevert(ALICE, stateAt(5), 1);
+    expect(history.undoTarget()).toBe(0);
+  });
+
+  it('undoTarget returns to the newest action recorded after a revert', () => {
+    const history = new TableHistory(stateAt(0));
+    history.record(ALICE, stateAt(1));
+    history.recordRevert(ALICE, stateAt(2), 0);
+    history.record(BOB, stateAt(3));
+    expect(history.undoTarget()).toBe(2);
+  });
+
+  it('undoTarget falls below the initial revision when there is nothing to undo', () => {
+    const history = new TableHistory(stateAt(0));
+    expect(history.undoTarget()).toBe(-1);
+    expect(history.initialRevision()).toBe(0);
+  });
+
+  it('canSelfUndo is false once a revert leaves the content on another player action', () => {
+    const history = new TableHistory(stateAt(0));
+    history.record(BOB, stateAt(1));
+    history.record(ALICE, stateAt(2));
+    history.recordRevert(ALICE, stateAt(3), 1);
+    // The table now carries Bob's revision-1 content, so undoing further needs consent.
+    expect(history.canSelfUndo(ALICE)).toBe(false);
+    expect(history.canSelfUndo(BOB)).toBe(true);
   });
 });

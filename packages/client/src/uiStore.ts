@@ -42,9 +42,6 @@ interface UiStore {
   /** Settings gear: the plane re-frames itself on the active player's board each turn. */
   followActivePlayer: boolean;
   toggleFollowActivePlayer: () => void;
-  /** Settings gear: the rarely-used actions come out of the More ⋯ menu onto the table. */
-  showAllActions: boolean;
-  toggleShowAllActions: () => void;
   /** Commander replacement offers waved away, keyed by the zone they were waved away in. */
   dismissedCommanders: Record<ObjectId, ReplaceableZone>;
   dismissCommander: (objectId: ObjectId, zone: ReplaceableZone) => void;
@@ -97,8 +94,6 @@ export const useUiStore = create<UiStore>((set) => ({
   popDialog: () => set((s) => ({ openDialogs: Math.max(0, s.openDialogs - 1) })),
   followActivePlayer: false,
   toggleFollowActivePlayer: () => set((s) => ({ followActivePlayer: !s.followActivePlayer })),
-  showAllActions: false,
-  toggleShowAllActions: () => set((s) => ({ showAllActions: !s.showAllActions })),
   dismissedCommanders: {},
   dismissCommander: (objectId, zone) =>
     set((s) => ({ dismissedCommanders: { ...s.dismissedCommanders, [objectId]: zone } })),

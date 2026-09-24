@@ -1,5 +1,6 @@
-import { isRedacted, type Card, type GameObject, type ProjectedObject } from '@command-table/common';
+import { blockMarker, isRedacted, targetMarker, type Card, type GameObject, type ProjectedObject } from '@command-table/common';
 import { useCard } from './useCard.js';
+import { useStore } from './store.js';
 import { counterBadgeText, counterKind } from './counters.js';
 import { labelTone } from './labels.js';
 import { isCreature, powerToughness, typeLineOf } from './battlefieldZones.js';
@@ -18,6 +19,32 @@ interface CardTileProps {
 export function CardTile({ obj, selected, onClick, onContextMenu, onRemoveLabel }: CardTileProps) {
   const card = useCard(obj);
   const setHoveredCard = useUiStore((s) => s.setHoveredCard);
+  const pointing = useUiStore((s) => s.pointing);
+  const cancelPointing = useUiStore((s) => s.cancelPointing);
+  const act = useStore((s) => s.act);
+
+  // The revision this tile last changed in, or null if the last action left it alone. The
+  // revision is the value rather than a boolean because it is what remounts the overlay below.
+  const flashRevision = useStore((s) => (s.changedIds.has(obj.id) ? s.changeRevision : null));
+
+  // While "Target…" or "Blocking…" is armed, the next click points the arrow instead of doing
+  // whatever this tile normally does. Which marker it writes is the only difference between the
+  // two modes. It lives here, at the one chokepoint every tile in the app goes through, because
+  // in a mode the mode owns the click: the crosshair cursor is on the hand, the command zone and
+  // the zone popovers too, and those used to go on playing and casting out from under an armed
+  // arrow — two unintended actions from one click.
+  function handleClick(e: React.MouseEvent) {
+    if (!pointing) {
+      onClick?.(e);
+      return;
+    }
+    // Pointing at yourself is the gesture for "never mind", and avoids an arrow with no length.
+    if (pointing.fromId !== obj.id) {
+      const marker = pointing.kind === 'block' ? blockMarker(obj.id) : targetMarker(obj.id);
+      act({ t: 'SET_MARKER', objectId: pointing.fromId, marker });
+    }
+    cancelPointing();
+  }
 
   const label = isRedacted(obj) ? null : cardLabel(obj, card);
   // Two ways to be looking at a back: the projection withheld the card from you (§9.2), or the
@@ -39,7 +66,7 @@ export function CardTile({ obj, selected, onClick, onContextMenu, onRemoveLabel 
   return (
     <div
       className={`card-tile ${obj.tapped ? 'tapped' : ''} ${showsBack ? 'face-down' : ''} ${selected ? 'selected' : ''} ${isAttacking(obj) ? 'attacking' : ''}`}
-      onClick={onClick}
+      onClick={handleClick}
       onContextMenu={onContextMenu}
       // Hover-zoom is left alone: if the projection let you have the card, you are allowed to
       // remind yourself what your own morph is without turning it over for everyone.
@@ -103,6 +130,12 @@ export function CardTile({ obj, selected, onClick, onContextMenu, onRemoveLabel 
           ))}
         </div>
       )}
+      {/* An overlay child rather than a class on the tile: this card just changed and the pulse
+          says so to everyone at once, but it must not touch the tile's own `transform`, which is
+          load-bearing for a tapped card's rotation and for the hand's hover-lift. The `key` is
+          what remounts the element, and so restarts the animation when the same card changes
+          twice running. */}
+      {flashRevision !== null && <span key={flashRevision} className="change-pulse" />}
     </div>
   );
 }

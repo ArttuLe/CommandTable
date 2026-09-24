@@ -15,7 +15,9 @@ export const KEY_SHORTCUTS: Shortcut[] = [
   { keys: 'U', what: 'Untap all your permanents, and empty your mana pad' },
   { keys: 'P', what: 'Pass the turn (confirms first if it is not yours)' },
   { keys: '+ / −', what: 'Gain or lose one life' },
-  { keys: 'L', what: 'Open or close the log and chat rail' },
+  { keys: 'L', what: 'Open or close the log rail' },
+  { keys: 'C', what: 'Open or close the chat rail' },
+  { keys: 'Z', what: 'Undo the last action (instant if it was yours, otherwise the table votes)' },
   { keys: 'Esc', what: 'Clear the selection, or close whatever is open' },
 ];
 

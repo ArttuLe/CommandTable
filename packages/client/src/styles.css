@@ -2,25 +2,31 @@
    rather than in a dozen rules. Buttons get a baseline below for the same reason: every control
    used to inherit the browser's default grey, which made the UI read as a form, not a game. */
 :root {
-  --bg: #16181c;
-  --surface: #202329;
-  --surface-raised: #272b33;
-  --surface-sunken: #121419;
-  --border: #363b45;
-  --border-strong: #4a515e;
-  --text: #e8eaed;
-  --text-dim: #9aa2b1;
-  --accent: #5aa9e6;        /* you */
-  --accent-turn: #e8b33c;   /* whoever is active */
-  --danger: #c4544c;
-  --radius: 6px;
-  --radius-lg: 10px;
-  --shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
-  /* Card size is one knob: the zone heights, the hand's height and the hand's fan overlap all
+   --bg: #16181c;
+   --surface: #202329;
+   --surface-raised: #272b33;
+   --surface-sunken: #121419;
+   --border: #363b45;
+   --border-strong: #4a515e;
+   --text: #e8eaed;
+   --text-dim: #9aa2b1;
+   --accent: #5aa9e6;
+   /* you */
+   --accent-turn: #e8b33c;
+   /* whoever is active */
+   --danger: #c4544c;
+   --radius: 6px;
+   --radius-lg: 10px;
+   --shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+   /* Card size is one knob: the zone heights, the hand's height and the hand's fan overlap all
      derive from it, so cards can be made more legible without hand-tuning five other rules.
      Roughly a real card's 63:88 proportions. */
-  --card-w: 156px;
-  --card-h: 218px;
+   --card-w: 156px;
+   --card-h: 218px;
+   /* The same proportions as a unitless number, because `calc()` cannot divide a length by a
+      length — `calc(var(--card-w) / var(--card-h))` is invalid and takes its whole declaration
+      down with it. Every breakpoint below is the same 63:88 card, so one value covers all three. */
+   --card-ratio: 0.715;
 }
 
 /* Narrow windows. The fixed chrome — vitals, mana, zones, hand — is what runs out of room first,
@@ -28,163 +34,654 @@
    it down takes the hand, the zone popovers and the selection bar with it; the rest is a handful
    of rules that were sized for a wide window, gathered at the bottom of this file. */
 @media (max-width: 1100px) {
-  :root { --card-w: 120px; --card-h: 168px; }
+   :root {
+      --card-w: 120px;
+      --card-h: 168px;
+   }
 }
+
 @media (max-width: 820px) {
-  :root { --card-w: 100px; --card-h: 140px; }
+   :root {
+      --card-w: 100px;
+      --card-h: 140px;
+   }
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
+* {
+   box-sizing: border-box;
+}
 
-button { font-family: inherit; }
+body {
+   margin: 0;
+   font-family: system-ui, sans-serif;
+   background: var(--bg);
+   color: var(--text);
+}
+
+button {
+   font-family: inherit;
+}
 
 /* Baseline button. `.btn-primary` is the one action that changes global state (pass turn),
    `.btn-ghost` is for dismissals, `.btn-lg` for the per-turn actions sitting by your hand. */
 .btn {
-  background: var(--surface-raised); color: var(--text); border: 1px solid var(--border-strong);
-  border-radius: var(--radius); padding: 0.3rem 0.65rem; font-size: 0.8rem; cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+   background: var(--surface-raised);
+   color: var(--text);
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius);
+   padding: 0.3rem 0.65rem;
+   font-size: 0.8rem;
+   cursor: pointer;
+   transition: background 0.12s, border-color 0.12s;
 }
-.btn:hover:not(:disabled) { background: #31363f; border-color: #5d6675; }
-.btn:disabled { opacity: 0.4; cursor: default; }
-.btn-lg { padding: 0.5rem 0.9rem; font-size: 0.9rem; }
-.btn-ghost { background: transparent; border-color: var(--border); color: var(--text-dim); }
-.btn-primary { background: #2d5f8a; border-color: #4682b4; color: #fff; font-weight: 600; }
-.btn-primary:hover:not(:disabled) { background: #36719f; }
+
+.btn:hover:not(:disabled) {
+   background: #31363f;
+   border-color: #5d6675;
+}
+
+.btn:disabled {
+   opacity: 0.4;
+   cursor: default;
+}
+
+.btn-lg {
+   padding: 0.5rem 0.9rem;
+   font-size: 0.9rem;
+}
+
+.btn-ghost {
+   background: transparent;
+   border-color: var(--border);
+   color: var(--text-dim);
+}
+
+.btn-primary {
+   background: #2d5f8a;
+   border-color: #4682b4;
+   color: #fff;
+   font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+   background: #36719f;
+}
+
 /* Your turn: the one button worth pulling the eye. */
-.btn-primary.urgent { background: #8a6a15; border-color: var(--accent-turn); box-shadow: 0 0 0 1px rgba(232, 179, 60, 0.35); }
-.btn-primary.urgent:hover:not(:disabled) { background: #a07d1a; }
-.icon-button { background: none; border: none; color: var(--text-dim); font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 0 0.3rem; }
-.icon-button:hover { color: var(--text); }
+.btn-primary.urgent {
+   background: #8a6a15;
+   border-color: var(--accent-turn);
+   box-shadow: 0 0 0 1px rgba(232, 179, 60, 0.35);
+}
+
+.btn-primary.urgent:hover:not(:disabled) {
+   background: #a07d1a;
+}
+
+.icon-button {
+   background: none;
+   border: none;
+   color: var(--text-dim);
+   font-size: 1.1rem;
+   line-height: 1;
+   cursor: pointer;
+   padding: 0 0.3rem;
+}
+
+.icon-button:hover {
+   color: var(--text);
+}
 
 /* Text fields get the same treatment as buttons, and for the same reason: left at the browser
    default they were white boxes on a dark table, which made the lobby read as a web form. */
-input[type='text'], input[type='password'], input:not([type]), textarea {
-  background: var(--surface-sunken); color: var(--text); font-family: inherit; font-size: 0.9rem;
-  border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.4rem 0.55rem;
+input[type='text'],
+input[type='password'],
+input:not([type]),
+textarea {
+   background: var(--surface-sunken);
+   color: var(--text);
+   font-family: inherit;
+   font-size: 0.9rem;
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius);
+   padding: 0.4rem 0.55rem;
 }
-input::placeholder, textarea::placeholder { color: #6b7381; }
-input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
-input[type='checkbox'] { accent-color: var(--accent); }
+
+input::placeholder,
+textarea::placeholder {
+   color: #6b7381;
+}
+
+input:focus-visible,
+textarea:focus-visible {
+   outline: 2px solid var(--accent);
+   outline-offset: -1px;
+}
+
+input[type='checkbox'] {
+   accent-color: var(--accent);
+}
 
 /* Home, lobby and table all share one panel idiom: a raised surface with the same border,
    radius and shadow. Defined once here so the three screens can't drift apart. */
-.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 1.25rem; }
-.panel-title { margin: 0 0 0.9rem; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); }
+.panel {
+   background: var(--surface);
+   border: 1px solid var(--border);
+   border-radius: var(--radius-lg);
+   box-shadow: var(--shadow);
+   padding: 1.25rem;
+}
 
-.home { max-width: 26rem; margin: 5rem auto; display: flex; flex-direction: column; gap: 1.1rem; }
-.home h1 { margin: 0; font-size: 1.6rem; letter-spacing: 0.02em; }
-.home label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.8rem; color: var(--text-dim); }
-.home-actions { display: flex; flex-direction: column; gap: 0.75rem; }
-.home-join { display: flex; gap: 0.5rem; }
-.home-join input { flex: 1; min-width: 0; font-family: monospace; letter-spacing: 0.12em; text-transform: uppercase; }
+.panel-title {
+   margin: 0 0 0.9rem;
+   font-size: 0.8rem;
+   font-weight: 600;
+   text-transform: uppercase;
+   letter-spacing: 0.1em;
+   color: var(--text-dim);
+}
+
+.home {
+   max-width: 26rem;
+   margin: 5rem auto;
+   display: flex;
+   flex-direction: column;
+   gap: 1.1rem;
+}
+
+.home h1 {
+   margin: 0;
+   font-size: 1.6rem;
+   letter-spacing: 0.02em;
+}
+
+.home label {
+   display: flex;
+   flex-direction: column;
+   gap: 0.35rem;
+   font-size: 0.8rem;
+   color: var(--text-dim);
+}
+
+.home-actions {
+   display: flex;
+   flex-direction: column;
+   gap: 0.75rem;
+}
+
+.home-join {
+   display: flex;
+   gap: 0.5rem;
+}
+
+.home-join input {
+   flex: 1;
+   min-width: 0;
+   font-family: monospace;
+   letter-spacing: 0.12em;
+   text-transform: uppercase;
+}
+
 /* Create and Join are alternatives, not a checklist — the rule says so. */
-.home-or { display: flex; align-items: center; gap: 0.6rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); }
-.home-or::before, .home-or::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
+.home-or {
+   display: flex;
+   align-items: center;
+   gap: 0.6rem;
+   font-size: 0.7rem;
+   text-transform: uppercase;
+   letter-spacing: 0.1em;
+   color: var(--text-dim);
+}
+
+.home-or::before,
+.home-or::after {
+   content: '';
+   flex: 1;
+   border-top: 1px solid var(--border);
+}
 
 /* Seats and deck are independent concerns, so they sit side by side rather than stacking into
    one long scroll. Collapses to a single column when there isn't room for two. */
-.lobby { max-width: 60rem; margin: 2rem auto; padding: 0 1rem; display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-.lobby-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 0.75rem; }
-.lobby-header h2 { margin: 0; font-size: 1.2rem; font-weight: 600; }
-.lobby-header .btn { margin-left: auto; }
-@media (max-width: 52rem) { .lobby { grid-template-columns: minmax(0, 1fr); } }
+.lobby {
+   max-width: 60rem;
+   margin: 2rem auto;
+   padding: 0 1rem;
+   display: grid;
+   gap: 1rem;
+   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+   align-items: start;
+}
+
+.lobby-header {
+   grid-column: 1 / -1;
+   display: flex;
+   align-items: center;
+   gap: 0.75rem;
+}
+
+.lobby-header h2 {
+   margin: 0;
+   font-size: 1.2rem;
+   font-weight: 600;
+}
+
+.lobby-header .btn {
+   margin-left: auto;
+}
+
+@media (max-width: 52rem) {
+   .lobby {
+      grid-template-columns: minmax(0, 1fr);
+   }
+}
 
 /* inline-flex so the copy button sits inside the code's own box rather than beside it. The
    right padding is tighter than the left to account for the button's own. */
-.room-code { display: inline-flex; align-items: center; gap: 0.35rem; font-family: monospace; font-size: 1.05rem; letter-spacing: 0.14em; background: var(--surface-sunken); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.15rem 0.25rem 0.15rem 0.5rem; }
+.room-code {
+   display: inline-flex;
+   align-items: center;
+   gap: 0.35rem;
+   font-family: monospace;
+   font-size: 1.05rem;
+   letter-spacing: 0.14em;
+   background: var(--surface-sunken);
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius);
+   padding: 0.15rem 0.25rem 0.15rem 0.5rem;
+}
+
 /* The code is letter-spaced; the glyph shouldn't inherit that or it sits off-centre. */
-.copy-code { font-size: 1.15rem; letter-spacing: normal; padding: 0 0.35rem; }
+.copy-code {
+   font-size: 1.15rem;
+   letter-spacing: normal;
+   padding: 0 0.35rem;
+}
 
-.seats { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
-.seats th { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
-.seats th, .seats td { border-bottom: 1px solid var(--border); padding: 0.45rem 0.4rem; text-align: left; }
-.seats tbody tr:last-child td { border-bottom: none; }
-.seats td em { color: var(--text-dim); }
+.seats {
+   border-collapse: collapse;
+   width: 100%;
+   font-size: 0.85rem;
+}
+
+.seats th {
+   font-size: 0.65rem;
+   font-weight: 600;
+   text-transform: uppercase;
+   letter-spacing: 0.08em;
+   color: var(--text-dim);
+}
+
+.seats th,
+.seats td {
+   border-bottom: 1px solid var(--border);
+   padding: 0.45rem 0.4rem;
+   text-align: left;
+}
+
+.seats tbody tr:last-child td {
+   border-bottom: none;
+}
+
+.seats td em {
+   color: var(--text-dim);
+}
+
 /* Your own row is marked by an accent edge rather than a fill, so it doesn't fight the pills. */
-.seats .me td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
-.dot-on { color: #4caf7d; }
-.dot-off { color: #5d6675; }
-.ready-yes { color: var(--accent); font-weight: 700; }
-.deck-pill { display: inline-block; font-size: 0.68rem; font-weight: 600; padding: 0.1rem 0.45rem; border-radius: 999px; border: 1px solid; }
-.deck-pill.deck-none { color: var(--text-dim); border-color: var(--border-strong); }
-.deck-pill.deck-ok { color: #7fd6a4; border-color: #2f7a52; background: rgba(47, 158, 94, 0.14); }
-.deck-pill.deck-warnings { color: var(--accent-turn); border-color: rgba(232, 179, 60, 0.5); background: rgba(232, 179, 60, 0.12); }
+.seats .me td:first-child {
+   box-shadow: inset 2px 0 0 var(--accent);
+}
 
-.deck-form { display: flex; flex-direction: column; gap: 0.6rem; }
-.deck-form label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.8rem; color: var(--text-dim); }
-.deck-form textarea { font-family: monospace; font-size: 0.8rem; resize: vertical; }
-.ready-toggle { display: flex; align-items: center; gap: 0.45rem; font-size: 0.85rem; cursor: pointer; }
+.dot-on {
+   color: #4caf7d;
+}
+
+.dot-off {
+   color: #5d6675;
+}
+
+.ready-yes {
+   color: var(--accent);
+   font-weight: 700;
+}
+
+.deck-pill {
+   display: inline-block;
+   font-size: 0.68rem;
+   font-weight: 600;
+   padding: 0.1rem 0.45rem;
+   border-radius: 999px;
+   border: 1px solid;
+}
+
+.deck-pill.deck-none {
+   color: var(--text-dim);
+   border-color: var(--border-strong);
+}
+
+.deck-pill.deck-ok {
+   color: #7fd6a4;
+   border-color: #2f7a52;
+   background: rgba(47, 158, 94, 0.14);
+}
+
+.deck-pill.deck-warnings {
+   color: var(--accent-turn);
+   border-color: rgba(232, 179, 60, 0.5);
+   background: rgba(232, 179, 60, 0.12);
+}
+
+.deck-form {
+   display: flex;
+   flex-direction: column;
+   gap: 0.6rem;
+}
+
+.deck-form label {
+   display: flex;
+   flex-direction: column;
+   gap: 0.35rem;
+   font-size: 0.8rem;
+   color: var(--text-dim);
+}
+
+.deck-form textarea {
+   font-family: monospace;
+   font-size: 0.8rem;
+   resize: vertical;
+}
+
+.ready-toggle {
+   display: flex;
+   align-items: center;
+   gap: 0.45rem;
+   font-size: 0.85rem;
+   cursor: pointer;
+}
 
 /* Same coloured-left-border idiom as the table's toasts, so a warning reads the same everywhere. */
-.deck-result { display: flex; flex-direction: column; gap: 0.6rem; }
-.deck-note { margin: 0; padding: 0.5rem 0.7rem; font-size: 0.8rem; border-radius: var(--radius); background: var(--surface-raised); border-left: 3px solid var(--border-strong); }
-.deck-note ul { margin: 0.35rem 0 0; padding-left: 1.1rem; }
-.deck-note li { margin-bottom: 0.15rem; }
-.deck-note strong { display: block; margin-bottom: 0.1rem; }
-.deck-note.ok { border-left-color: #2f9e5e; }
-.deck-note.unresolved { border-left-color: var(--danger); }
-.deck-note.warnings { border-left-color: var(--accent-turn); }
+.deck-result {
+   display: flex;
+   flex-direction: column;
+   gap: 0.6rem;
+}
+
+.deck-note {
+   margin: 0;
+   padding: 0.5rem 0.7rem;
+   font-size: 0.8rem;
+   border-radius: var(--radius);
+   background: var(--surface-raised);
+   border-left: 3px solid var(--border-strong);
+}
+
+.deck-note ul {
+   margin: 0.35rem 0 0;
+   padding-left: 1.1rem;
+}
+
+.deck-note li {
+   margin-bottom: 0.15rem;
+}
+
+.deck-note strong {
+   display: block;
+   margin-bottom: 0.1rem;
+}
+
+.deck-note.ok {
+   border-left-color: #2f9e5e;
+}
+
+.deck-note.unresolved {
+   border-left-color: var(--danger);
+}
+
+.deck-note.warnings {
+   border-left-color: var(--accent-turn);
+}
 
 /* Three bands: a status bar that only reports, the table plus its log rail, and your own things
    along the bottom. The plane is one CSS transform on one element, so panning a table full of
    cards is a composited layer move rather than a relayout of every card. */
-.table { display: flex; flex-direction: column; height: 100vh; gap: 0.5rem; padding: 0.5rem; }
-.table-main { display: flex; flex: 1; min-height: 0; gap: 0.5rem; }
-
-.status-bar { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; min-height: 2rem; }
-/* Reference, not a headline: smaller and dimmer than the lobby's copy of the same code. */
-.status-bar .room-code { font-size: 0.8rem; letter-spacing: 0.1em; padding: 0.1rem 0.4rem; color: var(--text-dim); }
-.turn-pill {
-  display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 600;
-  padding: 0.3rem 0.8rem; border-radius: 999px;
-  background: rgba(232, 179, 60, 0.12); color: var(--accent-turn); border: 1px solid rgba(232, 179, 60, 0.45);
+.table {
+   display: flex;
+   flex-direction: column;
+   height: 100vh;
+   gap: 0.5rem;
+   padding: 0.5rem;
 }
-.turn-pill.mine { background: rgba(90, 169, 230, 0.14); color: var(--accent); border-color: rgba(90, 169, 230, 0.5); }
-.undo-request { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; background: #3d3520; border: 1px solid #6b5a2a; padding: 0.3rem 0.6rem; border-radius: var(--radius); }
+
+.table-main {
+   display: flex;
+   flex: 1;
+   min-height: 0;
+   gap: 0.5rem;
+}
+
+.status-bar {
+   display: flex;
+   align-items: center;
+   gap: 0.75rem;
+   flex-shrink: 0;
+   min-height: 2rem;
+}
+
+/* Reference, not a headline: smaller and dimmer than the lobby's copy of the same code. */
+.status-bar .room-code {
+   font-size: 0.8rem;
+   letter-spacing: 0.1em;
+   padding: 0.1rem 0.4rem;
+   color: var(--text-dim);
+   flex-shrink: 0;
+}
+
+/* Nothing in the bar declined to shrink, so a long commander name in a prompt squeezed the turn
+   pill — the most-watched thing on the screen — out of shape. The pill, the code and the tools
+   hold their size; the prompts and the undo request are the flexible ones. */
+.turn-pill {
+   flex-shrink: 0;
+   display: inline-flex;
+   align-items: center;
+   gap: 0.4rem;
+   font-size: 0.85rem;
+   font-weight: 600;
+   padding: 0.3rem 0.8rem;
+   border-radius: 999px;
+   background: rgba(232, 179, 60, 0.12);
+   color: var(--accent-turn);
+   border: 1px solid rgba(232, 179, 60, 0.45);
+}
+
+.turn-pill.mine {
+   background: rgba(90, 169, 230, 0.14);
+   color: var(--accent);
+   border-color: rgba(90, 169, 230, 0.5);
+}
+
+.undo-request {
+   display: flex;
+   align-items: center;
+   gap: 0.5rem;
+   font-size: 0.8rem;
+   background: #3d3520;
+   border: 1px solid #6b5a2a;
+   padding: 0.3rem 0.6rem;
+   border-radius: var(--radius);
+}
+
 /* Same shape as the undo request beside it — both are the status bar asking you something —
    but tinted toward the command zone rather than the warning yellow of an undo vote. */
-.commander-prompt { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; background: #2f2540; border: 1px solid #5b4a80; padding: 0.3rem 0.6rem; border-radius: var(--radius); }
+.commander-prompt {
+   display: flex;
+   align-items: center;
+   gap: 0.5rem;
+   font-size: 0.8rem;
+   background: #2f2540;
+   border: 1px solid #5b4a80;
+   padding: 0.3rem 0.6rem;
+   border-radius: var(--radius);
+}
 
 /* The help mark and the gear ride together at the far end of the bar, so whatever the bar is
    currently asking you stays next to the turn pill where you are already looking. */
-.status-tools { display: flex; align-items: center; gap: 0.2rem; margin-left: auto; }
-.help-button { font-size: 1.2rem; font-weight: 700; }
-.help-button.open { color: var(--accent); }
+.status-tools {
+   display: flex;
+   align-items: center;
+   gap: 0.2rem;
+   margin-left: auto;
+   flex-shrink: 0;
+}
+
+.help-button {
+   font-size: 1.2rem;
+   font-weight: 700;
+}
+
+.help-button.open {
+   color: var(--accent);
+}
 
 /* The help dialog is a read-only table rather than a form, so its rows are tighter than .field. */
-.help-body { display: flex; flex-direction: column; gap: 0.5rem; }
-.help-body .popover-group { margin: 0 0 0.2rem; }
-.shortcut-list { margin: 0; font-size: 0.82rem; }
-.shortcut-row { display: flex; gap: 0.7rem; padding: 0.15rem 0; }
-.shortcut-row dt { flex-shrink: 0; width: 9.5rem; color: var(--accent); font-weight: 600; }
-.shortcut-row dd { margin: 0; color: var(--text-dim); }
+.help-body {
+   display: flex;
+   flex-direction: column;
+   gap: 0.5rem;
+}
+
+.help-body .popover-group {
+   margin: 0 0 0.2rem;
+}
+
+.shortcut-list {
+   margin: 0;
+   font-size: 0.82rem;
+}
+
+.shortcut-row {
+   display: flex;
+   gap: 0.7rem;
+   padding: 0.15rem 0;
+}
+
+.shortcut-row dt {
+   flex-shrink: 0;
+   width: 9.5rem;
+   color: var(--accent);
+   font-weight: 600;
+}
+
+.shortcut-row dd {
+   margin: 0;
+   color: var(--text-dim);
+}
 
 /* The gear, at the far end of the status bar. Standing preferences live here; one-off view
    commands (Fit, zoom) stay on the plane itself where the thing they act on is. */
-.settings-menu { position: relative; }
-.settings-menu .gear { font-size: 1.7rem; line-height: 1; padding: 0 0.3rem; }
-.settings-menu .gear.open { color: var(--accent); }
-.settings-popover {
-  position: absolute; top: calc(100% + 0.35rem); right: 0; z-index: 25; width: 17rem;
-  background: var(--surface-raised); border: 1px solid var(--border-strong);
-  border-radius: var(--radius); box-shadow: var(--shadow); padding-bottom: 0.4rem;
+.settings-menu {
+   position: relative;
 }
-.settings-popover label { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.3rem 0.7rem; font-size: 0.8rem; cursor: pointer; }
-.settings-popover label:hover { background: #343a44; }
-.settings-popover input { margin-top: 0.15rem; cursor: pointer; }
-.settings-popover small { display: block; margin-top: 0.15rem; font-size: 0.7rem; color: var(--text-dim); }
 
-.plane-viewport { position: relative; flex: 1; min-width: 0; overflow: hidden; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: grab; }
-.plane-viewport.panning { cursor: grabbing; }
-.plane { position: absolute; top: 0; left: 0; width: max-content; transform-origin: 0 0; will-change: transform; }
+.settings-menu .gear {
+   font-size: 1.7rem;
+   line-height: 1;
+   padding: 0 0.3rem;
+}
+
+.settings-menu .gear.open {
+   color: var(--accent);
+}
+
+.settings-popover {
+   position: absolute;
+   top: calc(100% + 0.35rem);
+   right: 0;
+   z-index: 25;
+   width: 17rem;
+   background: var(--surface-raised);
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius);
+   box-shadow: var(--shadow);
+   padding-bottom: 0.4rem;
+}
+
+.settings-popover label {
+   display: flex;
+   align-items: flex-start;
+   gap: 0.5rem;
+   padding: 0.3rem 0.7rem;
+   font-size: 0.8rem;
+   cursor: pointer;
+}
+
+.settings-popover label:hover {
+   background: #343a44;
+}
+
+.settings-popover input {
+   margin-top: 0.15rem;
+   cursor: pointer;
+}
+
+.settings-popover small {
+   display: block;
+   margin-top: 0.15rem;
+   font-size: 0.7rem;
+   color: var(--text-dim);
+}
+
+.plane-viewport {
+   position: relative;
+   flex: 1;
+   min-width: 0;
+   overflow: hidden;
+   background: var(--surface-sunken);
+   border: 1px solid var(--border);
+   border-radius: var(--radius-lg);
+   cursor: grab;
+}
+
+.plane-viewport.panning {
+   cursor: grabbing;
+}
+
+.plane {
+   position: absolute;
+   top: 0;
+   left: 0;
+   width: max-content;
+   transform-origin: 0 0;
+   will-change: transform;
+}
+
 /* Only while following moves the view for you (Plane.tsx's GLIDE_MS). Dragging and wheel-zoom
    must stay frame-tight, so the transition is added for the glide and taken away after it. */
-.plane.gliding { transition: transform 650ms cubic-bezier(0.33, 0.9, 0.3, 1); }
-@media (prefers-reduced-motion: reduce) { .plane.gliding { transition: none; } }
-.plane-controls { position: absolute; right: 0.5rem; bottom: 0.5rem; display: flex; gap: 0.25rem; z-index: 5; }
-.plane-controls button { background: var(--surface-raised); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.2rem 0.5rem; cursor: pointer; }
+.plane.gliding {
+   transition: transform 650ms cubic-bezier(0.33, 0.9, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .plane.gliding {
+      transition: none;
+   }
+}
+
+.plane-controls {
+   position: absolute;
+   right: 0.5rem;
+   bottom: 0.5rem;
+   display: flex;
+   gap: 0.25rem;
+   z-index: 5;
+}
+
+.plane-controls button {
+   background: var(--surface-raised);
+   color: var(--text);
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius);
+   padding: 0.2rem 0.5rem;
+   cursor: pointer;
+}
 
 /* Boards are a fixed width so the plane's size — and therefore the "Fit" view — doesn't jump
    around as cards are played; rows grow if a board outgrows its height. */
@@ -198,430 +695,1496 @@ input[type='checkbox'] { accent-color: var(--accent); }
    boxes plus the column gap need ~280px across; two rows of a button-less readout, plus the
    seam between them, ~200px down even when the badges wrap. Both tracks are cut to just over
    that: the readouts belong to the boards either side of them, and a moat said otherwise. */
-.mats { position: relative; display: grid; gap: 0; padding: 40px; }
-.mats.quad { grid-template-columns: 1040px 300px 1040px;
-  grid-template-rows: minmax(700px, auto) 215px minmax(700px, auto);
-  grid-template-areas: "top-left . top-right" ". cross ." "bottom-left . bottom-right"; }
-.mats.stacked { grid-template-columns: 1240px;
-  grid-template-rows: minmax(700px, auto) 215px minmax(700px, auto);
-  grid-template-areas: "top" "cross" "bottom"; }
+.mats {
+   position: relative;
+   display: grid;
+   gap: 0;
+   padding: 40px;
+}
+
+.mats.quad {
+   grid-template-columns: 1040px 300px 1040px;
+   grid-template-rows: minmax(700px, auto) 215px minmax(700px, auto);
+   grid-template-areas: "top-left . top-right" ". cross ." "bottom-left . bottom-right";
+}
+
+.mats.stacked {
+   grid-template-columns: 1240px;
+   grid-template-rows: minmax(700px, auto) 215px minmax(700px, auto);
+   grid-template-areas: "top" "cross" "bottom";
+}
 
 /* Each mat faces its owner: column-reverse puts the header, command zone and lands against the
    board's outer edge, so creatures advance inward toward the crossroads. */
-.board { display: flex; flex-direction: column; gap: 0.4rem; border: 2px solid var(--border); border-radius: var(--radius-lg); padding: 0.6rem; background: var(--surface); transition: border-color 0.2s, box-shadow 0.2s; }
-.board.lands-bottom { flex-direction: column-reverse; }
-.board.eliminated { opacity: 0.5; }
+.board {
+   display: flex;
+   flex-direction: column;
+   gap: 0.4rem;
+   border: 2px solid var(--border);
+   border-radius: var(--radius-lg);
+   padding: 0.6rem;
+   background: var(--surface);
+   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.board.lands-bottom {
+   flex-direction: column-reverse;
+}
+
+.board.eliminated {
+   opacity: 0.5;
+}
 
 /* Whose turn it is. A glow, not just a hairline: at "Fit" zoom a 2px border is barely a pixel,
    and this is the one piece of state that must read from across the table. */
-.board.turn-theirs { border-color: var(--accent-turn); box-shadow: 0 0 0 6px rgba(232, 179, 60, 0.13), 0 0 40px rgba(232, 179, 60, 0.18); }
-.board.turn-mine { border-color: var(--accent); box-shadow: 0 0 0 6px rgba(90, 169, 230, 0.14), 0 0 40px rgba(90, 169, 230, 0.2); }
+.board.turn-theirs {
+   border-color: var(--accent-turn);
+   box-shadow: 0 0 0 6px rgba(232, 179, 60, 0.13), 0 0 40px rgba(232, 179, 60, 0.18);
+}
 
-.board-header { display: flex; align-items: center; gap: 0.5rem; }
-.board-header .player-name { font-weight: bold; }
-.board-header .counts { margin-left: auto; font-size: 0.8rem; color: var(--text-dim); }
+.board.turn-mine {
+   border-color: var(--accent);
+   box-shadow: 0 0 0 6px rgba(90, 169, 230, 0.14), 0 0 40px rgba(90, 169, 230, 0.2);
+}
+
+.board-header {
+   display: flex;
+   align-items: center;
+   gap: 0.5rem;
+}
+
+.board-header .player-name {
+   font-weight: bold;
+}
+
+.board-header .counts {
+   margin-left: auto;
+   font-size: 0.8rem;
+   color: var(--text-dim);
+}
+
 /* The command zone lives here rather than in a band of its own, at roughly half scale: a
    commander waiting to be cast is one card, and it was costing a full row of board height. */
-.board-header .command-zone .card-tile { width: calc(var(--card-w) * 0.55); height: calc(var(--card-h) * 0.55); font-size: 0.55rem; }
-.turn-badge { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.1rem 0.45rem; border-radius: 999px; }
-.board.turn-theirs .turn-badge { background: rgba(232, 179, 60, 0.18); color: var(--accent-turn); }
-.board.turn-mine .turn-badge { background: rgba(90, 169, 230, 0.18); color: var(--accent); }
+.board-header .command-zone .card-tile {
+   width: calc(var(--card-w) * 0.55);
+   height: calc(var(--card-h) * 0.55);
+   font-size: 0.55rem;
+}
 
-.command-zone, .hand, .zone-grid, .bf-zone { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.turn-badge {
+   font-size: 0.7rem;
+   font-weight: 600;
+   text-transform: uppercase;
+   letter-spacing: 0.06em;
+   padding: 0.1rem 0.45rem;
+   border-radius: 999px;
+}
+
+.board.turn-theirs .turn-badge {
+   background: rgba(232, 179, 60, 0.18);
+   color: var(--accent-turn);
+}
+
+.board.turn-mine .turn-badge {
+   background: rgba(90, 169, 230, 0.18);
+   color: var(--accent);
+}
+
+.command-zone,
+.hand,
+.zone-grid,
+.bf-zone {
+   display: flex;
+   flex-wrap: wrap;
+   gap: 0.3rem;
+}
 
 /* Three named bands, in the DOM from the board's outer edge inward, flipped for the near half
    of the table by the same mirror the board itself uses. All three are always drawn, so a
    permanent never changes band as the board around it fills up. */
-.battlefield { display: flex; flex-direction: column; flex: 1; gap: 0.3rem; }
-.board.lands-bottom .battlefield { flex-direction: column-reverse; }
-.bf-zone {
-  position: relative; flex: 1; min-height: calc(var(--card-h) + 1.75rem); align-content: flex-start;
-  padding: 1.15rem 0.3rem 0.3rem; border: 1px dashed var(--border); border-radius: var(--radius);
+.battlefield {
+   display: flex;
+   flex-direction: column;
+   flex: 1;
+   gap: 0.3rem;
 }
+
+.board.lands-bottom .battlefield {
+   flex-direction: column-reverse;
+}
+
+.bf-zone {
+   position: relative;
+   flex: 1;
+   min-height: calc(var(--card-h) + 1.75rem);
+   align-content: flex-start;
+   padding: 1.15rem 0.3rem 0.3rem;
+   border: 1px dashed var(--border);
+   border-radius: var(--radius);
+}
+
 /* Faint enough to read as a label printed on the mat rather than as another piece of state. */
 .bf-zone-label {
-  position: absolute; top: 0.25rem; left: 0.45rem; pointer-events: none;
-  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); opacity: 0.4;
+   position: absolute;
+   top: 0.25rem;
+   left: 0.45rem;
+   pointer-events: none;
+   font-size: 0.7rem;
+   text-transform: uppercase;
+   letter-spacing: 0.1em;
+   color: var(--text-dim);
+   opacity: 0.4;
 }
 
 /* Identical basics fan out of one slot (landStacks.ts) instead of wrapping the band onto a
    second row: each card shows a sliver, the newest on top, with a count for the ones buried.
    Hover lifts a card clear so it can be read and clicked. */
-.land-stack { position: relative; display: flex; }
-.land-stack .card-tile + .card-tile { margin-left: calc(var(--card-w) * -0.72); }
-.land-stack .card-tile:hover { z-index: 4; }
+.land-stack {
+   position: relative;
+   display: flex;
+}
+
+.land-stack .card-tile+.card-tile {
+   margin-left: calc(var(--card-w) * -0.72);
+}
+
+.land-stack .card-tile:hover {
+   z-index: 4;
+}
+
 .stack-count {
-  position: absolute; right: -0.2rem; bottom: -0.35rem; z-index: 5; pointer-events: none;
-  font-size: 0.7rem; font-weight: 600; line-height: 1; padding: 0.1rem 0.3rem; border-radius: 999px;
-  background: var(--surface-raised); color: var(--text); border: 1px solid var(--border-strong);
+   position: absolute;
+   right: -0.2rem;
+   bottom: -0.35rem;
+   z-index: 5;
+   pointer-events: none;
+   font-size: 0.7rem;
+   font-weight: 600;
+   line-height: 1;
+   padding: 0.1rem 0.3rem;
+   border-radius: 999px;
+   background: var(--surface-raised);
+   color: var(--text);
+   border: 1px solid var(--border-strong);
 }
 
 /* The readout where the mats meet. Each player's life sits in the corner nearest their board. */
 /* The row gap is the seam between the two halves of the table — wider than the column gap so
    each readout still reads as belonging to the board behind it, now that nothing sits between
    them (the damage matrix that used to hold the middle row is gone; see CrossroadsHub). */
-.crossroads { grid-area: cross; place-self: center; display: grid; gap: 1.5rem 1.2rem; z-index: 2; }
-.crossroads.quad { grid-template-areas: "top-left . top-right" "bottom-left . bottom-right"; }
-.crossroads.stacked { grid-template-areas: "top" "bottom"; }
+.crossroads {
+   grid-area: cross;
+   place-self: center;
+   display: grid;
+   gap: 1.5rem 1.2rem;
+   z-index: 2;
+}
+
+.crossroads.quad {
+   grid-template-areas: "top-left . top-right" "bottom-left . bottom-right";
+}
+
+.crossroads.stacked {
+   grid-template-areas: "top" "bottom";
+}
 
 /* Shadowed so it reads as floating over the table rather than as part of whichever mat it is
    nearest, should a tall board ever grow far enough to meet it. */
-.life-readout { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; background: var(--surface); border: 2px solid var(--border-strong); border-radius: var(--radius-lg); padding: 0.3rem 0.6rem; min-width: 130px; box-shadow: var(--shadow); transition: border-color 0.2s, box-shadow 0.2s; }
-.life-readout.eliminated { opacity: 0.5; }
-.life-readout.turn-theirs { border-color: var(--accent-turn); box-shadow: 0 0 0 4px rgba(232, 179, 60, 0.13), var(--shadow); }
-.life-readout.turn-mine { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(90, 169, 230, 0.14), var(--shadow); }
-.readout-name { font-size: 0.75rem; color: var(--text-dim); white-space: nowrap; }
+.life-readout {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   gap: 0.15rem;
+   background: var(--surface);
+   border: 2px solid var(--border-strong);
+   border-radius: var(--radius-lg);
+   padding: 0.3rem 0.6rem;
+   min-width: 130px;
+   box-shadow: var(--shadow);
+   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.life-readout.eliminated {
+   opacity: 0.5;
+}
+
+.life-readout.turn-theirs {
+   border-color: var(--accent-turn);
+   box-shadow: 0 0 0 4px rgba(232, 179, 60, 0.13), var(--shadow);
+}
+
+.life-readout.turn-mine {
+   border-color: var(--accent);
+   box-shadow: 0 0 0 4px rgba(90, 169, 230, 0.14), var(--shadow);
+}
+
+.readout-name {
+   font-size: 0.75rem;
+   color: var(--text-dim);
+   white-space: nowrap;
+}
+
 /* Read-only: the numbers are written from their owner's own HUD (see .vitals-pad), so the
    readout is sized to be legible across a zoomed-out plane rather than to be clicked. */
-.readout-life { font-size: 1.6rem; line-height: 1; }
+.readout-life {
+   font-size: 1.6rem;
+   line-height: 1;
+   font-weight: 600;
+}
+
 /* Poison and commander damage only appear once there is any, so the row is usually empty and
    costs the box no height. It wraps rather than widening the box: three opponents' commanders
    would otherwise stretch every readout on the table to fit the worst case. */
-.readout-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem; }
-.poison, .cmdr-damage { font-size: 0.75rem; color: var(--text-dim); white-space: nowrap; }
-.readout-life.lethal, .poison.lethal, .cmdr-damage.lethal, .damage-value.lethal { background: #5a1e1e; color: #ffc9c9; border-radius: 4px; padding: 0 4px; }
+.readout-badges {
+   display: flex;
+   flex-wrap: wrap;
+   justify-content: center;
+   gap: 0.25rem;
+}
+
+.poison,
+.cmdr-damage {
+   font-size: 0.75rem;
+   color: var(--text-dim);
+   white-space: nowrap;
+}
+
+/* One lethal treatment wherever a number can be lethal. Your own life is deliberately on screen
+   twice — the crossroads reports it for everyone, the vitals pad is where you write your own row
+   — but the two used to go red in different shapes, which read as two unrelated designs rather
+   than as one fact seen twice. The pad's pill radius wins, since it is a real pill. */
+.readout-life.lethal,
+.poison.lethal,
+.cmdr-damage.lethal,
+.damage-value.lethal,
+.vital.lethal {
+   background: #5a1e1e;
+   color: #ffc9c9;
+   border-color: #8a3030;
+   border-radius: 999px;
+}
+
+/* The bare numbers have no pill of their own, so the tint has to make its own room. */
+.readout-life.lethal,
+.poison.lethal,
+.cmdr-damage.lethal,
+.damage-value.lethal {
+   padding: 0 0.4rem;
+}
 
 /* Your own band: mana, actions, hand and zones, at a constant size no matter the plane's zoom. */
-.hud { display: flex; flex-direction: column; gap: 0.4rem; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-top-width: 3px; border-radius: var(--radius-lg); padding: 0.5rem; }
-.hud.my-turn { border-top-color: var(--accent); }
+.hud {
+   display: flex;
+   flex-direction: column;
+   gap: 0.4rem;
+   flex-shrink: 0;
+   background: var(--surface);
+   border: 1px solid var(--border);
+   border-top-width: 3px;
+   border-radius: var(--radius-lg);
+   padding: 0.5rem;
+}
+
+.hud.my-turn {
+   border-top-color: var(--accent);
+}
+
 /* Equal flanks either side of the hand, so it sits at the true centre of the window rather
    than centred in whatever space the action bar and the zone dock happen to leave over — and
    centred down the row as well as across it, since the controls beside it are a grid whose
    height depends on which of them are showing, and a hand pinned to the top edge drifted away
-   from them as that grid grew. */
-.hud-row { display: grid; grid-template-columns: minmax(9rem, 1fr) minmax(0, auto) minmax(9rem, 1fr); align-items: center; gap: 0.75rem; }
-.hud-row .hand { justify-content: center; min-height: var(--card-h); align-content: center; }
+   from them as that grid grew.
+
+   The flanks are a fixed width and the hand's column takes what is left, rather than the hand
+   being sized to its contents. That is what makes the column mean "the room the hand has": the
+   fan measures this column and then narrows the hand to fit it, so a column that sized itself to
+   the hand would be measuring its own output — every width self-consistent, and a hand that had
+   once been crowded would stay collapsed at whatever width it happened to reach. */
+.hud-row {
+   display: grid;
+   grid-template-columns: 9rem minmax(0, 1fr) 9rem;
+   align-items: center;
+   gap: 0.75rem;
+}
+
+/* `min-width: 0` on the item to match the `minmax(0, …)` on its track: without it the hand's
+   automatic minimum size is its content, and a twenty-card fan would push the flanks off the
+   window instead of tightening into the room it has. */
+.hud-row .hand {
+   justify-content: center;
+   min-height: var(--card-h);
+   align-content: center;
+   min-width: 0;
+}
 
 /* The lift. A card in hand rises, grows and casts a shadow under the cursor, the way it does in
    every digital card game — worth the four lines because the hand is the one place on the table
    where you point at a card to read it before deciding to play it, and the movement is what says
    "this one" while the zoom preview catches up. It leaves the row rather than pushing its
    neighbours: a hand that reflowed on hover would move the card out from under the cursor. */
-.hud-row .hand .card-tile { transition: transform 0.14s ease-out, box-shadow 0.14s ease-out; }
-.hud-row .hand .card-tile:hover {
-  transform: translateY(-18px) scale(1.06); z-index: 3;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.55);
+.hud-row .hand .card-tile {
+   transition: transform 0.14s ease-out, box-shadow 0.14s ease-out;
 }
+
+.hud-row .hand .card-tile:hover {
+   transform: translateY(-18px) scale(1.06);
+   z-index: 3;
+   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.55);
+}
+
 /* Your vitals on the left, mana in the middle, your zones on the right, sharing one strip above
-   the hand. Same three-column grid as `.hud-row` below it, so the mana pad sits at the true
-   centre of the window — directly over the hand — instead of wherever the flanks leave room.
-   The third column of `.hud-row` is left empty on purpose so the hand stays centred too. */
-.hud-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr); align-items: center; gap: 0.75rem; }
-.hud-top .mana-pad { justify-content: center; }
-.hud-top .zone-dock { justify-self: end; }
+   the hand. Equal flanks like `.hud-row` below it, so the mana pad sits at the true centre of
+   the window — directly over the hand — instead of wherever the flanks leave room. This one
+   still sizes its middle column to its contents, which the row below can no longer afford to do;
+   both are centred on the same line either way. The third column of `.hud-row` is left empty on
+   purpose so the hand stays centred too. */
+.hud-top {
+   display: grid;
+   grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+   align-items: center;
+   gap: 0.75rem;
+}
+
+.hud-top .mana-pad {
+   justify-content: center;
+}
+
+.hud-top .zone-dock {
+   justify-self: end;
+}
 
 /* Centred against the hand rather than hung from the top of the row: the hand is the tallest
    thing in the band, and a short stack of buttons pinned to its top edge reads as unfinished. */
-.action-bar { display: flex; flex-direction: column; gap: 0.35rem; flex-shrink: 0; width: 8.5rem; align-self: center; }
-.action-bar .btn { width: 100%; }
-
-/* "Show every action": the same actions laid out flat, standing in for the strip above in the
-   same slot. Two columns rather than one long list, so thirteen buttons stay no taller than the
-   hand beside them; fixed columns rather than fractions of the flank, which is a `1fr` and
-   would otherwise stretch "Shuffle" across a third of a wide window. */
-.action-panel { display: grid; grid-template-columns: repeat(2, 6.5rem); gap: 0.3rem; flex-shrink: 0; justify-self: start; align-self: center; align-content: center; }
-.action-panel .popover-group { grid-column: 1 / -1; margin: 0.2rem 0 0; }
-/* Pass turn is the one button here that is still a big one. */
-.action-panel .btn-primary { grid-column: 1 / -1; }
-/* Narrow enough that "Clear all markers" takes two lines; the row's own height is set by the
-   hand beside it, so a wrapped label costs nothing. */
-.action-panel .btn { padding: 0.3rem 0.35rem; font-size: 0.72rem; line-height: 1.2; }
-.action-panel .btn.danger { grid-column: 1 / -1; color: #ffb4ae; border-color: var(--danger); }
-.action-panel .btn.danger:hover { background: var(--danger); color: #fff; }
-
-.more-menu { position: relative; }
-.more-popover {
-  position: absolute; bottom: calc(100% + 0.35rem); left: 0; z-index: 25; min-width: 12rem;
-  display: flex; flex-direction: column; background: var(--surface-raised);
-  border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; padding-bottom: 0.2rem;
+.action-bar {
+   display: flex;
+   flex-direction: column;
+   gap: 0.35rem;
+   flex-shrink: 0;
+   width: 8.5rem;
+   align-self: center;
 }
-.more-popover button { text-align: left; background: none; border: none; color: var(--text); padding: 0.4rem 0.7rem; cursor: pointer; font-size: 0.8rem; }
-.more-popover button:hover { background: #343a44; }
-.more-popover button.danger { color: #ffb4ae; }
-.more-popover button.danger:hover { background: var(--danger); color: #fff; }
-.more-popover hr { border: none; border-top: 1px solid var(--border); margin: 0.2rem 0; width: 100%; }
-.seat-free { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 0 0.3rem; font-size: 0.8rem; line-height: 1; }
-.seat-free:hover { color: var(--danger); }
 
-.popover-group { margin: 0.35rem 0.7rem 0.15rem; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
-.popover-action { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; width: 100%; padding: 0.4rem 0.7rem; background: none; border: none; color: inherit; text-align: left; font: inherit; cursor: pointer; }
-.popover-action small { color: var(--text-dim); font-size: 0.7rem; }
-.popover-action:hover { background: #343a44; }
-.popover-action.danger { color: #ffb4ae; }
-.popover-action.danger:hover { background: var(--danger); color: #fff; }
-.popover-action.danger:hover small { color: #fff; }
+.action-bar .btn {
+   width: 100%;
+}
+
+.more-menu {
+   position: relative;
+}
+
+.more-popover {
+   position: absolute;
+   bottom: calc(100% + 0.35rem);
+   left: 0;
+   z-index: 25;
+   min-width: 12rem;
+   display: flex;
+   flex-direction: column;
+   background: var(--surface-raised);
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius);
+   box-shadow: var(--shadow);
+   overflow: hidden;
+   padding-bottom: 0.2rem;
+}
+
+.more-popover button {
+   text-align: left;
+   background: none;
+   border: none;
+   color: var(--text);
+   padding: 0.4rem 0.7rem;
+   cursor: pointer;
+   font-size: 0.8rem;
+}
+
+.more-popover button:hover {
+   background: #343a44;
+}
+
+.more-popover button.danger {
+   color: #ffb4ae;
+}
+
+.more-popover button.danger:hover {
+   background: var(--danger);
+   color: #fff;
+}
+
+.more-popover hr {
+   border: none;
+   border-top: 1px solid var(--border);
+   margin: 0.2rem 0;
+   width: 100%;
+}
+
+.seat-free {
+   background: none;
+   border: none;
+   color: var(--text-dim);
+   cursor: pointer;
+   padding: 0 0.3rem;
+   font-size: 0.8rem;
+   line-height: 1;
+}
+
+.seat-free:hover {
+   color: var(--danger);
+}
+
+.popover-group {
+   margin: 0.35rem 0.7rem 0.15rem;
+   font-size: 0.65rem;
+   text-transform: uppercase;
+   letter-spacing: 0.08em;
+   color: var(--text-dim);
+}
+
+.popover-action {
+   display: flex;
+   flex-direction: column;
+   align-items: flex-start;
+   gap: 0.15rem;
+   width: 100%;
+   padding: 0.4rem 0.7rem;
+   background: none;
+   border: none;
+   color: inherit;
+   text-align: left;
+   font: inherit;
+   cursor: pointer;
+}
+
+.popover-action small {
+   color: var(--text-dim);
+   font-size: 0.7rem;
+}
+
+.popover-action:hover {
+   background: #343a44;
+}
+
+.popover-action.danger {
+   color: #ffb4ae;
+}
+
+.popover-action.danger:hover {
+   background: var(--danger);
+   color: #fff;
+}
+
+.popover-action.danger:hover small {
+   color: #fff;
+}
 
 /* A hand that outgrows the row overlaps rather than wrapping — a second row would eat the
-   table's height, which is the one thing the fixed chrome must not do. */
-.hand.crowded { flex-wrap: nowrap; overflow: visible; }
-.hand.crowded .card-tile { margin-right: calc(var(--card-w) * -0.44); }
-.hand.crowded .card-tile:last-child { margin-right: 0; }
+   table's height, which is the one thing the fixed chrome must not do. Both the class and the
+   amount come from measuring the row against the cards in it (see handFan.ts), so this rule is
+   only ever on when the fan is actually running; the fallback is the fixed overlap that used to
+   be the whole rule, so the stylesheet still stands up on its own. */
+.hand.crowded {
+   flex-wrap: nowrap;
+   overflow: visible;
+}
+
+.hand.crowded .card-tile {
+   margin-right: calc(var(--card-w) * -1 * var(--fan-overlap, 0.44));
+}
+
+.hand.crowded .card-tile:last-child {
+   margin-right: 0;
+}
 
 /* Riding in the mana strip, the tiles are pills rather than boxes: a stack of count-over-label
    would make the whole strip as tall as the tallest tile, which is height the hand wants. */
-.zone-dock { position: relative; display: flex; gap: 0.4rem; flex-shrink: 0; }
-.zone-tile {
-  display: flex; align-items: center; gap: 0.4rem;
-  height: 2.1rem; padding: 0 0.7rem; background: var(--surface-raised); color: var(--text);
-  border: 1px solid var(--border-strong); border-radius: 999px; cursor: pointer;
+.zone-dock {
+   position: relative;
+   display: flex;
+   gap: 0.4rem;
+   flex-shrink: 0;
 }
-.zone-tile:hover:not(:disabled) { border-color: var(--accent); }
-.zone-tile:disabled { opacity: 0.45; cursor: default; }
-.zone-tile.open { border-color: var(--accent); background: #2d3742; }
-.zone-count { font-size: 1rem; font-weight: 600; line-height: 1; min-width: 1.1rem; text-align: right; }
-.zone-label { font-size: 0.75rem; color: var(--text-dim); }
 
-.popover-backdrop { position: fixed; inset: 0; z-index: 20; }
-.zone-popover {
-  position: absolute; bottom: calc(100% + 0.4rem); right: 0; z-index: 21; width: 34rem; max-width: 80vw; max-height: 50vh;
-  display: flex; flex-direction: column; gap: 0.4rem; overflow-y: auto; padding: 0.6rem;
-  background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow);
+.zone-tile {
+   display: flex;
+   align-items: center;
+   gap: 0.4rem;
+   height: 2.1rem;
+   padding: 0 0.7rem;
+   background: var(--surface-raised);
+   color: var(--text);
+   border: 1px solid var(--border-strong);
+   border-radius: 999px;
+   cursor: pointer;
 }
-.popover-header { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 0.85rem; }
-.popover-note { margin: 0; font-size: 0.7rem; color: var(--text-dim); }
+
+.zone-tile:hover:not(:disabled) {
+   border-color: var(--accent);
+}
+
+.zone-tile:disabled {
+   opacity: 0.45;
+   cursor: default;
+}
+
+.zone-tile.open {
+   border-color: var(--accent);
+   background: #2d3742;
+}
+
+.zone-count {
+   font-size: 1rem;
+   font-weight: 600;
+   line-height: 1;
+   min-width: 1.1rem;
+   text-align: right;
+}
+
+.zone-label {
+   font-size: 0.75rem;
+   color: var(--text-dim);
+}
+
+.popover-backdrop {
+   position: fixed;
+   inset: 0;
+   z-index: 20;
+}
+
+.zone-popover {
+   position: absolute;
+   bottom: calc(100% + 0.4rem);
+   right: 0;
+   z-index: 21;
+   width: 34rem;
+   max-width: 80vw;
+   max-height: 50vh;
+   display: flex;
+   flex-direction: column;
+   gap: 0.4rem;
+   overflow-y: auto;
+   padding: 0.6rem;
+   background: var(--surface-raised);
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius-lg);
+   box-shadow: var(--shadow);
+}
+
+.popover-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   font-weight: 600;
+   font-size: 0.85rem;
+}
+
+/* Everywhere but the "more" popovers the note sits inside a padded, gapped column and wants no
+   margin of its own. Those popovers have no padding — their rows carry their own inset — so the
+   note has to match the buttons and rows beside it rather than sit flush against the edge. */
+.popover-note {
+   margin: 0;
+   font-size: 0.7rem;
+   color: var(--text-dim);
+}
+
+.more-popover .popover-note {
+   margin: 0.2rem 0.7rem 0.45rem;
+}
 
 /* Where a searched or peeked card goes next. Only the library supplies these. */
-.zone-entry { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; }
-.zone-moves { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; width: var(--card-w); }
-.zone-moves button {
-  flex: 1; min-width: 2.6rem; padding: 0.1rem 0.2rem; font-size: 0.6rem; cursor: pointer;
-  background: var(--surface); color: var(--text-dim);
-  border: 1px solid var(--border); border-radius: 4px;
+.zone-entry {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   gap: 0.15rem;
 }
-.zone-moves button:hover { color: var(--text); border-color: var(--accent); }
 
-.card-tile { width: var(--card-w); height: var(--card-h); border: 1px solid var(--border-strong); border-radius: var(--radius); background: #2c313a; overflow: hidden; cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; text-align: center; padding: 2px; }
-.card-tile img { width: 100%; height: 100%; object-fit: cover; }
-.card-tile.tapped { transform: rotate(90deg); }
+.zone-moves {
+   display: flex;
+   flex-wrap: wrap;
+   justify-content: center;
+   gap: 2px;
+   width: var(--card-w);
+}
+
+.zone-moves button {
+   flex: 1;
+   min-width: 2.6rem;
+   padding: 0.1rem 0.2rem;
+   font-size: 0.6rem;
+   cursor: pointer;
+   background: var(--surface);
+   color: var(--text-dim);
+   border: 1px solid var(--border);
+   border-radius: 4px;
+}
+
+.zone-moves button:hover {
+   color: var(--text);
+   border-color: var(--accent);
+}
+
+.card-tile {
+   width: var(--card-w);
+   height: var(--card-h);
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius);
+   background: #2c313a;
+   overflow: hidden;
+   cursor: pointer;
+   position: relative;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   font-size: 0.7rem;
+   text-align: center;
+   padding: 2px;
+}
+
+.card-tile img {
+   width: 100%;
+   height: 100%;
+   object-fit: cover;
+}
+
+/* Scaled by the card’s own aspect ratio (--card-ratio) so the rotated footprint is exactly one
+   slot wide (218 × 0.715 = 156) rather than overhanging its neighbours by ~31px each side — worst
+   in the lands band, where land stacks already overlap. */
+.card-tile.tapped {
+   transform: rotate(90deg) scale(var(--card-ratio));
+}
+
 /* A card back, drawn rather than fetched: Scryfall ships no back in `image_uris`, and a single
    shared asset would be one more request per hidden card for a flat colour and a border. */
 .card-tile.face-down {
-  background:
-    radial-gradient(ellipse at 50% 45%, #6b539b 0%, #4a3872 45%, #2e2350 100%);
+   background:
+      radial-gradient(ellipse at 50% 45%, #6b539b 0%, #4a3872 45%, #2e2350 100%);
 }
+
 /* The frame is a pseudo-element rather than an inset shadow so it survives the attacking ring
    below, which owns `box-shadow` on this same element. */
 .card-tile.face-down::before {
-  content: ''; position: absolute; inset: 5px; border: 2px solid rgba(160, 138, 214, 0.5); border-radius: 3px;
+   content: '';
+   position: absolute;
+   inset: 5px;
+   border: 2px solid rgba(160, 138, 214, 0.5);
+   border-radius: 3px;
 }
+
 .card-tile.face-down::after {
-  content: '✦'; color: rgba(214, 200, 255, 0.45); font-size: 2rem; line-height: 1;
+   content: '✦';
+   color: rgba(214, 200, 255, 0.45);
+   font-size: 2rem;
+   line-height: 1;
 }
-.card-tile.face-down img { display: none; }
-.card-tile.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.card-tile.face-down img {
+   display: none;
+}
+
+.card-tile.selected {
+   outline: 2px solid var(--accent);
+   outline-offset: -2px;
+}
+
+/* Shared attention (see tableChanges.ts): the cards the last action touched outline themselves
+   for a moment, so four people looking at four screens see the same thing happen. Its own
+   element rather than a class on the tile — the tile's `transform` is spoken for by the tapped
+   rotation and the hand's hover-lift. */
+.change-pulse {
+   position: absolute;
+   inset: 0;
+   border-radius: var(--radius);
+   pointer-events: none;
+   animation: change-pulse 400ms ease-out;
+}
+
+@keyframes change-pulse {
+   from {
+      box-shadow: inset 0 0 0 3px var(--accent);
+   }
+
+   to {
+      box-shadow: inset 0 0 0 3px transparent;
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .change-pulse {
+      animation: none;
+   }
+}
+
 /* Attacking: a red ring rather than a badge, so it reads across the whole table at any zoom
    (see combat.ts). Drawn with box-shadow so it survives the tapped rotation and any outline the
    selection is already using. */
-.card-tile.attacking { border-color: #e5484d; box-shadow: 0 0 0 2px #e5484d, 0 0 8px rgba(229,72,77,0.65); }
+.card-tile.attacking {
+   border-color: #e5484d;
+   box-shadow: 0 0 0 2px #e5484d, 0 0 8px rgba(229, 72, 77, 0.65);
+}
+
 /* Counters share one strip along the bottom of the tile. They used to be stacked at the same
    corner, so a permanent with two of them only ever showed one — and at 0.6rem neither was
    legible at Fit zoom. Colour now carries the meaning of the two common ones, so their badges
    need no label and can afford the size. */
-.card-badges { position: absolute; left: 2px; right: 2px; bottom: 2px; display: flex; flex-wrap: wrap; gap: 2px; }
-.counter-badge {
-  min-width: 1.3rem; padding: 0 0.3rem; border-radius: 999px;
-  font-size: 0.8rem; font-weight: 700; line-height: 1.3rem; text-align: center; color: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.65); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+.card-badges {
+   position: absolute;
+   left: 2px;
+   right: 2px;
+   bottom: 2px;
+   display: flex;
+   flex-wrap: wrap;
+   gap: 2px;
 }
-.counter-buff { background: #2f9e5e; }
-.counter-debuff { background: var(--danger); }
-.counter-other { background: rgba(18, 20, 25, 0.92); }
+
+.counter-badge {
+   min-width: 1.3rem;
+   padding: 0 0.3rem;
+   border-radius: 999px;
+   font-size: 0.8rem;
+   font-weight: 700;
+   line-height: 1.3rem;
+   text-align: center;
+   color: #fff;
+   border: 1px solid rgba(0, 0, 0, 0.65);
+   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.counter-buff {
+   background: #2f9e5e;
+}
+
+.counter-debuff {
+   background: var(--danger);
+}
+
+.counter-other {
+   background: rgba(18, 20, 25, 0.92);
+}
+
 /* Buff/debuff are the only badges with more than a number in them — "+3/+3" at 0.8rem overran
    the tile. Everything else is a bare count and keeps the larger type. */
-.counter-buff, .counter-debuff { font-size: 0.65rem; }
+.counter-buff,
+.counter-debuff {
+   font-size: 0.65rem;
+}
+
 /* Big enough to read at "Fit" zoom, which is where most of the game is actually played — at 1rem
    the moon was a speck and you had to zoom in to see which creatures could attack. */
 .sick-badge {
-  position: absolute; top: 2px; left: 2px; z-index: 2;
-  width: 1.6rem; height: 1.6rem; border-radius: 999px; display: flex; align-items: center; justify-content: center;
-  font-size: 1.1rem; line-height: 1; color: #0b0d12; background: #d8c7ff;
-  border: 1px solid rgba(0, 0, 0, 0.6); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+   position: absolute;
+   top: 2px;
+   left: 2px;
+   z-index: 2;
+   width: 1.6rem;
+   height: 1.6rem;
+   border-radius: 999px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   font-size: 1.1rem;
+   line-height: 1;
+   color: #0b0d12;
+   background: #d8c7ff;
+   border: 1px solid rgba(0, 0, 0, 0.6);
+   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
+
 /* Pushed to the right end of the counter strip, where a real card prints it. */
 .pt-badge {
-  margin-left: auto; padding: 0 0.3rem; border-radius: var(--radius);
-  font-size: 0.7rem; font-weight: 700; line-height: 1.3rem; color: #fff;
-  background: rgba(18, 20, 25, 0.92);
-  border: 1px solid rgba(0, 0, 0, 0.65); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+   margin-left: auto;
+   padding: 0 0.3rem;
+   border-radius: var(--radius);
+   font-size: 0.7rem;
+   font-weight: 700;
+   line-height: 1.3rem;
+   color: #fff;
+   background: rgba(18, 20, 25, 0.92);
+   border: 1px solid rgba(0, 0, 0, 0.65);
+   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
-/* The opening-hand step takes the turn pill's place in the status bar, so it lays out as a row
-   there rather than as a banner of its own. */
-.setup-step { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; font-size: 0.85rem; }
-.setup-headline { display: flex; align-items: baseline; gap: 0.4rem; }
-.setup-actions { display: flex; gap: 0.35rem; }
-.setup-kept { color: #7fd6a4; font-weight: 600; }
-.setup-waiting { color: var(--text-dim); font-size: 0.78rem; }
+
+/* A band across the top of the HUD, directly above the hand it is asking about — the most
+   consequential moment before turn 1, so it gets its own strip and a rule under it rather than
+   reading as one more thing in the status bar. Centred, because for these few seconds it is the
+   only thing on the screen anyone is acting on. */
+.setup-step {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   gap: 0.75rem;
+   flex-wrap: wrap;
+   font-size: 0.85rem;
+   padding: 0.15rem 0.5rem 0.5rem;
+   border-bottom: 1px solid var(--border);
+}
+
+.setup-headline {
+   display: flex;
+   align-items: baseline;
+   gap: 0.4rem;
+}
+
+.setup-headline strong {
+   font-size: 1.05rem;
+}
+
+.setup-actions {
+   display: flex;
+   gap: 0.35rem;
+}
+
+.setup-kept {
+   color: #7fd6a4;
+   font-weight: 600;
+}
+
+.setup-waiting {
+   color: var(--text-dim);
+   font-size: 0.78rem;
+}
 
 /* While a target arrow is armed, every card is a candidate — the cursor says so everywhere. */
-.table.targeting .card-tile { cursor: crosshair; }
-.targeting-hint { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--accent); }
+.table.targeting .card-tile {
+   cursor: crosshair;
+}
+
+/* Floats above the hand like the selection bar, and reads as the same kind of thing — both say
+   "a mode is on, here is how to leave it". One notch higher so the two never collide: they are
+   usually mutually exclusive, but nothing makes them so. */
+.targeting-hint {
+   position: fixed;
+   left: 50%;
+   bottom: calc(var(--card-h) + 7rem);
+   transform: translateX(-50%);
+   z-index: 22;
+   display: flex;
+   align-items: center;
+   gap: 0.5rem;
+   font-size: 0.8rem;
+   color: var(--accent);
+   background: var(--surface-raised);
+   border: 1px solid var(--accent);
+   border-radius: 999px;
+   padding: 0.35rem 0.7rem;
+   box-shadow: var(--shadow);
+}
 
 /* Arrows sit over the mats but take no clicks: the cards underneath still tap and right-click
    normally. Inside the plane, so the plane's own transform carries them. */
-.arrow-layer { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
-.arrow path { fill: none; stroke-width: 3; stroke-linecap: round; }
+.arrow-layer {
+   position: absolute;
+   inset: 0;
+   pointer-events: none;
+   z-index: 5;
+}
+
+.arrow path {
+   fill: none;
+   stroke-width: 3;
+   stroke-linecap: round;
+}
+
 /* An arrow takes the colour of the board it starts from — yours the accent, anyone else's the
    turn colour — so in a two-player game your opponent's blockers are the same orange as their
    mat. They were all one red, which said "combat" but not whose. Block and target are told apart
    by the dash, not the colour. */
-.arrow.mine path { stroke: var(--accent); }
-.arrow.theirs path { stroke: var(--accent-turn); }
-.arrow-head-mine { fill: var(--accent); }
-.arrow-head-theirs { fill: var(--accent-turn); }
-.arrow-target path { stroke-dasharray: 7 5; }
+.arrow.mine path {
+   stroke: var(--accent);
+}
+
+.arrow.theirs path {
+   stroke: var(--accent-turn);
+}
+
+.arrow-head-mine {
+   fill: var(--accent);
+}
+
+.arrow-head-theirs {
+   fill: var(--accent-turn);
+}
+
+.arrow-target path {
+   stroke-dasharray: 7 5;
+}
 
 /* Labels sit in their own strip along the top, mirroring the counter strip along the bottom.
    They were absolutely positioned at one corner, so a creature with flying and deathtouch showed
    deathtouch drawn over flying. Colour is the label's own (see labels.ts). */
-.card-labels { position: absolute; left: 2px; right: 2px; top: 2px; display: flex; flex-wrap: wrap; gap: 2px; }
+.card-labels {
+   position: absolute;
+   left: 2px;
+   right: 2px;
+   top: 2px;
+   display: flex;
+   flex-wrap: wrap;
+   gap: 2px;
+}
+
 .label-pill {
-  padding: 0 0.3rem; border-radius: 999px; font-size: 0.6rem; font-weight: 700;
-  line-height: 1rem; text-transform: lowercase; white-space: nowrap;
-  border: 1px solid rgba(0, 0, 0, 0.55); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+   padding: 0 0.3rem;
+   border-radius: 999px;
+   font-size: 0.6rem;
+   font-weight: 700;
+   line-height: 1rem;
+   text-transform: lowercase;
+   white-space: nowrap;
+   border: 1px solid rgba(0, 0, 0, 0.55);
+   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
-.label-pill.removable { cursor: pointer; }
-.label-pill.removable:hover { outline: 1px solid var(--danger); outline-offset: 1px; }
-.label-white { background: #f3efe2; color: #1b1b1b; }
-.label-blue { background: #2a7fc4; color: #fff; }
-.label-black { background: #1e1e22; color: #e8e4dc; }
-.label-red { background: #c0392b; color: #fff; }
-.label-green { background: #2f7d4f; color: #fff; }
-.label-gold { background: #c9a227; color: #221c05; }
-.label-neutral { background: rgba(18, 20, 25, 0.92); color: #e8e4dc; }
 
-.commander-tile { position: relative; display: inline-block; }
+.label-pill.removable {
+   cursor: pointer;
+}
+
+.label-pill.removable:hover {
+   outline: 1px solid var(--danger);
+   outline-offset: 1px;
+}
+
+.label-white {
+   background: #f3efe2;
+   color: #1b1b1b;
+}
+
+.label-blue {
+   background: #2a7fc4;
+   color: #fff;
+}
+
+.label-black {
+   background: #1e1e22;
+   color: #e8e4dc;
+}
+
+.label-red {
+   background: #c0392b;
+   color: #fff;
+}
+
+.label-green {
+   background: #2f7d4f;
+   color: #fff;
+}
+
+.label-gold {
+   background: #c9a227;
+   color: #221c05;
+}
+
+.label-neutral {
+   background: rgba(18, 20, 25, 0.92);
+   color: #e8e4dc;
+}
+
+.commander-tile {
+   position: relative;
+   display: inline-block;
+}
+
 .tax-badge {
-  position: absolute; top: -6px; right: -6px; white-space: nowrap; cursor: help;
-  background: #7a6a2a; color: #fff; font-size: 0.6rem; font-weight: 600; padding: 1px 5px;
-  border: 1px solid #a8933d; border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+   position: absolute;
+   top: -6px;
+   right: -6px;
+   white-space: nowrap;
+   cursor: help;
+   background: #7a6a2a;
+   color: #fff;
+   font-size: 0.6rem;
+   font-weight: 600;
+   padding: 1px 5px;
+   border: 1px solid #a8933d;
+   border-radius: 8px;
+   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
-.mana-pad { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; font-size: 0.85rem; }
+.mana-pad {
+   display: flex;
+   flex-wrap: wrap;
+   align-items: center;
+   gap: 0.35rem;
+   font-size: 0.85rem;
+}
+
 /* Every pip wears its own colour at all times, so you find red by looking rather than by
    reading. A lit pip still stands out from an empty one, but by brightness — the pool being
    dimmed as a whole — rather than by being the only one with any colour at all. */
-.mana-pip, .vital {
-  display: flex; align-items: center; gap: 0.25rem; padding: 0.15rem 0.3rem; border-radius: 999px;
-  background: var(--surface-raised); color: var(--text); border: 1px solid var(--border);
+.mana-pip,
+.vital {
+   display: flex;
+   align-items: center;
+   gap: 0.25rem;
+   padding: 0.15rem 0.3rem;
+   border-radius: 999px;
+   background: var(--surface-raised);
+   color: var(--text);
+   border: 1px solid var(--border);
 }
-.mana-pip { opacity: 0.5; transition: opacity 0.12s, border-color 0.12s; }
-.mana-pip.has-mana { opacity: 1; border-color: var(--border-strong); }
+
+.mana-pip {
+   opacity: 0.5;
+   transition: opacity 0.12s, border-color 0.12s;
+}
+
+.mana-pip.has-mana {
+   opacity: 1;
+   border-color: var(--border-strong);
+}
+
 /* Bare glyphs inside the pip: a boxed button within a pill drew a second border around a
    control the pill had already framed. Sized to be hit without aiming — they get poked several
    times per land drop — with the hit area coming from the width, not from a visible box. */
-.mana-pip button, .vital button {
-  width: 1.7rem; height: 1.7rem; font-size: 1rem; line-height: 1; cursor: pointer;
-  background: none; border: none; border-radius: 50%; color: var(--text-dim);
+.mana-pip button,
+.vital button {
+   width: 1.7rem;
+   height: 1.7rem;
+   font-size: 1rem;
+   line-height: 1;
+   cursor: pointer;
+   background: none;
+   border: none;
+   border-radius: 50%;
+   color: var(--text-dim);
 }
-.mana-pip button:hover, .vital button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.09); color: var(--text); }
-.vital button:disabled { opacity: 0.35; cursor: default; }
+
+.mana-pip button:hover,
+.vital button:hover:not(:disabled) {
+   background: rgba(255, 255, 255, 0.09);
+   color: var(--text);
+}
+
+.vital button:disabled {
+   opacity: 0.35;
+   cursor: default;
+}
 
 /* Life and poison, poked the same way mana is — the two sit side by side in the HUD's top strip
    and reading alike keeps it from looking like two unrelated toolbars. */
-.vitals-pad { display: flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; }
-.vital.lethal { background: #5a1e1e; color: #ffc9c9; border-color: #8a3030; }
-.vital-symbol { font-size: 0.9rem; }
-.vital-count { min-width: 1.6rem; text-align: center; font-weight: 600; font-size: 1.1rem; }
+.vitals-pad {
+   display: flex;
+   align-items: center;
+   gap: 0.35rem;
+   font-size: 0.85rem;
+}
+
+.vital-symbol {
+   font-size: 0.9rem;
+}
+
+.vital-count {
+   min-width: 1.6rem;
+   text-align: center;
+   font-weight: 600;
+   font-size: 1.1rem;
+}
+
 /* Life's own number is also the button that sets it by any amount, so it has to opt out of the
    round 1.7rem glyph shape the pill's −/+ buttons take from the rule above. */
-button.vital-count { width: auto; height: auto; padding: 0 0.15rem; border-radius: var(--radius); color: inherit; font-family: inherit; }
-button.vital-count:hover { background: rgba(255, 255, 255, 0.09); }
+button.vital-count {
+   width: auto;
+   height: auto;
+   padding: 0 0.15rem;
+   border-radius: var(--radius);
+   color: inherit;
+   font-family: inherit;
+}
+
+button.vital-count:hover {
+   background: rgba(255, 255, 255, 0.09);
+}
+
 /* The commander-damage pill is itself the button that opens the list, so it takes the pill
    styling a <button> would otherwise fight. */
-.damage-menu { position: relative; }
-button.vital { font: inherit; cursor: pointer; }
-button.vital:hover { border-color: var(--border-strong); }
-.damage-row { display: flex; align-items: center; gap: 0.4rem; padding: 0.15rem 0.7rem; font-size: 0.8rem; }
-.damage-name { flex: 1; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.damage-row button { flex-shrink: 0; width: 1.6rem; text-align: center; padding: 0.1rem 0; border: 1px solid var(--border-strong); border-radius: 4px; }
-.damage-row button:disabled { opacity: 0.35; cursor: default; }
-.damage-value { min-width: 1.5rem; text-align: center; font-weight: 600; }
-.popover-note { margin: 0.2rem 0.7rem 0.45rem; font-size: 0.7rem; color: var(--text-dim); }
-.mana-symbol {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 1.5rem; height: 1.5rem; border-radius: 50%; font-size: 0.85rem; color: #14161a;
+.damage-menu {
+   position: relative;
 }
-.mana-count { min-width: 1rem; text-align: center; font-weight: 600; }
-.mana-W .mana-symbol { background: #fffbd5; }
-.mana-U .mana-symbol { background: #aae0fa; }
-.mana-B .mana-symbol { background: #cbc2bf; }
-.mana-R .mana-symbol { background: #f9aa8f; }
-.mana-G .mana-symbol { background: #9bd3ae; }
-.mana-C .mana-symbol { background: #cac5c0; }
+
+button.vital {
+   font: inherit;
+   cursor: pointer;
+}
+
+button.vital:hover {
+   border-color: var(--border-strong);
+}
+
+.damage-row {
+   display: flex;
+   align-items: center;
+   gap: 0.4rem;
+   padding: 0.15rem 0.7rem;
+   font-size: 0.8rem;
+}
+
+.damage-name {
+   flex: 1;
+   max-width: 11rem;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+.damage-row button {
+   flex-shrink: 0;
+   width: 1.6rem;
+   text-align: center;
+   padding: 0.1rem 0;
+   border: 1px solid var(--border-strong);
+   border-radius: 4px;
+}
+
+.damage-row button:disabled {
+   opacity: 0.35;
+   cursor: default;
+}
+
+.damage-value {
+   min-width: 1.5rem;
+   text-align: center;
+   font-weight: 600;
+}
+
+.mana-symbol {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 1.5rem;
+   height: 1.5rem;
+   border-radius: 50%;
+   font-size: 0.85rem;
+   color: #14161a;
+}
+
+.mana-count {
+   min-width: 1rem;
+   text-align: center;
+   font-weight: 600;
+}
+
+.mana-W .mana-symbol {
+   background: #fffbd5;
+}
+
+.mana-U .mana-symbol {
+   background: #aae0fa;
+}
+
+.mana-B .mana-symbol {
+   background: #cbc2bf;
+}
+
+.mana-R .mana-symbol {
+   background: #f9aa8f;
+}
+
+.mana-G .mana-symbol {
+   background: #9bd3ae;
+}
+
+.mana-C .mana-symbol {
+   background: #cac5c0;
+}
+
 /* The running total wears the pip shape so it reads as part of the pool, but it is a readout,
    not a control: no buttons, so it carries its own horizontal padding, and it is colourless
    because no colour of mana owns it. */
-.mana-total { padding: 0.15rem 0.5rem; }
-.mana-total .mana-symbol { background: var(--border-strong); color: var(--text); font-weight: 700; }
+.mana-total {
+   padding: 0.15rem 0.5rem;
+}
+
+.mana-total .mana-symbol {
+   background: var(--border-strong);
+   color: var(--text);
+   font-weight: 700;
+}
 
 /* Confirmations the app asks itself, instead of window.confirm — see ConfirmDialog.tsx. Above
    every other overlay, since it is blocking by definition. */
 .dialog-backdrop {
-  position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
+   position: fixed;
+   inset: 0;
+   z-index: 40;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   background: rgba(0, 0, 0, 0.55);
 }
+
 .dialog {
-  width: 24rem; max-width: 90vw; padding: 1.1rem; display: flex; flex-direction: column; gap: 1rem;
-  background: var(--surface-raised); border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg); box-shadow: var(--shadow);
+   width: 24rem;
+   max-width: 90vw;
+   padding: 1.1rem;
+   display: flex;
+   flex-direction: column;
+   gap: 1rem;
+   background: var(--surface-raised);
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius-lg);
+   box-shadow: var(--shadow);
 }
-.dialog-title { margin: 0; font-size: 0.95rem; font-weight: 600; }
-.dialog-message { margin: 0; font-size: 0.9rem; line-height: 1.45; }
-.dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
-.dialog-form { display: flex; flex-direction: column; gap: 0.7rem; }
+
+.dialog-title {
+   margin: 0;
+   font-size: 0.95rem;
+   font-weight: 600;
+}
+
+.dialog-message {
+   margin: 0;
+   font-size: 0.9rem;
+   line-height: 1.45;
+}
+
+.dialog-actions {
+   display: flex;
+   justify-content: flex-end;
+   gap: 0.5rem;
+}
+
+.dialog-form {
+   display: flex;
+   flex-direction: column;
+   gap: 0.7rem;
+}
+
 /* Label above input, so a three-across row of short fields still reads top to bottom. */
-.field { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; min-width: 0; }
-.field > span { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
-.field input {
-  width: 100%; padding: 0.35rem 0.5rem; font: inherit; font-size: 0.85rem;
-  background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius);
+.field {
+   display: flex;
+   flex-direction: column;
+   gap: 0.2rem;
+   flex: 1;
+   min-width: 0;
 }
-.field input:focus { outline: none; border-color: var(--accent); }
-.field-row { display: flex; gap: 0.5rem; }
+
+.field>span {
+   font-size: 0.7rem;
+   text-transform: uppercase;
+   letter-spacing: 0.06em;
+   color: var(--text-dim);
+}
+
+.field input {
+   width: 100%;
+   padding: 0.35rem 0.5rem;
+   font: inherit;
+   font-size: 0.85rem;
+   background: var(--surface);
+   color: var(--text);
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius);
+}
+
+.field input:focus {
+   outline: none;
+   border-color: var(--accent);
+}
+
+.field-row {
+   display: flex;
+   gap: 0.5rem;
+}
+
 /* A dialog that asks you to pick one of a handful of things (which player now controls this)
    rather than to type something. One button per choice, stacked. */
-.dialog-choices { display: flex; flex-direction: column; gap: 0.35rem; }
-.dialog-choices .btn { text-align: left; padding: 0.45rem 0.65rem; }
+.dialog-choices {
+   display: flex;
+   flex-direction: column;
+   gap: 0.35rem;
+}
+
+.dialog-choices .btn {
+   text-align: left;
+   padding: 0.45rem 0.65rem;
+}
+
 /* Labels wrap as pills in their own colours, so the picker doubles as the legend for what the
    card is about to show. */
-.label-choices { flex-direction: row; flex-wrap: wrap; }
-.label-choices .label-pill { cursor: pointer; font-size: 0.75rem; line-height: 1.5rem; padding: 0 0.6rem; }
-.label-choices .label-pill:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+.label-choices {
+   flex-direction: row;
+   flex-wrap: wrap;
+}
+
+.label-choices .label-pill {
+   cursor: pointer;
+   font-size: 0.75rem;
+   line-height: 1.5rem;
+   padding: 0 0.6rem;
+}
+
+.label-choices .label-pill:hover {
+   outline: 2px solid var(--accent);
+   outline-offset: 1px;
+}
 
 /* Floats rather than sitting in the layout, so appearing mid-game doesn't shove the controls. */
 .selection-bar {
-  position: fixed; left: 50%; bottom: calc(var(--card-h) + 4.5rem); transform: translateX(-50%); z-index: 22;
-  display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem;
-  background: var(--surface-raised); border: 1px solid var(--accent); border-radius: 999px;
-  padding: 0.35rem 0.7rem; box-shadow: var(--shadow);
+   position: fixed;
+   left: 50%;
+   bottom: calc(var(--card-h) + 4.5rem);
+   transform: translateX(-50%);
+   z-index: 22;
+   display: flex;
+   align-items: center;
+   gap: 0.4rem;
+   font-size: 0.8rem;
+   background: var(--surface-raised);
+   border: 1px solid var(--accent);
+   border-radius: 999px;
+   padding: 0.35rem 0.7rem;
+   box-shadow: var(--shadow);
 }
-.selection-count { color: var(--accent); font-weight: 600; }
 
-.log-rail { display: flex; flex-direction: column; gap: 0.4rem; width: 320px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0.5rem; }
-.rail-header { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 0.85rem; }
-.log { flex: 1; overflow-y: auto; font-size: 0.78rem; display: flex; flex-direction: column; gap: 0.1rem; }
-.log-line { margin: 0; padding: 0.15rem 0.3rem; border-radius: 4px; color: var(--text-dim); }
-.log-line strong { color: var(--text); }
+.selection-count {
+   color: var(--accent);
+   font-weight: 600;
+}
+
+.log-rail {
+   display: flex;
+   flex-direction: column;
+   gap: 0.4rem;
+   width: 320px;
+   flex-shrink: 0;
+   background: var(--surface);
+   border: 1px solid var(--border);
+   border-radius: var(--radius-lg);
+   padding: 0.5rem;
+}
+
+.rail-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   font-weight: 600;
+   font-size: 0.85rem;
+}
+
+.log {
+   flex: 1;
+   overflow-y: auto;
+   font-size: 0.78rem;
+   display: flex;
+   flex-direction: column;
+   gap: 0.1rem;
+}
+
+.log-line {
+   margin: 0;
+   padding: 0.15rem 0.3rem;
+   border-radius: 4px;
+   color: var(--text-dim);
+}
+
+.log-line strong {
+   color: var(--text);
+}
+
 /* Chat and dice are what people look for in a wall of "moved a card"; actions stay quiet. */
-.log-line.log-chat { background: #232b33; color: var(--text); }
-.log-chat-text { font-style: italic; }
-.log-line.log-random { color: var(--accent-turn); }
+.log-line.log-chat {
+   background: #232b33;
+   color: var(--text);
+}
+
+/* --accent is "you" throughout (see :root), so your own lines are marked in it. */
+.log-line.log-mine {
+   border-left: 2px solid var(--accent);
+   padding-left: 0.2rem;
+}
+
+.log-chat-text {
+   font-style: italic;
+}
+
+.log-line.log-random {
+   color: var(--accent-turn);
+}
 
 /* Chat is the log rail's mirror image: same box, same collapsed strip, other side of the table.
    Narrower, because a line of chat is a sentence and a line of log is a clause. */
-.chat-rail { display: flex; flex-direction: column; gap: 0.4rem; width: 260px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0.5rem; }
-.chat-rail .rail-header { justify-content: flex-start; gap: 0.3rem; }
-.chat-strip { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 2rem; flex-shrink: 0; padding: 0.5rem 0; background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; }
-.chat-strip:hover { color: var(--text); border-color: var(--border-strong); }
+.chat-rail {
+   display: flex;
+   flex-direction: column;
+   gap: 0.4rem;
+   width: 260px;
+   flex-shrink: 0;
+   background: var(--surface);
+   border: 1px solid var(--border);
+   border-radius: var(--radius-lg);
+   padding: 0.5rem;
+}
 
-.log-strip { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 2rem; flex-shrink: 0; padding: 0.5rem 0; background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; }
-.log-strip:hover { color: var(--text); border-color: var(--border-strong); }
-.log-strip-label { writing-mode: vertical-rl; font-size: 0.75rem; letter-spacing: 0.05em; }
-.unread-badge { background: var(--accent); color: #0c1116; font-size: 0.65rem; font-weight: 700; border-radius: 999px; padding: 0.05rem 0.3rem; }
+.chat-rail .rail-header {
+   justify-content: flex-start;
+   gap: 0.3rem;
+}
 
-.chat-box { display: flex; gap: 0.3rem; }
+.chat-strip {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   gap: 0.5rem;
+   width: 2rem;
+   flex-shrink: 0;
+   padding: 0.5rem 0;
+   background: var(--surface);
+   color: var(--text-dim);
+   border: 1px solid var(--border);
+   border-radius: var(--radius-lg);
+   cursor: pointer;
+}
+
+.chat-strip:hover {
+   color: var(--text);
+   border-color: var(--border-strong);
+}
+
+.log-strip {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   gap: 0.5rem;
+   width: 2rem;
+   flex-shrink: 0;
+   padding: 0.5rem 0;
+   background: var(--surface);
+   color: var(--text-dim);
+   border: 1px solid var(--border);
+   border-radius: var(--radius-lg);
+   cursor: pointer;
+}
+
+.log-strip:hover {
+   color: var(--text);
+   border-color: var(--border-strong);
+}
+
+.log-strip-label {
+   writing-mode: vertical-rl;
+   font-size: 0.75rem;
+   letter-spacing: 0.05em;
+}
+
+.unread-badge {
+   background: var(--accent);
+   color: #0c1116;
+   font-size: 0.65rem;
+   font-weight: 700;
+   border-radius: 999px;
+   padding: 0.05rem 0.3rem;
+}
+
+.chat-box {
+   display: flex;
+   gap: 0.3rem;
+}
+
 /* Sizing only — the colours, border and radius come from the global input baseline. */
-.chat-box input { flex: 1; min-width: 0; padding: 0.3rem 0.4rem; font-size: 0.8rem; }
+.chat-box input {
+   flex: 1;
+   min-width: 0;
+   padding: 0.3rem 0.4rem;
+   font-size: 0.8rem;
+}
 
 /* What you'd otherwise miss with the rail collapsed. */
 /* Up at the top rather than down by the hand: a dice roll or a chat line is something to glance
@@ -629,33 +2192,115 @@ button.vital:hover { border-color: var(--border-strong); }
    column-reverse puts the newest at the top, so an arriving toast doesn't shove the one you're
    mid-way through reading. */
 .toasts {
-  position: fixed; top: 3.4rem; z-index: 23;
-  display: flex; flex-direction: column-reverse; gap: 0.3rem; max-width: 22rem; pointer-events: none;
+   position: fixed;
+   top: 3.4rem;
+   z-index: 23;
+   display: flex;
+   flex-direction: column-reverse;
+   gap: 0.3rem;
+   max-width: 22rem;
+   pointer-events: none;
 }
+
 /* Each stack sits just inside its own rail's collapsed strip, so a message points at the rail
    that holds it. Only ever on screen while that rail is shut — hence one offset each, clearing
    the 2rem strip plus the table's own 0.5rem padding. */
-.toasts.side-log { right: 3.5rem; }
-.toasts.side-chat { left: 3.5rem; }
-.toast { background: rgba(39, 43, 51, 0.96); border: 1px solid var(--border-strong); border-left: 3px solid var(--border-strong); border-radius: var(--radius); padding: 0.35rem 0.6rem; font-size: 0.78rem; box-shadow: var(--shadow); }
-.toast { animation: toast-pop 160ms ease-out; }
+.toasts.side-log {
+   right: 3.5rem;
+}
+
+.toasts.side-chat {
+   left: 3.5rem;
+}
+
+.toast {
+   background: rgba(39, 43, 51, 0.96);
+   border: 1px solid var(--border-strong);
+   border-left: 3px solid var(--border-strong);
+   border-radius: var(--radius);
+   padding: 0.35rem 0.6rem;
+   font-size: 0.78rem;
+   box-shadow: var(--shadow);
+}
+
+.toast {
+   animation: toast-pop 160ms ease-out;
+}
+
 /* `forwards`, so a faded-out toast stays invisible for the moment it is still mounted — the
    component marks it as leaving, waits out this animation, then drops it. */
-.toast.leaving { animation: toast-fade 300ms ease-in forwards; }
-@keyframes toast-pop {
-  from { opacity: 0; transform: translateY(-0.5rem); }
-  to { opacity: 1; transform: none; }
+.toast.leaving {
+   animation: toast-fade 300ms ease-in forwards;
 }
-@keyframes toast-fade {
-  from { opacity: 1; transform: none; }
-  to { opacity: 0; transform: translateX(0.75rem); }
-}
-@media (prefers-reduced-motion: reduce) { .toast, .toast.leaving { animation: none; } }
-.toast-chat { border-left-color: var(--accent); }
-.toast-random { border-left-color: var(--accent-turn); }
 
-.reconnect-banner { position: fixed; top: 0.5rem; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--border); color: var(--text-dim); padding: 0.5rem 1rem; border-radius: var(--radius); z-index: 41; }
-.error-toast { position: fixed; top: 0.5rem; left: 50%; transform: translateX(-50%); background: var(--danger); color: #fff; padding: 0.5rem 1rem; border-radius: var(--radius); cursor: pointer; z-index: 40; }
+@keyframes toast-pop {
+   from {
+      opacity: 0;
+      transform: translateY(-0.5rem);
+   }
+
+   to {
+      opacity: 1;
+      transform: none;
+   }
+}
+
+@keyframes toast-fade {
+   from {
+      opacity: 1;
+      transform: none;
+   }
+
+   to {
+      opacity: 0;
+      transform: translateX(0.75rem);
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+   .toast,
+   .toast.leaving {
+      animation: none;
+   }
+}
+
+.toast-chat {
+   border-left-color: var(--accent);
+}
+
+.toast-random {
+   border-left-color: var(--accent-turn);
+}
+
+.reconnect-banner {
+   position: fixed;
+   top: 0.5rem;
+   left: 50%;
+   transform: translateX(-50%);
+   background: var(--surface-raised);
+   border: 1px solid var(--border);
+   color: var(--text-dim);
+   padding: 0.5rem 1rem;
+   border-radius: var(--radius);
+   z-index: 41;
+}
+
+/* Below the reconnect banner rather than sharing its slot — the banner is the rarer of the two
+   and keeps the prime one — and above every dialog, so an error raised while one is open is not
+   painted underneath it. */
+.error-toast {
+   position: fixed;
+   top: 3rem;
+   left: 50%;
+   transform: translateX(-50%);
+   background: var(--danger);
+   color: #fff;
+   padding: 0.5rem 1rem;
+   border-radius: var(--radius);
+   cursor: pointer;
+   z-index: 42;
+}
 
 /* Middle of the left edge rather than the far corner: at eye level, and never under the cursor
    that summoned it. `pointer-events: none` means it only ever occludes the plane, never blocks
@@ -663,34 +2308,167 @@ button.vital:hover { border-color: var(--border-strong); }
 /* Sits a little above centre rather than on it: the cards you hover most are in your hand and
    on your own mat, both along the bottom of the window, so a dead-centre preview sits lower in
    your field of view than the card it is showing. */
-.zoom-preview { position: fixed; left: 3.5rem; top: 44%; transform: translateY(-50%); width: 420px; pointer-events: none; z-index: 20; box-shadow: var(--shadow); border-radius: 12px; overflow: hidden; }
-.zoom-preview img { width: 100%; display: block; }
+.zoom-preview {
+   position: fixed;
+   left: 3.5rem;
+   top: 44%;
+   transform: translateY(-50%);
+   width: 420px;
+   pointer-events: none;
+   z-index: 20;
+   box-shadow: var(--shadow);
+   border-radius: 12px;
+   overflow: hidden;
+}
+
+.zoom-preview img {
+   width: 100%;
+   display: block;
+}
 
 /* Which colour a dual just made (ManaChoice). A row of bare pips at the cursor rather than a
    menu of words: the symbols are the same ones worn by the pad it fills. */
 .mana-choice {
-  position: fixed; z-index: 31; display: flex; gap: 0.25rem; padding: 0.3rem;
-  background: var(--surface-raised); border: 1px solid var(--border-strong);
-  border-radius: 999px; box-shadow: var(--shadow);
+   position: fixed;
+   z-index: 31;
+   display: flex;
+   gap: 0.25rem;
+   padding: 0.3rem;
+   background: var(--surface-raised);
+   border: 1px solid var(--border-strong);
+   border-radius: 999px;
+   box-shadow: var(--shadow);
 }
-.mana-choice button { background: none; border: none; padding: 0; cursor: pointer; border-radius: 50%; }
-.mana-choice button:hover { box-shadow: 0 0 0 2px var(--accent); }
 
-.context-menu-backdrop { position: fixed; inset: 0; z-index: 30; }
-.context-menu { position: fixed; z-index: 31; background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: var(--radius); display: flex; flex-direction: column; min-width: 180px; box-shadow: var(--shadow); max-height: calc(100vh - 16px); overflow-y: auto; }
-.context-menu button { flex: none; text-align: left; background: none; border: none; color: var(--text); padding: 0.4rem 0.7rem; cursor: pointer; font-size: 0.8rem; }
-.context-menu button:hover { background: #343a44; }
-.context-menu hr { border: none; border-top: 1px solid var(--border); margin: 0; width: 100%; }
+.mana-choice button {
+   background: none;
+   border: none;
+   padding: 0;
+   cursor: pointer;
+   border-radius: 50%;
+}
+
+.mana-choice button:hover {
+   box-shadow: 0 0 0 2px var(--accent);
+}
+
+.context-menu-backdrop {
+   position: fixed;
+   inset: 0;
+   z-index: 30;
+}
+
+.context-menu {
+   position: fixed;
+   z-index: 31;
+   background: var(--surface-raised);
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius);
+   display: flex;
+   flex-direction: column;
+   min-width: 180px;
+   max-width: 20rem;
+   box-shadow: var(--shadow);
+   max-height: calc(100vh - 16px);
+   overflow-y: auto;
+}
+
+.context-menu button {
+   flex: none;
+   text-align: left;
+   background: none;
+   border: none;
+   color: var(--text);
+   padding: 0.4rem 0.7rem;
+   cursor: pointer;
+   font-size: 0.8rem;
+}
+
+.context-menu button:hover {
+   background: #343a44;
+}
+
+.context-menu hr {
+   border: none;
+   border-top: 1px solid var(--border);
+   margin: 0;
+   width: 100%;
+}
+
+/* Names the object the menu is about. Shaped like `.popover-group` but not uppercased — it is a
+   card's name, not a section heading, and a long one wraps rather than widening the menu. */
+.context-menu-title {
+   padding: 0.4rem 0.7rem 0.3rem;
+   font-size: 0.72rem;
+   font-weight: 600;
+   color: var(--text-dim);
+   border-bottom: 1px solid var(--border);
+   overflow-wrap: anywhere;
+}
+
+/* The move destinations, as one wrapping row. `.context-menu button` makes every item a
+   full-width left-aligned row, which is the whole reason these need rules of their own. */
+.menu-chips {
+   display: flex;
+   flex-wrap: wrap;
+   gap: 0.25rem;
+   padding: 0.35rem 0.7rem;
+}
+
+.context-menu .menu-chips button {
+   flex: none;
+   padding: 0.2rem 0.5rem;
+   text-align: center;
+   border-radius: var(--radius);
+   background: var(--surface);
+   border: 1px solid var(--border-strong);
+   font-size: 0.75rem;
+}
+
+.context-menu .menu-chips button:hover {
+   background: #343a44;
+   border-color: var(--accent);
+}
+
 /* A counter and its two directions on one line. The −/+ are square so the row reads as a dial
    rather than as two more menu items that happen to be short. */
-.menu-stepper { display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.7rem; font-size: 0.8rem; }
-.menu-stepper-label { flex: 1; white-space: nowrap; }
-.menu-stepper-value { min-width: 1.2rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
-.context-menu .menu-stepper button {
-  flex: none; width: 1.4rem; padding: 0; text-align: center; border-radius: var(--radius);
-  background: var(--surface); border: 1px solid var(--border-strong); font-size: 0.85rem; line-height: 1.3rem;
+.menu-stepper {
+   display: flex;
+   align-items: center;
+   gap: 0.3rem;
+   padding: 0.2rem 0.7rem;
+   font-size: 0.8rem;
 }
-.context-menu .menu-stepper button:disabled { opacity: 0.35; cursor: default; background: var(--surface); }
+
+.menu-stepper-label {
+   flex: 1;
+   white-space: nowrap;
+}
+
+.menu-stepper-value {
+   min-width: 1.2rem;
+   text-align: center;
+   font-weight: 700;
+   font-variant-numeric: tabular-nums;
+}
+
+.context-menu .menu-stepper button {
+   flex: none;
+   width: 1.4rem;
+   padding: 0;
+   text-align: center;
+   border-radius: var(--radius);
+   background: var(--surface);
+   border: 1px solid var(--border-strong);
+   font-size: 0.85rem;
+   line-height: 1.3rem;
+}
+
+.context-menu .menu-stepper button:disabled {
+   opacity: 0.35;
+   cursor: default;
+   background: var(--surface);
+}
 
 /* ── Narrow windows ─────────────────────────────────────────────────────────────────────────
    The card-size knob is turned down at the top of this file; these are the rules that were
@@ -698,39 +2476,88 @@ button.vital:hover { border-color: var(--border-strong); }
    table — the plane pans and zooms, so only the fixed chrome around it needs the help. */
 
 @media (max-width: 1100px) {
-  /* The rail and the preview are both fixed widths carved out of the table's own space. */
-  .log-rail { width: 240px; }
-  .chat-rail { width: 200px; }
-  .zoom-preview { width: 300px; left: 2rem; }
-  /* Three full-width buttons plus a menu is a lot of column for a small window. */
-  .action-bar { width: 7rem; }
-  .action-bar .btn-lg { padding: 0.4rem 0.6rem; font-size: 0.82rem; }
-  /* The grid gives way the same way, a column at a time rather than all at once. */
-  .action-panel { grid-template-columns: repeat(2, 5.5rem); }
+
+   /* The status bar carries a turn pill, whatever it is currently asking, and the tools. Wrapping
+     lets the question take a line of its own rather than squeezing the pill out of shape — and
+     it is needed from here, where the cards step down and the bar's contents do not. */
+   .status-bar {
+      flex-wrap: wrap;
+   }
+
+   /* The rail and the preview are both fixed widths carved out of the table's own space. */
+   .log-rail {
+      width: 240px;
+   }
+
+   .chat-rail {
+      width: 200px;
+   }
+
+   .zoom-preview {
+      width: 300px;
+      left: 2rem;
+   }
+
+   /* Three full-width buttons plus a menu is a lot of column for a small window. */
+   .action-bar {
+      width: 7rem;
+   }
+
+   .action-bar .btn-lg {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.82rem;
+   }
 }
 
 @media (max-width: 900px) {
-  /* The status bar carries a turn pill, whatever it is currently asking, and the tools. Wrapping
-     lets the question take a line of its own rather than squeezing the pill out of shape. */
-  .status-bar { flex-wrap: wrap; }
 
-  /* The HUD's two strips are three-column grids built to centre the hand and the mana pad in the
+   /* The HUD's two strips are three-column grids built to centre the hand and the mana pad in the
      window. There is no longer room for empty balancing columns, so both become plain wrapping
      rows and the hand centres itself. */
-  .hud-top { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem 0.75rem; }
-  .hud-top .zone-dock { justify-self: auto; }
-  .hud-row { grid-template-columns: auto minmax(0, 1fr); }
-  .hud-row .hand { justify-content: flex-start; }
+   .hud-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.4rem 0.75rem;
+   }
 
-  .mana-pad { gap: 0.2rem; }
-  /* The life count is a button in this pill too, and it has to stay the width of its number. */
-  .mana-pip button, .vital button:not(.vital-count) { width: 1.4rem; height: 1.4rem; }
-  .zone-tile { height: 1.9rem; padding: 0 0.5rem; }
+   .hud-top .zone-dock {
+      justify-self: auto;
+   }
 
-  /* Full-width popovers from the zone dock would otherwise hang off the right edge. */
-  .zone-popover { width: 86vw; max-width: none; }
+   .hud-row {
+      grid-template-columns: auto minmax(0, 1fr);
+   }
 
-  /* The preview is the first thing to go: it covers a third of a small window, and the hand it
+   .hud-row .hand {
+      justify-content: flex-start;
+   }
+
+   .mana-pad {
+      gap: 0.2rem;
+   }
+
+   /* The life count is a button in this pill too, and it has to stay the width of its number. */
+   .mana-pip button,
+   .vital button:not(.vital-count) {
+      width: 1.4rem;
+      height: 1.4rem;
+   }
+
+   .zone-tile {
+      height: 1.9rem;
+      padding: 0 0.5rem;
+   }
+
+   /* Full-width popovers from the zone dock would otherwise hang off the right edge. */
+   .zone-popover {
+      width: 86vw;
+      max-width: none;
+   }
+
+   /* The preview is the first thing to go: it covers a third of a small window, and the hand it
      is describing is right there. */
-  .zoom-preview { display: none; }
+   .zoom-preview {
+      display: none;
+   }
 }

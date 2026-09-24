@@ -47,13 +47,9 @@ export function Home() {
         />
       </label>
 
+      {/* Joining leads: one person makes the room and everyone else joins it. Create keeps the
+          same size and loses only the accent — hosting is a normal thing to do, not a fallback. */}
       <div className="home-actions">
-        <button className="btn btn-lg btn-primary" disabled={!canJoin || busy} onClick={handleCreate}>
-          {busy ? 'Creating…' : 'Create room'}
-        </button>
-
-        <span className="home-or">or</span>
-
         <div className="home-join">
           <input
             value={roomCode}
@@ -61,10 +57,16 @@ export function Home() {
             placeholder="Room code"
             maxLength={6}
           />
-          <button className="btn btn-lg" disabled={!canJoin || !roomCode.trim()} onClick={handleJoin}>
+          <button className="btn btn-lg btn-primary" disabled={!canJoin || !roomCode.trim()} onClick={handleJoin}>
             Join room
           </button>
         </div>
+
+        <span className="home-or">or</span>
+
+        <button className="btn btn-lg" disabled={!canJoin || busy} onClick={handleCreate}>
+          {busy ? 'Creating…' : 'Create room'}
+        </button>
       </div>
     </div>
   );

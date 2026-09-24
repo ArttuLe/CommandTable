@@ -37,6 +37,10 @@ export function ZoneDock({
   const toggleZone = useUiStore((s) => s.toggleZone);
   const closeZone = useUiStore((s) => s.closeZone);
   const open = zones.find((z) => z.key === openKey);
+  // What the grid will actually draw — also what tells the body whether it has anything to draw.
+  const visible = (open?.objects ?? [])
+    .filter((o): o is GameObject => !isRedacted(o))
+    .sort((a, b) => a.position - b.position);
 
   // Every way out of a popover — backdrop, ×, or clicking another zone's tile — goes through
   // here, since `onClose` is what settles the library's post-search shuffle.
@@ -51,8 +55,11 @@ export function ZoneDock({
         <button
           key={zone.key}
           className={`zone-tile ${openKey === zone.key ? 'open' : ''}`}
-          disabled={zone.objects.length === 0}
-          title={zone.objects.length === 0 ? `${zone.label} — nothing to show` : `Open ${zone.label.toLowerCase()}`}
+          // `count`, not `objects.length`: for the library the two differ. `count` is the real
+          // size, while `objects` holds only what a search or peek revealed (§9.2) — so a freshly
+          // shuffled 99-card library shows nothing here and must still be openable.
+          disabled={zone.count === 0}
+          title={zone.count === 0 ? `${zone.label} — empty` : `Open ${zone.label.toLowerCase()}`}
           onClick={() => {
             if (open) open.onClose?.();
             toggleZone(zone.key);
@@ -75,25 +82,28 @@ export function ZoneDock({
                 ×
               </button>
             </div>
-            {open.note && <p className="popover-note">{open.note}</p>}
+            {visible.length === 0 ? (
+              // An unrevealed library lands here. "Only cards you searched are shown" explains
+              // nothing above an empty grid, so the note stands down and this says what to do.
+              <p className="popover-note">Nothing revealed yet — search or peek to look inside.</p>
+            ) : (
+              open.note && <p className="popover-note">{open.note}</p>
+            )}
             <div className="zone-grid">
-              {open.objects
-                .filter((o): o is GameObject => !isRedacted(o))
-                .sort((a, b) => a.position - b.position)
-                .map((obj) => (
-                  <div key={obj.id} className="zone-entry">
-                    <CardTile obj={obj} onContextMenu={onObjectContextMenu(obj)} />
-                    {open.onMove && (
-                      <div className="zone-moves">
-                        {LIBRARY_MOVES.map(({ move, label }) => (
-                          <button key={move} onClick={() => open.onMove?.(move, obj)}>
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+              {visible.map((obj) => (
+                <div key={obj.id} className="zone-entry">
+                  <CardTile obj={obj} onContextMenu={onObjectContextMenu(obj)} />
+                  {open.onMove && (
+                    <div className="zone-moves">
+                      {LIBRARY_MOVES.map(({ move, label }) => (
+                        <button key={move} onClick={() => open.onMove?.(move, obj)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </>

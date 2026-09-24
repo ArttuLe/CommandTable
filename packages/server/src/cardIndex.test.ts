@@ -68,6 +68,66 @@ describe('CardIndex', () => {
     expect(found?.scryfallId).toBe('only-printing');
   });
 
+  it('resolves a name shared with a token to the real card, not the token', () => {
+    index.upsert(
+      makeCard({
+        scryfallId: 'token-pouncer',
+        name: 'Adorned Pouncer',
+        manaCost: null,
+        typeLine: 'Token Creature — Zombie Cat',
+        layout: 'token',
+      })
+    );
+    index.upsert(
+      makeCard({ scryfallId: 'card-pouncer', name: 'Adorned Pouncer', manaCost: '{1}{W}', typeLine: 'Creature — Cat' })
+    );
+
+    const found = index.findByName('Adorned Pouncer');
+    expect(found?.layout).toBe('normal');
+    expect(found?.manaCost).toBe('{1}{W}');
+  });
+
+  it('still resolves a real card that has no token twin', () => {
+    index.upsert(makeCard());
+    expect(index.findByName('Sol Ring')?.scryfallId).toBe('scryfall-sol-ring-lea');
+  });
+
+  it('does not suggest token names, which could never resolve', () => {
+    index.upsert(makeCard({ scryfallId: 'token-cat', name: 'Cat', typeLine: 'Token Creature — Cat', layout: 'token' }));
+    index.upsert(makeCard({ scryfallId: 'card-cataclysm', name: 'Cataclysm' }));
+    expect(index.suggestNames('cat', 5)).toEqual(['Cataclysm']);
+  });
+
+  it('resolves a name shared with a front-card placeholder to the real card', () => {
+    // The f-prefixed sets carry a typeless, costless stand-in under a real card's name.
+    index.upsert(
+      makeCard({ scryfallId: 'front-savage', name: 'Savage Lands', manaCost: null, typeLine: 'Card', layout: 'front_card' })
+    );
+    index.upsert(
+      makeCard({ scryfallId: 'card-savage', name: 'Savage Lands', manaCost: null, typeLine: 'Land' })
+    );
+
+    expect(index.findByName('Savage Lands')?.typeLine).toBe('Land');
+  });
+
+  it('does not let a double-faced token face name shadow a real card', () => {
+    index.upsert(
+      makeCard({
+        scryfallId: 'dft-construct',
+        name: 'Construct // Servo',
+        typeLine: 'Token Creature — Construct',
+        manaCost: null,
+        layout: 'double_faced_token',
+        cardFaces: [
+          { name: 'Construct', manaCost: null, typeLine: 'Token Creature — Construct', oracleText: null, power: '1', toughness: '1', loyalty: null, defense: null, imageUris: null },
+          { name: 'Servo', manaCost: null, typeLine: 'Token Creature — Servo', oracleText: null, power: '1', toughness: '1', loyalty: null, defense: null, imageUris: null },
+        ],
+      })
+    );
+
+    expect(index.findByName('Construct')).toBeUndefined();
+  });
+
   it('suggests fuzzy name matches for typos', () => {
     index.upsert(makeCard({ name: 'Sol Ring' }));
     index.upsert(makeCard({ scryfallId: 'x', oracleId: 'y', name: 'Solemn Simulacrum' }));
