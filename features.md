@@ -1,0 +1,20 @@
+# Features to add
+- For creature tokens show their power
+- indicate blocking somehow, which blocks which attacker, maybe an arrow to the target. It should be possible to determine which blocks first with labels on the arrows (1) (2) and so on.
+- If creature attacked and turn is passed -> tap the creature
+- If creature defended and turn is passed -> tap the creature
+- Start of the game setup, mulligan step to start game button for host
+- Middle mouse button to focus on the active player
+- Change peek to top => Peek to top / Scry
+- Better logs on moved a card {to}
+- Sorcery target to (similar to blocking mechanism) -> Arrow to the target
+- Move chat to somewhere else, left, like the log?
+- Add summoning sickness indicator to creatures
+- Make the counter token better on cards. Just ask how many counters to add, no two input fields, by default should show 1.
+- Able to remove counters from cards
+- Able to remove labels from cards
+- When adding label to card show a list of possible options, or if typing a custom option. Have them colored like flying would be white background pill
+- When game ends reset the lobby view (not ready, deck not submitted, and text from bottom such as deck resolved with no warnings)
+- +1/+1 and -1/-1 able to remove these counters
+- +1/+1 and -1/-1 to actually show +1/+1 not just 1.
+- Does the deck get shuffled when game starts?
