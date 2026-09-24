@@ -619,18 +619,19 @@ button.vital:hover { border-color: var(--border-strong); }
 .chat-box input { flex: 1; min-width: 0; padding: 0.3rem 0.4rem; font-size: 0.8rem; }
 
 /* What you'd otherwise miss with the rail collapsed. */
-/* Top right, above the log rail rather than down by the hand: a dice roll or a chat line is
-   something to glance at, and the bottom of the window is where your own cards and controls
-   already want your eyes. column-reverse puts the newest at the top, so an arriving toast
-   doesn't shove the one you're mid-way through reading. */
+/* Up at the top rather than down by the hand: a dice roll or a chat line is something to glance
+   at, and the bottom of the window is where your own cards and controls already want your eyes.
+   column-reverse puts the newest at the top, so an arriving toast doesn't shove the one you're
+   mid-way through reading. */
 .toasts {
-  position: fixed; top: 3.4rem; right: 3.5rem; z-index: 23;
+  position: fixed; top: 3.4rem; z-index: 23;
   display: flex; flex-direction: column-reverse; gap: 0.3rem; max-width: 22rem; pointer-events: none;
 }
-/* Clear of the log & chat rail rather than on top of it — the same messages are in there, and
-   a toast overlapping its own log line reads as a rendering fault. Tracks the rail's two widths
-   (320px open, the 2rem strip collapsed, both plus the table's own 0.5rem padding). */
-.toasts.rail-open { right: calc(320px + 1.5rem); }
+/* Each stack sits just inside its own rail's collapsed strip, so a message points at the rail
+   that holds it. Only ever on screen while that rail is shut — hence one offset each, clearing
+   the 2rem strip plus the table's own 0.5rem padding. */
+.toasts.side-log { right: 3.5rem; }
+.toasts.side-chat { left: 3.5rem; }
 .toast { background: rgba(39, 43, 51, 0.96); border: 1px solid var(--border-strong); border-left: 3px solid var(--border-strong); border-radius: var(--radius); padding: 0.35rem 0.6rem; font-size: 0.78rem; box-shadow: var(--shadow); }
 .toast { animation: toast-pop 160ms ease-out; }
 /* `forwards`, so a faded-out toast stays invisible for the moment it is still mounted — the
@@ -695,7 +696,6 @@ button.vital:hover { border-color: var(--border-strong); }
   /* The rail and the preview are both fixed widths carved out of the table's own space. */
   .log-rail { width: 240px; }
   .chat-rail { width: 200px; }
-  .toasts.rail-open { right: calc(240px + 1.5rem); }
   .zoom-preview { width: 300px; left: 2rem; }
   /* Three full-width buttons plus a menu is a lot of column for a small window. */
   .action-bar { width: 7rem; }

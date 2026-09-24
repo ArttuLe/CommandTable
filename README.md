@@ -208,11 +208,13 @@ The log is a collapsible right rail rather than a modal, with chat as its mirror
 left. The modal's problem wasn't where it sat but that nothing reached you until you opened it: a
 chat message or a dice roll was invisible until someone went looking. Splitting chat out solved
 the sequel to that: a message shared its scroll with every tap and untap at the table, so it could
-scroll out of sight between being sent and being read. Chat lines still appear in the log as well
-— §15.1 makes the log the referee, and a record with the talking cut out isn't a record — so the
-chat rail is a view of the same entries, not a second store. Collapsed, each rail is a strip with an unread count, and
-new entries pop as transient toasts in the top-right corner, clear of the rail itself (they shift
-left when it's open), newest on top. Each carries its own five-second deadline that one shared
+scroll out of sight between being sent and being read. The split is one store, two views:
+`logStreams.ts` partitions the single server-side log by `kind`, chat to one rail and play to the
+other, so a message is read once rather than on both sides of the table. Collapsed, each rail is a
+strip with an unread count over its own stream, and new entries pop as transient toasts beside
+that rail — chat on the left, play on the right — only while it's shut, newest on top. Entries
+that arrive with a rail open are marked seen, so closing it doesn't dump a backlog. Each toast
+carries its own five-second deadline that one shared
 timer waits on, and fades out rather than vanishing. `LogEntry.kind` (`'chat' | 'random'`, absent for ordinary
 actions) is what lets the rail style those apart and the toasts pick what's worth interrupting for
 — the alternative was sniffing log strings, since `SAY`'s log text is the player's message verbatim.

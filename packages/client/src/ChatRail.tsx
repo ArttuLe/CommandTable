@@ -4,12 +4,13 @@
 // the table — which meant a message could scroll out of sight between being sent and being read.
 // On its own side it holds only what people said, so a conversation stays a conversation.
 //
-// The log still carries chat too: §15.1 makes the log the referee, and a record with the talking
-// cut out of it is not a record. This rail is a view of the same entries, not a second store.
+// Chat is shown here and only here — the log rail filters it out, so a message is read once.
+// Both rails are views of the one server-side log, split by `kind`; this is not a second store.
 
 import { useEffect, useRef, useState } from 'react';
 import type { LogEntry, PlayerId, PlayerState } from '@command-table/common';
 import { playerHue } from './LogRail.js';
+import { chatEntries } from './logStreams.js';
 
 export function ChatRail({
   log,
@@ -24,7 +25,7 @@ export function ChatRail({
   onToggle: () => void;
   onSend: (text: string) => void;
 }) {
-  const messages = log.filter((entry) => entry.kind === 'chat');
+  const messages = chatEntries(log);
   const [seenCount, setSeenCount] = useState(messages.length);
   const listRef = useRef<HTMLDivElement>(null);
 

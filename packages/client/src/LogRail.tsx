@@ -1,13 +1,17 @@
 // The log (§15.1: "with no engine arbitrating, the log is the referee") docked beside the table
 // instead of inside a modal.
 //
+// It records play — actions and random results. The talking lives in the chat rail on the other
+// side and is filtered out here, so one message isn't read twice on two sides of the table.
+//
 // The modal's real problem wasn't where it sat, it was that nothing reached you until you went
-// looking: a chat message or a dice roll was invisible until someone opened it. So the rail
-// collapses to a strip with an unread count, and anything you can't afford to miss — chat,
-// random results, other players' actions — also surfaces as a transient toast.
+// looking: a dice roll was invisible until someone opened it. So the rail collapses to a strip
+// with an unread count, and what you can't afford to miss also surfaces as a transient toast.
+// `Toasts` serves both streams: one stack each, anchored beside the rail it belongs to.
 
 import { useEffect, useRef, useState } from 'react';
 import type { LogEntry, PlayerId, PlayerState } from '@command-table/common';
+import { tableEntries } from './logStreams.js';
 
 const TOAST_MS = 5000;
 const MAX_TOASTS = 3;
@@ -34,18 +38,19 @@ export function LogRail({
   open: boolean;
   onToggle: () => void;
 }) {
-  const [seenCount, setSeenCount] = useState(log.length);
+  const entries = tableEntries(log);
+  const [seenCount, setSeenCount] = useState(entries.length);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open) setSeenCount(log.length);
-  }, [open, log.length]);
+    if (open) setSeenCount(entries.length);
+  }, [open, entries.length]);
 
   useEffect(() => {
     if (open && listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [open, log.length]);
+  }, [open, entries.length]);
 
-  const unread = Math.max(0, log.length - seenCount);
+  const unread = Math.max(0, entries.length - seenCount);
 
   if (!open) {
     return (
@@ -65,10 +70,8 @@ export function LogRail({
         </button>
       </div>
 
-      {/* Chat lines stay in here as well as in their own rail: §15.1 makes the log the referee,
-          and a record with the talking cut out of it isn't a record. Only the input box moved. */}
       <div className="log" ref={listRef}>
-        {log.map((entry, i) => (
+        {entries.map((entry, i) => (
           <LogLine key={i} entry={entry} players={players} myId={myId} />
         ))}
       </div>
@@ -82,25 +85,31 @@ function LogLine({ entry, players, myId }: { entry: LogEntry; players: PlayerSta
   return (
     <p className={`log-line ${entry.kind ? `log-${entry.kind}` : ''} ${entry.actorId === myId ? 'log-mine' : ''}`}>
       <strong style={{ color: `hsl(${playerHue(players, entry.actorId)} 65% 72%)` }}>{name}</strong>{' '}
-      {entry.kind === 'chat' ? <span className="log-chat-text">{entry.text}</span> : entry.text}
+      {entry.text}
     </p>
   );
 }
 
 /**
- * Transient copies of log entries you'd otherwise miss while the rail is collapsed. Your own
+ * Transient copies of entries you'd otherwise miss while their rail is collapsed. Your own
  * actions are skipped — you just took them — except chat and dice, which are worth echoing.
+ *
+ * One stack per stream: the caller passes the slice of the log it owns and the side its rail
+ * sits on, so a chat message surfaces beside chat and a tapped land beside the log. `enabled`
+ * is false while that rail is open — the entries are already on screen in it.
  */
 export function Toasts({
   log,
   players,
   myId,
-  railOpen,
+  side,
+  enabled,
 }: {
   log: LogEntry[];
   players: PlayerState[];
   myId: PlayerId;
-  railOpen: boolean;
+  side: 'chat' | 'log';
+  enabled: boolean;
 }) {
   const [toasts, setToasts] = useState<{ id: number; entry: LogEntry; expiresAt: number; leaving?: boolean }[]>([]);
   const seenRef = useRef(log.length);
@@ -108,6 +117,12 @@ export function Toasts({
   useEffect(() => {
     if (log.length <= seenRef.current) {
       seenRef.current = log.length; // an undo shortened the log
+      return;
+    }
+    // Still catch up on what arrived while the rail was open, or closing it would empty a
+    // backlog of stale toasts onto the screen all at once.
+    if (!enabled) {
+      seenRef.current = log.length;
       return;
     }
     const expiresAt = Date.now() + TOAST_MS;
@@ -119,7 +134,7 @@ export function Toasts({
     if (fresh.length === 0) return;
 
     setToasts((current) => [...current, ...fresh].slice(-MAX_TOASTS));
-  }, [log, myId]);
+  }, [log, myId, enabled]);
 
   // Each toast carries its own deadline and one timer waits for the nearest, rather than each
   // batch owning a timer: a batch's timer was cancelled by the next log entry arriving, which
@@ -145,7 +160,7 @@ export function Toasts({
   if (toasts.length === 0) return null;
 
   return (
-    <div className={`toasts ${railOpen ? 'rail-open' : ''}`}>
+    <div className={`toasts side-${side}`}>
       {toasts.map(({ id, entry, leaving }) => {
         const name = players.find((p) => p.id === entry.actorId)?.displayName ?? entry.actorId;
         return (

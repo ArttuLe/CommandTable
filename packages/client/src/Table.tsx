@@ -14,6 +14,7 @@ import { CommanderName, type CommanderRef } from './commanders.js';
 import { ActionBar, ManaPad, SelectionBar, VitalsPad } from './ActionBar.js';
 import { LogRail, Toasts } from './LogRail.js';
 import { ChatRail } from './ChatRail.js';
+import { chatEntries, tableEntries } from './logStreams.js';
 import { ZoneDock, type DockZone } from './ZoneDock.js';
 import { seating } from './seating.js';
 import { PASS_TURN_WARNING, turnHighlight, turnLabel } from './turnStatus.js';
@@ -161,6 +162,10 @@ export function Table() {
   // Every block and target arrow currently on the table (see combat.ts). Memoised on the objects
   // map so the arrow layer isn't handed a new array on every unrelated re-render.
   const relations = useMemo(() => combatRelations(tableState.objects, playerId), [tableState.objects, playerId]);
+
+  // Split once: each rail and each toast stack reads only the stream it owns.
+  const chatLog = useMemo(() => chatEntries(tableState.log), [tableState.log]);
+  const tableLog = useMemo(() => tableEntries(tableState.log), [tableState.log]);
 
   const me = tableState.players.find((p) => p.id === playerId)!;
   const opposingCommanders = allCommanders.filter((c) => c.ownerId !== playerId);
@@ -410,7 +415,9 @@ export function Table() {
       </div>
 
       <SelectionBar />
-      <Toasts log={tableState.log} players={tableState.players} myId={playerId} railOpen={logRailOpen} />
+      {/* A toast for each stream, beside the rail it belongs to and only while that rail is shut. */}
+      <Toasts log={chatLog} players={tableState.players} myId={playerId} side="chat" enabled={!chatRailOpen} />
+      <Toasts log={tableLog} players={tableState.players} myId={playerId} side="log" enabled={!logRailOpen} />
 
       {confirmingPass && (
         <ConfirmDialog
