@@ -222,9 +222,8 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
         return;
       }
 
-      // `raw.targetRevision` is ignored on purpose: since a revert carries older content under a
-      // newer revision number, only the history knows where one step back actually is (see
-      // tableHistory.ts). The field stays in the protocol until the client stops sending it.
+      // Where one step back lands is the history's to answer, not the client's: a revert carries
+      // older content under a newer revision number (see tableHistory.ts).
       const targetRevision = history.undoTarget();
       if (targetRevision < history.initialRevision()) {
         send(socket, { t: 'error', message: 'there is nothing left to undo' });

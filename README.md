@@ -25,7 +25,13 @@ Phases 1 through 4 (§17 of the design doc) are implemented:
   buffer (§15.2) backs undo: a player's own uncontested last action reverts instantly, anything
   further back or after someone else has acted requires majority consent from connected players
   (a `undoRequest`/`undoVote` round the doc specifies the shape of but not the voting mechanics
-  — see the deviation note below). Undo also detects when a revert would re-hide something a
+  — see the deviation note below). Undo is reached from the action strip beside Draw or with
+  `Z`, and each press walks back exactly one action: because a revert carries older content
+  under a newer revision number, the history tracks a *content* revision alongside the revision
+  number, and the server — not the client — decides where one step back lands
+  (`tableHistory.ts`). There is deliberately no redo; §15.2 describes only self-undo and rewind.
+  A pending vote is cancelled when somebody acts, rather than resolving against a target that
+  has since moved. Undo also detects when a revert would re-hide something a
   player already saw, and says so in the log rather than pretending the leak didn't happen
   (§15.2). `ROLL_DICE`/`FLIP_COIN`/`CONCEDE`/`SAY` land here too, now that there's a log for
   their results to go into.
@@ -59,7 +65,8 @@ lands, non-creature permanents, creatures — see `battlefieldZones.ts`; identic
 one overlapping stack with a count (`landStacks.ts`) so a ten-land board doesn't wrap onto a
 second row. Keyboard shortcuts
 (§16.2) cover the high-frequency actions — `D` draw, `U` untap all, `P` pass turn, `+`/`-` your
-own life, `L` the log rail — gated so they don't fire while a text input has focus, and listed
+own life, `L` the log rail, `C` the chat rail, `Z` undo — gated so they don't fire while a text
+input has focus, and listed
 by the `?` beside the settings gear (`HelpDialog.tsx`, content in `shortcuts.ts`) along with the
 mouse gestures, since a shortcut nobody is told about is not a shortcut. Passing on
 someone else's turn (button or `P`) puts a confirmation dialog in front of it, since `PASS_TURN`
@@ -191,11 +198,22 @@ on their life readout at the crossroads so it reads even when their mat is panne
 rule lives in `turnStatus.ts` behind unit tests. `TurnTracker.phase` is deliberately not shown —
 nothing mutates it (there's no `SET_PHASE` action), so it would permanently read "main".
 
+Anything the last action touched pulses for 400ms (`tableChanges.ts`). With no engine
+arbitrating, shared attention *is* the product — four people have to agree on what just
+happened, and a card changing zones otherwise just vanishes from one place and reappears in
+another, recorded only in a rail that may be collapsed. It is a diff of two consecutive
+projections rather than a list of touched ids from the server: you can only diff what you were
+sent, so a card you are not allowed to see cannot leak through the highlight. A diff larger than
+eight objects pulses nothing — `UNTAP_ALL`, passing the turn and an undo revert all change the
+whole board, and flashing forty cards is noise the log carries better.
+
 Combat is drawn rather than listed. An attacker keeps its red ring; a blocker gets an arrow to
 the attacker it is blocking, and a spell on the stack gets a dashed arrow to what it is pointed
 at. Both are declared by pointing: "Blocking…" and "Target…" arm a mode where the next card you
 click becomes the other end (clicking the card itself means "never mind"), which is the gesture
-you would make across a real table and beats picking a name out of a list.
+you would make across a real table and beats picking a name out of a list. While a mode is
+armed the next click belongs to it wherever it lands — a crosshair over a card in your hand used
+to play that card.
 Each arrow takes the colour of the board it starts from — your accent, everyone else's the turn
 colour — so an opponent's blockers match their own mat instead of all combat being one red.
 The arrows are an SVG layer *inside* the pan/zoom plane, so they inherit its transform and stay
@@ -292,7 +310,7 @@ creation as an `X-Host-Secret` header, joining as the `secret` field on the `joi
 - `ws://localhost:8080/ws` — join with `{ t: 'join', roomId, displayName, secret }`, submit a deck with
   `{ t: 'deck', list }`, and once the host sends `{ t: 'start' }` (2+ seated players required),
   act on the table with `{ t: 'action', clientSeq, action }` or roll back with
-  `{ t: 'undo', targetRevision }`. The host ends a game with `{ t: 'endGame' }`, which clears the
+  `{ t: 'undo' }` (no revision — see the deviations below). The host ends a game with `{ t: 'endGame' }`, which clears the
   table and returns everyone to that room's lobby with seats and decklists intact, and clears an
   abandoned lobby seat with `{ t: 'freeSeat', seat }`. See
   `packages/common/src/protocol.ts` and `packages/common/src/actions.ts` for the full `Action`
@@ -423,6 +441,11 @@ references those two. The client is typechecked by its own build, so check it wi
   one that avoids wiring a database dependency through the reducer for the sake of prettier
   strings. If this ever matters enough, the fix is client-side (join the log's `scryfallId`-
   bearing object references against the already-fetched card data), not a change to this layer.
+- **`undo` carries no `targetRevision`:** §11.1 gives the client message one. A revert holds
+  older content under a newer revision number, so where "one step back" lands is only knowable
+  from the server's history — a client naming a revision would be guessing, and guessing wrong
+  turned a second undo press into a silent redo. The server computes the target itself; the
+  other three undo messages keep their `targetRevision`, since by then it has been decided.
 - **`undoVote`/`undoResolved` fill a protocol gap:** §11.1/§15.2 specify `undoRequest` (the
   broadcast asking for consent) but never say how players respond or how "majority of connected
   players" gets tallied. Implemented as: the requester's own vote counts as an implicit yes,

@@ -132,14 +132,11 @@ export function Table() {
     resetMana();
   }, [act, playerId, resetMana]);
 
-  // A revision is the table after an action, so taking the last one back means asking for the
-  // one before it. No confirmation in front of it: undoing your own last action is the common
-  // case and is instant, and anything further back already has the table's vote in front of it
-  // (see the server's `undo` handler).
-  const undoLast = useCallback(
-    () => send({ t: 'undo', targetRevision: tableState.revision - 1 }),
-    [send, tableState.revision]
-  );
+  // Which revision one step back actually is belongs to the server: a revert carries older
+  // content under a newer number, so only the history can say (see tableHistory.ts). No
+  // confirmation in front of it either — undoing your own last action is the common case and is
+  // instant, and anything further back already has the table's vote in front of it.
+  const undoLast = useCallback(() => send({ t: 'undo' }), [send]);
 
   // §16.2 keyboard shortcuts for the high-frequency actions, listed by the `?` in the status bar
   // (HelpDialog). Gated on not-typing-in-an-input so it doesn't fire while the chat box or a

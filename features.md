@@ -10,3 +10,7 @@
   instead of a room plus a decklist per seat plus a host start. That setup currently has to be
   scripted over the WebSocket by hand every time. Needs a guard so it can't be reached on a
   real host, and it is also what would make the Playwright tests above cheap to write.
+- Actual cards as creature-tokens. Create token... creates a blank card with its power and name,
+  we could use the actual cards from the data as tokens. The dialog should still open, but the
+  player should be able to search and pick from a dropdown for example the right creature
+  token.
