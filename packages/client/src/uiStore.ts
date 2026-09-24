@@ -23,6 +23,9 @@ interface UiStore {
   clearSelection: () => void;
   logRailOpen: boolean;
   toggleLogRail: () => void;
+  /** The chat rail, on the opposite side of the table from the log (see ChatRail.tsx). */
+  chatRailOpen: boolean;
+  toggleChatRail: () => void;
   /** Which zone-dock popover is open, if any. Lives here rather than inside ZoneDock so that
       searching or peeking can put the revealed cards in front of you (see ActionBar). */
   openZoneKey: string | null;
@@ -42,7 +45,23 @@ interface UiStore {
   /** Commander replacement offers waved away, keyed by the zone they were waved away in. */
   dismissedCommanders: Record<ObjectId, ReplaceableZone>;
   dismissCommander: (objectId: ObjectId, zone: ReplaceableZone) => void;
+  /**
+   * The object waiting to be pointed at something, while "Target…" or "Blocking…" is armed, and
+   * which of the two it is. The next card clicked becomes the target or the blocked attacker;
+   * Escape, or arming the same thing twice, stands it down.
+   *
+   * A mode rather than a list-of-everything dialog, because either end can be any card on the
+   * table — a hundred-odd choices, and the one you want is already on screen under your cursor.
+   * Blocking used to be a dialog listing the declared attackers; pointing at the creature is the
+   * same gesture you would make across a real table, and the same one targeting already used.
+   */
+  pointing: { fromId: ObjectId; kind: PointingKind } | null;
+  startPointing: (objectId: ObjectId, kind: PointingKind) => void;
+  cancelPointing: () => void;
 }
+
+/** What the next card click means while a pointing mode is armed. */
+export type PointingKind = 'target' | 'block';
 
 export const useUiStore = create<UiStore>((set) => ({
   hoveredCard: null,
@@ -62,6 +81,8 @@ export const useUiStore = create<UiStore>((set) => ({
   clearSelection: () => set({ selectedIds: new Set() }),
   logRailOpen: false,
   toggleLogRail: () => set((s) => ({ logRailOpen: !s.logRailOpen })),
+  chatRailOpen: false,
+  toggleChatRail: () => set((s) => ({ chatRailOpen: !s.chatRailOpen })),
   openZoneKey: null,
   openZone: (key) => set({ openZoneKey: key }),
   toggleZone: (key) => set((s) => ({ openZoneKey: s.openZoneKey === key ? null : key })),
@@ -76,4 +97,11 @@ export const useUiStore = create<UiStore>((set) => ({
   dismissedCommanders: {},
   dismissCommander: (objectId, zone) =>
     set((s) => ({ dismissedCommanders: { ...s.dismissedCommanders, [objectId]: zone } })),
+  pointing: null,
+  // Arming the same thing twice stands it down, so the menu item is its own escape hatch.
+  startPointing: (objectId, kind) =>
+    set((s) => ({
+      pointing: s.pointing?.fromId === objectId && s.pointing.kind === kind ? null : { fromId: objectId, kind },
+    })),
+  cancelPointing: () => set({ pointing: null }),
 }));

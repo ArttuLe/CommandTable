@@ -1,7 +1,7 @@
 // Shared plumbing for action modules, split out of actionApplier.ts so each §8 subsection
 // (object/zone/player actions) can live in its own file without duplicating this.
 
-import type { CounterUpdate, GameObject, LogKind, PlayerId, TableState, Visibility, ZoneRef } from '@command-table/common';
+import { SUMMONING_SICK_MARKER, type CounterUpdate, type GameObject, type LogKind, type PlayerId, type TableState, type Visibility, type ZoneRef } from '@command-table/common';
 
 // `log` lets an action override the generic, action-type-derived log description from
 // actionDescriptions.ts — needed when the log text depends on the *outcome*, not just the
@@ -101,6 +101,17 @@ export function asNewObject(obj: GameObject): GameObject {
     annotation: null,
     attachedTo: null,
   };
+}
+
+/**
+ * The markers an object is born with when it arrives in a zone.
+ *
+ * Only the battlefield gives it one: anything that just turned up there is summoning-sick until
+ * its controller's next turn starts (PASS_TURN clears it). Marked without asking what the card
+ * is, because this layer has no card data — the client draws the indicator on creatures only.
+ */
+export function markersOnArrival(zone: ZoneRef): string[] {
+  return 'playerId' in zone && zone.zone === 'battlefield' ? [SUMMONING_SICK_MARKER] : [];
 }
 
 /** Anything attached to `objectId` comes loose — otherwise the reference dangles. */

@@ -27,6 +27,9 @@ export interface PlayerState {
 
   commanderIds: ObjectId[];
   status: 'active' | 'conceded' | 'eliminated';
+
+  /** Whether this player has settled on their opening hand — see `TableState.setupComplete`. */
+  keptHand: boolean;
 }
 
 export interface TableState {
@@ -37,6 +40,17 @@ export interface TableState {
   log: LogEntry[];
   revision: number;
   createdAt: number;
+
+  /**
+   * False between the deal and the host starting play — the mulligan step.
+   *
+   * §14.1 deals opening hands and drops straight into turn 1, which left no moment to mulligan
+   * in: the game was already underway, so a mulligan was something you did *during* your first
+   * turn. This marks out that moment. It gates nothing — per §1.1 the host can begin whenever
+   * they like, whatever anyone has or hasn't kept — it only tells the client to show the
+   * mulligan step instead of the usual turn chrome.
+   */
+  setupComplete: boolean;
 }
 
 // The redacted shape sent to a client for an object it may not see, per design doc §9.2:
@@ -63,6 +77,7 @@ export interface ClientTableState {
   turn: TurnTracker;
   log: LogEntry[];
   revision: number;
+  setupComplete: boolean;
 }
 
 export function isRedacted(obj: ProjectedObject): obj is RedactedObject {

@@ -4,6 +4,11 @@
 // that needs majority consent — it only says rewinds "apply on majority consent of connected
 // players." `undoVote` and `undoResolved` fill that gap.
 //
+// §11.1 gives `undo` a `targetRevision`; ours carries none. A revert holds older content under a
+// newer revision number, so where "one step back" lands is only knowable from the history the
+// server keeps (see tableHistory.ts) — a client naming a revision could only ever be guessing.
+// The other three undo messages keep their `targetRevision`: by then the server has decided.
+//
 // `endGame`/`gameEnded` are likewise unspecified: §14.5 gained a save file, so a table now needs
 // a way to say it is finished. It ends the game, not the room — everyone returns to that room's
 // lobby still seated, and the host can start another game.
@@ -20,7 +25,7 @@ export type ClientMessage =
   | { t: 'ready'; ready: boolean }
   | { t: 'start' }
   | { t: 'action'; action: Action; clientSeq: number }
-  | { t: 'undo'; targetRevision: number }
+  | { t: 'undo' }
   | { t: 'undoVote'; targetRevision: number; approve: boolean }
   | { t: 'endGame' }
   | { t: 'freeSeat'; seat: number }

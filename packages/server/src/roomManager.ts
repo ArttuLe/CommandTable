@@ -212,13 +212,18 @@ export class Room {
       }));
   }
 
-  // Ends the game but not the room: everyone stays seated with their decklist, so the same table
-  // can immediately play again. Ready flags are cleared so the next game needs a fresh ready check
-  // rather than starting off confirmations given for the previous one.
+  // Ends the game but not the room: everyone stays seated, so the same table can immediately play
+  // again. Everything that was a confirmation for *that* game is cleared — ready flags and the
+  // submitted deck alike — so the lobby is the same blank slate it was the first time, and the
+  // next game is started on purpose rather than on last game's leftovers.
+  //
+  // Clearing the deck costs nobody a re-paste: the client keeps the decklist text in localStorage
+  // and refills the box with it (see Lobby.tsx), so re-submitting is one click.
   endGame(): void {
     this.started = false;
     for (const seat of this.seats) {
       seat.ready = false;
+      seat.resolvedDeck = null;
     }
   }
 

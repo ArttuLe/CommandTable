@@ -5,6 +5,11 @@
 // The one piece of real logic here is the connection lifecycle (§14.2). A dropped socket
 // reconnects on its own and replays the stored rejoin token, so a Wi-Fi blip, a laptop waking up,
 // or the host restarting their server all recover without anyone touching the page.
+//
+// The change pulse is the one exception to "no complex local logic". In a client with no rules
+// enforcement, shared attention is the product — four people must agree on what just happened —
+// and only the client can work out which objects the last action touched from what it was
+// actually sent, so nothing it may not see can leak through the highlight (see tableChanges.ts).
 
 import { create } from 'zustand';
 import type {
@@ -12,11 +17,13 @@ import type {
   ClientMessage,
   ClientTableState,
   DeckWarningKind,
+  ObjectId,
   PlayerId,
   RoomState,
   UnresolvedLine,
 } from '@command-table/common';
 import { WS_URL } from './api.js';
+import { changedObjectIds } from './tableChanges.js';
 import { nextDelay } from './backoff.js';
 import { clearSession, loadSession, saveSession, type StoredSession } from './session.js';
 
@@ -49,6 +56,9 @@ interface Store {
   deckResult: DeckResult | null;
   errorMessage: string | null;
   pendingUndoRequest: UndoRequest | null;
+  /** What the last action touched, and the revision it touched it in — the pulse's remount key. */
+  changedIds: Set<ObjectId>;
+  changeRevision: number;
 
   join(roomId: string, displayName: string, secret: string): void;
   resume(session: StoredSession): void;
@@ -147,7 +157,11 @@ export const useStore = create<Store>((set, get) => {
           set({ roomState: msg.roomState });
           break;
         case 'state':
-          set({ tableState: msg.state });
+          set({
+            tableState: msg.state,
+            changedIds: changedObjectIds(get().tableState?.objects ?? {}, msg.state.objects),
+            changeRevision: msg.state.revision,
+          });
           break;
         case 'deckResult':
           set({ deckResult: { warnings: msg.warnings, unresolved: msg.unresolved } });
@@ -160,9 +174,12 @@ export const useStore = create<Store>((set, get) => {
           break;
         // The game ended but the room didn't: App's routing renders the lobby as soon as
         // tableState clears, and the `room` broadcast just before this refreshed the seats.
-        // deckResult is kept deliberately — the lobby shows those warnings.
+        //
+        // deckResult goes with it. It describes a deck submitted for the game that just ended,
+        // and the server has un-submitted that deck (Room.endGame), so leaving "Deck resolved
+        // with no warnings" on screen would be reporting on a submission that no longer exists.
         case 'gameEnded':
-          set({ tableState: null, pendingUndoRequest: null });
+          set({ tableState: null, pendingUndoRequest: null, deckResult: null });
           break;
         case 'pong':
           clearTimeout(pongTimer);
@@ -192,6 +209,8 @@ export const useStore = create<Store>((set, get) => {
     deckResult: null,
     errorMessage: null,
     pendingUndoRequest: null,
+    changedIds: new Set(),
+    changeRevision: 0,
 
     join(roomId, displayName, secret) {
       const existing = loadSession()?.session;

@@ -1,11 +1,11 @@
 // The player's own control strip, sitting with their hand rather than in a global toolbar.
 //
-// Actions are split by how often they're used, not by category: the three you take every turn get
-// real buttons next to your cards, and the ten you take a few times a game live behind one
-// overflow menu. Previously all thirteen sat in one wrapping row at equal weight, which made
-// "Pass turn" no easier to find than "Concede".
+// Actions are ranked by how often they're used, not grouped by category: the four you reach for
+// every turn get real buttons next to your cards, and the ten you take a few times a game live
+// behind one "More ⋯" menu (playerActions.ts). Previously all thirteen sat in one wrapping row at
+// equal weight, which made "Pass turn" no easier to find than "Concede".
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { Action, PlayerId, PlayerState } from '@command-table/common';
 import { useStore } from './store.js';
 import { useUiStore, type ManaColor } from './uiStore.js';
@@ -15,24 +15,38 @@ import { CommanderName, type CommanderRef } from './commanders.js';
 import { isLethalCommanderDamage, isLethalLife, isLethalPoison, worstDamageTaken } from './vitals.js';
 import { TokenDialog } from './TokenDialog.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
+import { playerActionGroups, type PlayerDialog } from './playerActions.js';
 
 interface ActionBarProps {
   playerId: PlayerId;
-  players: PlayerState[];
   isMyTurn: boolean;
   /** Owned by Table: passing out of turn has a dialog in front of it (see ConfirmDialog). */
   onPassTurn: () => void;
   /** Also owned by Table: untapping everything empties the mana pad with it. */
   onUntapAll: () => void;
+  /** Table's too: the rewind is a table-wide thing, not one of your own actions. */
+  onUndo: () => void;
+  /** False at revision 0, where there is nothing behind the table to go back to. */
+  canUndo: boolean;
 }
 
-export function ActionBar({ playerId, players, isMyTurn, onPassTurn, onUntapAll }: ActionBarProps) {
+export function ActionBar({ playerId, isMyTurn, onPassTurn, onUntapAll, onUndo, canUndo }: ActionBarProps) {
   const act = useStore((s) => s.act);
 
   return (
     <div className="action-bar">
       <button className="btn btn-lg" title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>
         Draw
+      </button>
+      {/* Out here rather than in the menu: it is the control you reach for the instant you
+          notice a mistake, and a mistake is exactly when hunting through a popover is worst. */}
+      <button
+        className="btn btn-lg"
+        title="Take back the last action — instant if it was yours, otherwise the table votes"
+        disabled={!canUndo}
+        onClick={onUndo}
+      >
+        Undo
       </button>
       <button className="btn btn-lg" title="Shortcut: U" onClick={onUntapAll}>
         Untap all
@@ -44,7 +58,7 @@ export function ActionBar({ playerId, players, isMyTurn, onPassTurn, onUntapAll 
       >
         Pass turn
       </button>
-      <MoreMenu playerId={playerId} players={players} act={act} />
+      <MoreMenu playerId={playerId} act={act} />
     </div>
   );
 }
@@ -63,28 +77,114 @@ function useCloseOnOutsideClick(open: boolean, ref: React.RefObject<HTMLElement>
   }, [open, ref]);
 }
 
-function MoreMenu({
-  playerId,
-  players,
-  act,
-}: {
-  playerId: PlayerId;
-  players: PlayerState[];
-  act: (action: Action) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  // Which of this menu's dialogs is up, if any. The menu itself closes as one opens.
-  const [dialog, setDialog] = useState<'peek' | 'token' | 'dice' | 'allLife' | 'concede' | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
+/** The catalog, the dialog it currently has open, and that dialog's JSX, in one place. */
+function usePlayerActions(playerId: PlayerId, act: (action: Action) => void) {
+  const [dialog, setDialog] = useState<PlayerDialog | null>(null);
   const openZone = useUiStore((s) => s.openZone);
   const setLibraryDirty = useUiStore((s) => s.setLibraryDirty);
 
-  // Both of these open the library for you; only a search leaves it owing a shuffle, which is
+  // Both of the library looks open it for you; only a search leaves it owing a shuffle, which is
   // paid when the popover closes (libraryDirtiedBy, and Table's dockZones).
   const lookAtLibrary = (look: LibraryLook) => {
     openZone('library');
     if (libraryDirtiedBy(look)) setLibraryDirty(true);
   };
+
+  const groups = playerActionGroups({ playerId, act, openDialog: setDialog, lookAtLibrary });
+  const close = () => setDialog(null);
+
+  const dialogs = (
+    <>
+      {dialog === 'peek' && (
+        <NumberDialog
+          title="Peek / Scry the top of your library"
+          label="How many cards?"
+          initialValue={1}
+          min={1}
+          submitLabel="Look"
+          onSubmit={(count) => {
+            close();
+            act({ t: 'PEEK_TOP', playerId, count });
+            lookAtLibrary('peek');
+          }}
+          onCancel={close}
+        />
+      )}
+
+      {dialog === 'mill' && (
+        <NumberDialog
+          title="Mill"
+          label="How many cards?"
+          initialValue={1}
+          min={1}
+          submitLabel="Mill"
+          onSubmit={(count) => {
+            close();
+            act({ t: 'MILL', playerId, count });
+          }}
+          onCancel={close}
+        />
+      )}
+
+      {dialog === 'dice' && (
+        <NumberDialog
+          title="Roll dice"
+          label="How many sides?"
+          initialValue={6}
+          min={2}
+          submitLabel="Roll"
+          onSubmit={(sides) => {
+            close();
+            act({ t: 'ROLL_DICE', playerId, sides });
+          }}
+          onCancel={close}
+        />
+      )}
+
+      {dialog === 'concede' && (
+        <ConfirmDialog
+          title="Concede"
+          message="You will be out of the game. Your cards stay on the table for everyone to see."
+          confirmLabel="Concede"
+          onConfirm={() => {
+            close();
+            act({ t: 'CONCEDE', playerId });
+          }}
+          onCancel={close}
+        />
+      )}
+
+      {dialog === 'token' && (
+        <TokenDialog
+          onCreate={(draft) => {
+            close();
+            act({
+              t: 'CREATE_TOKEN',
+              ownerId: playerId,
+              zone: { playerId, zone: 'battlefield' },
+              source: { adhoc: draft.adhoc },
+              quantity: draft.quantity,
+            });
+          }}
+          onCancel={close}
+        />
+      )}
+    </>
+  );
+
+  return { groups, dialogs };
+}
+
+function MoreMenu({
+  playerId,
+  act,
+}: {
+  playerId: PlayerId;
+  act: (action: Action) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const { groups, dialogs } = usePlayerActions(playerId, act);
 
   useCloseOnOutsideClick(open, ref, () => setOpen(false));
 
@@ -102,115 +202,20 @@ function MoreMenu({
       </button>
       {open && (
         <div className="more-popover">
-          <p className="popover-group">Library</p>
-          <button onClick={run(() => act({ t: 'SHUFFLE_LIBRARY', playerId }))}>Shuffle</button>
-          {/* Both of these only flip card visibility server-side, which is invisible until you
-              go and open the library yourself. Opening it for you is the feedback — and it is
-              where the follow-up (to hand, to bottom, …) happens anyway. */}
-          <button
-            onClick={run(() => {
-              act({ t: 'SEARCH_LIBRARY', playerId });
-              lookAtLibrary('search');
-            })}
-          >
-            Search library
-          </button>
-          <button onClick={run(() => setDialog('peek'))}>Peek top…</button>
-          <button onClick={run(() => act({ t: 'MULLIGAN', playerId }))}>Mulligan</button>
-
-          <hr />
-          <p className="popover-group">Table</p>
-          <button onClick={run(() => setDialog('allLife'))}>Adjust all life…</button>
-          <button onClick={run(() => act({ t: 'CLEAR_ALL_MARKERS' }))}>Clear all markers</button>
-          <button onClick={run(() => setDialog('token'))}>Create token…</button>
-
-          <hr />
-          <p className="popover-group">Random</p>
-          <button onClick={run(() => setDialog('dice'))}>Roll dice…</button>
-          <button onClick={run(() => act({ t: 'FLIP_COIN', playerId }))}>Flip coin</button>
-
-          <hr />
-          <button className="danger" onClick={run(() => setDialog('concede'))}>
-            Concede
-          </button>
+          {groups.map((group, i) => (
+            <Fragment key={group.title ?? 'tail'}>
+              {i > 0 && <hr />}
+              {group.title && <p className="popover-group">{group.title}</p>}
+              {group.items.map((item) => (
+                <button key={item.label} className={item.danger ? 'danger' : ''} onClick={run(item.run)}>
+                  {item.label}
+                </button>
+              ))}
+            </Fragment>
+          ))}
         </div>
       )}
-
-      {dialog === 'peek' && (
-        <NumberDialog
-          title="Peek at the top of your library"
-          label="How many cards?"
-          initialValue={1}
-          min={1}
-          submitLabel="Peek"
-          onSubmit={(count) => {
-            setDialog(null);
-            act({ t: 'PEEK_TOP', playerId, count });
-            lookAtLibrary('peek');
-          }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-
-      {dialog === 'dice' && (
-        <NumberDialog
-          title="Roll dice"
-          label="How many sides?"
-          initialValue={6}
-          min={2}
-          submitLabel="Roll"
-          onSubmit={(sides) => {
-            setDialog(null);
-            act({ t: 'ROLL_DICE', playerId, sides });
-          }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-
-      {dialog === 'allLife' && (
-        <NumberDialog
-          title="Adjust everyone's life"
-          label="By how much? (negative to lose life)"
-          initialValue={0}
-          submitLabel="Apply to all"
-          onSubmit={(amount) => {
-            setDialog(null);
-            if (amount !== 0) {
-              act({ t: 'SET_LIFE', playerIds: players.map((p) => p.id), update: { mode: 'delta', amount } });
-            }
-          }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-
-      {dialog === 'concede' && (
-        <ConfirmDialog
-          title="Concede"
-          message="You will be out of the game. Your cards stay on the table for everyone to see."
-          confirmLabel="Concede"
-          onConfirm={() => {
-            setDialog(null);
-            act({ t: 'CONCEDE', playerId });
-          }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-
-      {dialog === 'token' && (
-        <TokenDialog
-          onCreate={(draft) => {
-            setDialog(null);
-            act({
-              t: 'CREATE_TOKEN',
-              ownerId: playerId,
-              zone: { playerId, zone: 'battlefield' },
-              source: { adhoc: draft.adhoc },
-              quantity: draft.quantity,
-            });
-          }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
+      {dialogs}
     </div>
   );
 }
@@ -367,6 +372,12 @@ export function ManaPad() {
           <button onClick={() => bumpMana(color, 1)}>+</button>
         </span>
       ))}
+      {/* What you can actually spend, next to the Reset that clears it. Counting six pips in
+          your head is the one sum the pad was meant to save you. */}
+      <span className={`mana-pip mana-total ${total > 0 ? 'has-mana' : ''}`} title="Total mana in your pool">
+        <b className="mana-symbol">Σ</b>
+        <span className="mana-count">{total}</span>
+      </span>
       <button className="btn btn-ghost" disabled={total === 0} onClick={resetMana}>
         Reset
       </button>

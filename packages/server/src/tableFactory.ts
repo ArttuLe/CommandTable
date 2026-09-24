@@ -4,7 +4,7 @@
 // it to the table.
 
 import { randomInt as cryptoRandomInt, randomUUID } from 'node:crypto';
-import type { Card, GameObject, PlayerId, PlayerState, ResolvedDeckLine, ResolvedDecklist, TableState } from '@command-table/common';
+import { SYSTEM_ACTOR, type Card, type GameObject, type PlayerId, type PlayerState, type ResolvedDeckLine, type ResolvedDecklist, type TableState } from '@command-table/common';
 import { fisherYatesShuffle } from './shuffle.js';
 
 export interface SeatSetup {
@@ -68,19 +68,35 @@ export function createTableState(params: CreateTableParams, deps: CreateTableDep
       commanderCastCount: {},
       commanderIds: commanderObjects.map((o) => o.id),
       status: 'active',
+      keptHand: false,
     });
   }
 
   const turnOrder = fisherYatesShuffle(players, deps.randomInt);
+  const createdAt = Date.now();
 
   return {
     roomId: params.roomId,
     objects,
     players: turnOrder,
     turn: { turnNumber: 1, activePlayerId: turnOrder[0].id, phase: 'main' },
-    log: [],
+    // The deal is done; nobody has decided on their hand yet, and the host has not started play.
+    setupComplete: false,
+    // Both of these happened above, server-side and unobservably. With no engine arbitrating
+    // (§15.1, "the log is the referee"), a table that cannot see the shuffle has to be told it
+    // happened — players asked.
+    log: [
+      {
+        revision: 0,
+        timestamp: createdAt,
+        actorId: SYSTEM_ACTOR,
+        text: 'shuffled every library, dealt opening hands, and randomized the turn order',
+        visibility: { kind: 'all' },
+        undoable: false,
+      },
+    ],
     revision: 0,
-    createdAt: Date.now(),
+    createdAt,
   };
 }
 

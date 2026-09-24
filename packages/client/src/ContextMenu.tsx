@@ -4,16 +4,17 @@
 // a redacted (hidden) object, unlike ownerId.
 
 import { useLayoutEffect, useRef, useState } from 'react';
-import { isRedacted, type Action, type PlayerState, type ProjectedObject } from '@command-table/common';
+import { blockMarker, isRedacted, parseTargetMarker, targetMarker, type Action, type Card, type PlayerState, type ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
+import { ATTACKING_MARKER, blocksOf, isAttacking, isLabelMarker } from './combat.js';
 import { useCard } from './useCard.js';
+import { useUiStore } from './uiStore.js';
 import { isCreature, typeLineOf } from './battlefieldZones.js';
-import { ATTACKING_MARKER, isAttacking } from './combat.js';
 import { placeMenu } from './menuPlacement.js';
 import { duplicateAction } from './duplicate.js';
 import { Dialog } from './Dialog.js';
 import { TextDialog } from './TextDialog.js';
-import { CounterDialog } from './CounterDialog.js';
+import { LABEL_PRESETS, labelTone } from './labels.js';
 
 interface ContextMenuProps {
   obj: ProjectedObject;
@@ -22,14 +23,54 @@ interface ContextMenuProps {
   onClose: () => void;
 }
 
-/** The four items that ask a question before they act. */
-type MenuDialog = 'counter' | 'marker' | 'annotation' | 'controller' | null;
+/** The items that ask a question before they act. */
+type MenuDialog = 'marker' | 'annotation' | 'controller' | null;
+
+/**
+ * The counter with no name. Four zombie tokens are one token tile reading `4`, and that is the
+ * common case by a mile — naming a counter put a dialog in front of the first click for a word
+ * the badge never showed anyway. Anything that does need a word of its own is a label
+ * (see labels.ts).
+ */
+const GENERIC_COUNTER = 'counter';
+
+/** The zones a menu item can send an object to, as `MOVE_OBJECT` names them. */
+type MoveZone = 'hand' | 'graveyard' | 'exile' | 'library' | 'battlefield' | 'commandZone';
+
+/**
+ * Where an object can be sent. Six full-width "Move to X" rows were a quarter of a menu that had
+ * outgrown the screen; as chips they are one row, and the short names are the ones players say
+ * out loud anyway.
+ */
+const MOVE_TARGETS: { label: string; zone: MoveZone; toPosition?: number }[] = [
+  { label: 'Hand', zone: 'hand' },
+  { label: 'GY', zone: 'graveyard' },
+  { label: 'Exile', zone: 'exile' },
+  { label: 'Play', zone: 'battlefield' },
+  { label: 'Cmd', zone: 'commandZone' },
+  { label: 'Top', zone: 'library', toPosition: 0 },
+];
+
+/** What the menu's header calls this object. A redacted one has no name to give away. */
+function menuTitle(obj: ProjectedObject, card: Card | null): string {
+  if (isRedacted(obj)) return 'Hidden card';
+  if (card) return card.name;
+  if (obj.source.kind === 'token' && obj.source.adhoc) return obj.source.adhoc.name;
+  return 'Loading…';
+}
 
 export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
   const act = useStore((s) => s.act);
   const players = useStore((s) => s.tableState?.players ?? []);
+  // `obj` is the snapshot taken when the menu opened. The counter and label rows stay on screen
+  // while you use them, so those two read from the live object instead; it falls back to the
+  // snapshot for an object that has since left the table.
+  const live = useStore((s) => s.tableState?.objects[obj.id]) ?? obj;
+  const startPointing = useUiStore((s) => s.startPointing);
   const card = useCard(obj);
   const attacking = isAttacking(obj);
+  const blocks = blocksOf(live);
+  const targets = live.markers.map(parseTargetMarker).filter((id) => id !== null);
   const duplicate = isRedacted(obj) ? null : duplicateAction(obj, obj.ownerId);
 
   // Measure, then place: the menu's height depends on which items this object gets, so there's
@@ -52,13 +93,21 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
     onClose();
   }
 
-  const toZone = (zone: 'hand' | 'graveyard' | 'exile' | 'library' | 'battlefield' | 'commandZone') => ({
+  const toZone = (zone: MoveZone) => ({
     playerId: obj.controllerId,
     zone,
   });
 
   if (dialog) {
-    return <MenuDialogs which={dialog} obj={obj} players={players} act={act} onDone={onClose} />;
+    return (
+      <MenuDialogs
+        which={dialog}
+        obj={obj}
+        players={players}
+        act={act}
+        onDone={onClose}
+      />
+    );
   }
 
   return (
@@ -69,6 +118,10 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
         className="context-menu"
         style={{ left: pos?.left ?? x, top: pos?.top ?? y, visibility: pos ? 'visible' : 'hidden' }}
       >
+        {/* Which card you actually hit. On a thirty-permanent board zoomed out to fit, the tile
+            under the cursor is small enough that a menu of verbs with nothing naming its subject
+            is a guess — so the menu says it before it offers anything. */}
+        <div className="context-menu-title">{menuTitle(obj, card)}</div>
         <button onClick={() => run(() => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id }))}>
           {obj.tapped ? 'Untap' : 'Tap'}
         </button>
@@ -90,6 +143,43 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
             {attacking ? 'Not attacking' : 'Attacking'}
           </button>
         )}
+        {/* Blocking needs to say *which* attacker, unlike attacking, so it points at one — the
+            same click-the-card gesture as targeting below, rather than a list of the declared
+            attackers. The arrows are drawn from what it writes (see combat.ts, ArrowLayer.tsx). */}
+        {isCreature(typeLineOf(obj, card)) && (
+          <>
+            {blocks.length > 0 && (
+              <button
+                onClick={() =>
+                  run(() => {
+                    for (const attackerId of blocks) {
+                      act({ t: 'CLEAR_MARKER', objectId: obj.id, marker: blockMarker(attackerId) });
+                    }
+                  })
+                }
+              >
+                Stop blocking
+              </button>
+            )}
+            <button onClick={() => run(() => startPointing(obj.id, 'block'))}>Blocking…</button>
+          </>
+        )}
+        {/* Not creature-only: the thing doing the targeting is usually a spell on the stack. */}
+        {targets.length > 0 ? (
+          <button
+            onClick={() =>
+              run(() => {
+                for (const targetId of targets) {
+                  act({ t: 'CLEAR_MARKER', objectId: obj.id, marker: targetMarker(targetId) });
+                }
+              })
+            }
+          >
+            Clear target
+          </button>
+        ) : (
+          <button onClick={() => run(() => startPointing(obj.id, 'target'))}>Target…</button>
+        )}
         <button onClick={() => run(() => act({ t: 'TRANSFORM', objectId: obj.id }))}>Transform</button>
         {/* One toggle where the object tells us which way it is facing. A redacted object doesn't
             carry `faceDown` (§9.2 omits it), so there both directions stay on offer. */}
@@ -105,33 +195,51 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
         )}
 
         <hr />
-        <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('hand') }))}>Move to hand</button>
-        <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('graveyard') }))}>Move to graveyard</button>
-        <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('exile') }))}>Move to exile</button>
-        <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('battlefield') }))}>Move to battlefield</button>
-        <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('commandZone') }))}>Move to command zone</button>
-        <button onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone('library'), toPosition: 0 }))}>
-          Move to top of library
-        </button>
+        <div className="menu-chips">
+          {MOVE_TARGETS.map(({ label, zone, toPosition }) => (
+            <button
+              key={zone}
+              title={`Move to ${label}`}
+              onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone(zone), toPosition }))}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         <hr />
-        {/* One-click buttons for the two counter types that come up on nearly every turn — the
-            generic "Add counter…" below still covers everything else (loyalty, stun, etc.) and
-            adding more than one at a time. */}
-        <button onClick={() => run(() => act({ t: 'SET_COUNTER', objectId: obj.id, key: '+1/+1', update: { mode: 'delta', amount: 1 } }))}>
-          +1/+1 counter
-        </button>
-        <button onClick={() => run(() => act({ t: 'SET_COUNTER', objectId: obj.id, key: '-1/-1', update: { mode: 'delta', amount: 1 } }))}>
-          -1/-1 counter
-        </button>
-        <button onClick={() => setDialog('counter')}>Add counter…</button>
+        {/* Three steppers, always there, none of them behind a dialog: the two counters that come
+            up every turn, and the nameless one that counts whatever this card is standing in for.
+            The server drops a counter that reaches zero, so "−" on the last one clears the badge. */}
+        <CounterStepper counterKey="+1/+1" obj={obj} act={act} />
+        <CounterStepper counterKey="-1/-1" obj={obj} act={act} />
+        <CounterStepper counterKey={GENERIC_COUNTER} label="Counter" obj={obj} act={act} />
+        {/* Anything else the object is still carrying — a named counter from before there was a
+            nameless one — so it can still be taken off where it is read. */}
+        {Object.keys(live.counters)
+          .filter((key) => key !== '+1/+1' && key !== '-1/-1' && key !== GENERIC_COUNTER)
+          .map((key) => (
+            <CounterStepper key={key} counterKey={key} obj={obj} act={act} />
+          ))}
 
-        {obj.markers.filter((marker) => marker !== ATTACKING_MARKER).map((marker) => (
-          <button key={marker} onClick={() => run(() => act({ t: 'CLEAR_MARKER', objectId: obj.id, marker }))}>
-            Remove marker &apos;{marker}&apos;
+        {/* One row however many labels there are. A row each grew the menu without bound, and
+            the labels are already readable on the card — but this can't just go: clicking the
+            pill only removes it on the battlefield, so for a card in hand, in the command zone
+            or in a zone popover the menu is the only way a label comes off. */}
+        {live.markers.some(isLabelMarker) && (
+          <button
+            onClick={() =>
+              run(() => {
+                for (const marker of live.markers.filter(isLabelMarker)) {
+                  act({ t: 'CLEAR_MARKER', objectId: obj.id, marker });
+                }
+              })
+            }
+          >
+            Clear labels
           </button>
-        ))}
-        <button onClick={() => setDialog('marker')}>Add marker…</button>
+        )}
+        <button onClick={() => setDialog('marker')}>Add label…</button>
 
         {!isRedacted(obj) && <button onClick={() => setDialog('annotation')}>Set annotation…</button>}
 
@@ -149,12 +257,95 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
 }
 
 /**
- * The four items that ask something first. Each one used to be a window.prompt — browser-styled,
- * outside the table's own keyboard handling, and in the counter's case two of them in a row where
- * cancelling the second threw the first away.
+ * The label picker. A label is on or off, so there is no "how many" to ask — and the pills are
+ * drawn in the colour they will have on the card, so the list doubles as the legend for what you
+ * are about to see (see labels.ts).
+ */
+function PickLabel({ onSubmit, onCancel }: { onSubmit: (marker: string) => void; onCancel: () => void }) {
+  const [custom, setCustom] = useState(false);
+
+  if (custom) {
+    return (
+      <TextDialog
+        title="Add label"
+        label="Label"
+        placeholder="anything the table agrees on"
+        submitLabel="Add"
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />
+    );
+  }
+
+  return (
+    <Dialog title="Add label" onCancel={onCancel}>
+      <div className="dialog-choices label-choices">
+        {LABEL_PRESETS.map((preset) => (
+          <button key={preset} className={`label-pill label-${labelTone(preset)}`} onClick={() => onSubmit(preset)}>
+            {preset}
+          </button>
+        ))}
+      </div>
+      <div className="dialog-actions">
+        <button type="button" className="btn btn-ghost" onClick={() => setCustom(true)}>
+          Custom…
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+
+/**
+ * One counter type, with the count and a way to change it in both directions.
+ *
+ * A row rather than two menu items, because the menu is already long and "+1/+1" and "remove a
+ * +1/+1" as separate lines read as two unrelated things rather than one dial.
+ */
+function CounterStepper({
+  counterKey,
+  label = counterKey,
+  obj,
+  act,
+}: {
+  counterKey: string;
+  /** What the row reads, when the key itself isn't it — the nameless counter says "Counter". */
+  label?: string;
+  obj: ProjectedObject;
+  act: (action: Action) => void;
+}) {
+  // Read live rather than off `obj`, which is the snapshot taken when the menu opened: the menu
+  // deliberately stays up while you click, so the count has to keep up with the clicking.
+  const value = useStore((s) => s.tableState?.objects[obj.id]?.counters[counterKey] ?? 0);
+  const bump = (amount: number) =>
+    act({ t: 'SET_COUNTER', objectId: obj.id, key: counterKey, update: { mode: 'delta', amount } });
+
+  return (
+    <div className="menu-stepper">
+      <span className="menu-stepper-label">{label}</span>
+      {/* Nothing to take away at zero — and the server would ignore it anyway. */}
+      <button onClick={() => bump(-1)} disabled={value === 0} title={`Remove a ${label} counter`}>
+        −
+      </button>
+      <span className="menu-stepper-value">{value}</span>
+      <button onClick={() => bump(1)} title={`Add a ${label} counter`}>
+        +
+      </button>
+    </div>
+  );
+}
+
+/**
+ * The items that ask something first. Each one used to be a window.prompt — browser-styled and
+ * outside the table's own keyboard handling.
  *
  * Rendered *instead of* the menu rather than beside it: the menu's backdrop would otherwise sit
  * between the dialog and the table, and one click would close both.
+ *
+ * `onDone` puts the menu away, which is what all of these want — you moved the object, or named
+ * its new controller, and there is nothing left to say.
  */
 function MenuDialogs({
   which,
@@ -175,21 +366,9 @@ function MenuDialogs({
   };
 
   switch (which) {
-    case 'counter':
-      return (
-        <CounterDialog
-          onSubmit={(key, amount) => submit({ t: 'SET_COUNTER', objectId: obj.id, key, update: { mode: 'delta', amount } })}
-          onCancel={onDone}
-        />
-      );
-
     case 'marker':
       return (
-        <TextDialog
-          title="Add marker"
-          label="Marker"
-          placeholder="blocking, goaded, monarch…"
-          submitLabel="Add"
+        <PickLabel
           onSubmit={(marker) => submit({ t: 'SET_MARKER', objectId: obj.id, marker })}
           onCancel={onDone}
         />

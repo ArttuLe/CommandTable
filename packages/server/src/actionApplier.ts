@@ -5,13 +5,22 @@
 // DRAW/PASS_TURN (Phase 2) stay here since they predate that split.
 
 import { randomInt as cryptoRandomInt } from 'node:crypto';
-import { ATTACKING_MARKER, type Action, type GameObject, type LogEntry, type PlayerId, type TableState } from '@command-table/common';
+import {
+  SUMMONING_SICK_MARKER,
+  isCombatMarker,
+  type Action,
+  type GameObject,
+  type LogEntry,
+  type PlayerId,
+  type TableState,
+} from '@command-table/common';
 import { fisherYatesShuffle } from './shuffle.js';
 import {
   asNewObject,
   bumpRevision,
   defaultVisibilityFor,
   detachFrom,
+  markersOnArrival,
   err,
   ok,
   requireObject,
@@ -90,8 +99,8 @@ function dispatch(state: TableState, action: Action, deps: ApplyDeps): ApplyResu
       return objectActions.setMarker(state, action);
     case 'CLEAR_MARKER':
       return objectActions.clearMarker(state, action);
-    case 'CLEAR_ALL_MARKERS':
-      return objectActions.clearAllMarkers(state);
+    case 'CLEAR_MARKERS_AND_COUNTERS':
+      return objectActions.clearMarkersAndCounters(state);
     case 'TRANSFORM':
       return objectActions.transform(state, action);
     case 'TURN_FACE_DOWN':
@@ -130,6 +139,10 @@ function dispatch(state: TableState, action: Action, deps: ApplyDeps): ApplyResu
       return playerActions.setCommanderDamage(state, action);
     case 'MULLIGAN':
       return playerActions.mulligan(state, action, deps.randomInt);
+    case 'KEEP_HAND':
+      return playerActions.keepHand(state, action);
+    case 'BEGIN_PLAY':
+      return playerActions.beginPlay(state);
 
     case 'ROLL_DICE':
       return metaActions.rollDice(state, action, deps.randomInt);
@@ -159,6 +172,9 @@ function moveObject(state: TableState, action: Extract<Action, { t: 'MOVE_OBJECT
     position: action.toPosition ?? 0,
     faceDown,
     faceVisibility: defaultVisibilityFor(action.toZone, base.controllerId, faceDown),
+    // Arriving on a battlefield earns a summoning-sickness marker; a library reorder isn't an
+    // arrival at all and keeps whatever the object already had.
+    markers: changedZone ? markersOnArrival(action.toZone) : base.markers,
   };
 
   const next = withObject(changedZone ? detachFrom(state, existing.id) : state, updated);
@@ -241,13 +257,22 @@ function passTurn(state: TableState): ApplyResult {
   // Drawing for the turn is deliberately NOT bundled here: it's the one turn-start step players
   // want to take themselves (`D`, or the Draw button), and a draw that happens to you is worse
   // than one you asked for.
-  const swept = objectActions.clearMarkerFromAll(state, ATTACKING_MARKER);
+  // Order matters here, and each step undoes part of the one before it on purpose:
+  //
+  // 1. tap what fought — read *before* the sweep, since the sweep is what erases the evidence;
+  // 2. sweep the combat markers, which belong to the turn that just ended;
+  // 3. untap the incoming player, which correctly un-taps their own blockers from step 1 — a
+  //    creature that blocked on someone else's turn is ready again by the time its own comes;
+  // 4. wake the incoming player's summoning-sick permanents, for the same reason.
+  const tapped = objectActions.tapCombatants(state);
+  const swept = objectActions.clearMarkersFromAll(tapped, isCombatMarker);
   const untapped = objectActions.untapControlledBy(swept, nextPlayerId);
+  const woken = objectActions.clearMarkerFromControlledBy(untapped, nextPlayerId, SUMMONING_SICK_MARKER);
 
   return ok(
     bumpRevision({
-      ...untapped,
-      turn: { ...untapped.turn, activePlayerId: nextPlayerId, turnNumber: untapped.turn.turnNumber + 1 },
+      ...woken,
+      turn: { ...woken.turn, activePlayerId: nextPlayerId, turnNumber: woken.turn.turnNumber + 1 },
     })
   );
 }

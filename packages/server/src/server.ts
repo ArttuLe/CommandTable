@@ -197,6 +197,9 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       }
       tablesByRoom.set(room.roomId, result.state);
       history.record(state.playerId, result.state);
+      // A pending rewind was aimed at a revision older than this action; letting it resolve later
+      // would silently discard this action too. Cancel the vote instead of moving its target.
+      cancelPendingUndo(room.roomId);
       broadcastTableState(room.roomId);
       sessions.markDirty();
       return;
@@ -211,20 +214,34 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
         send(socket, { t: 'error', message: 'game has not started' });
         return;
       }
-      const target = history.snapshotAt(raw.targetRevision);
+      // One question at a time: a second rewind would either overwrite the pending one — leaving
+      // the other players voting on a prompt whose votes no longer count — or have to be computed
+      // against a target the pending vote is about to move. Saying no is the honest answer.
+      if (pendingUndosByRoom.has(room.roomId)) {
+        send(socket, { t: 'error', message: 'an undo vote is already in progress' });
+        return;
+      }
+
+      // Where one step back lands is the history's to answer, not the client's: a revert carries
+      // older content under a newer revision number (see tableHistory.ts).
+      const targetRevision = history.undoTarget();
+      if (targetRevision < history.initialRevision()) {
+        send(socket, { t: 'error', message: 'there is nothing left to undo' });
+        return;
+      }
+      const target = history.snapshotAt(targetRevision);
       if (!target) {
         send(socket, { t: 'error', message: 'that revision is no longer in history' });
         return;
       }
 
-      const isSelfUndo = raw.targetRevision === history.currentRevision() - 1 && history.canSelfUndo(state.playerId);
-      if (isSelfUndo) {
+      if (history.canSelfUndo(state.playerId)) {
         performUndo(room, table, target, state.playerId);
         return;
       }
 
       pendingUndosByRoom.set(room.roomId, {
-        targetRevision: raw.targetRevision,
+        targetRevision,
         requesterId: state.playerId,
         votes: new Map([[state.playerId, true]]),
       });
@@ -235,8 +252,8 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
             send(otherSocket, {
               t: 'undoRequest',
               requesterId: state.playerId,
-              targetRevision: raw.targetRevision,
-              describes: `revert the table to revision ${raw.targetRevision}`,
+              targetRevision,
+              describes: `revert the table to revision ${targetRevision}`,
             });
           }
         }
@@ -322,10 +339,19 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
 function performUndo(room: Room, current: TableState, target: TableState, actorId: PlayerId): void {
   const outcome = applyUndo(current, target, actorId);
   tablesByRoom.set(room.roomId, outcome.state);
-  historiesByRoom.get(room.roomId)?.record(actorId, outcome.state);
+  historiesByRoom.get(room.roomId)?.recordRevert(actorId, outcome.state, target.revision);
   broadcastTableState(room.roomId);
   broadcastToRoom(room.roomId, { t: 'undoResolved', targetRevision: target.revision, applied: true });
   sessions.markDirty();
+}
+
+// Clients drop their prompt on `undoResolved` (store.ts), so an unapplied resolution is how a
+// vote gets taken off everyone's screen.
+function cancelPendingUndo(roomId: RoomId): void {
+  const pending = pendingUndosByRoom.get(roomId);
+  if (!pending) return;
+  pendingUndosByRoom.delete(roomId);
+  broadcastToRoom(roomId, { t: 'undoResolved', targetRevision: pending.targetRevision, applied: false });
 }
 
 function broadcastToRoom(roomId: RoomId, message: ServerMessage): void {

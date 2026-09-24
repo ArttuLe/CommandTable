@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PlayerId, ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
 import { useUiStore } from './uiStore.js';
@@ -7,9 +7,14 @@ import { ContextMenu } from './ContextMenu.js';
 import { Plane } from './Plane.js';
 import { Board } from './Board.js';
 import { CrossroadsHub } from './CrossroadsHub.js';
+import { SetupStep } from './SetupStep.js';
+import { ArrowLayer } from './ArrowLayer.js';
+import { combatRelations } from './combat.js';
 import { CommanderName, type CommanderRef } from './commanders.js';
 import { ActionBar, ManaPad, SelectionBar, VitalsPad } from './ActionBar.js';
 import { LogRail, Toasts } from './LogRail.js';
+import { ChatRail } from './ChatRail.js';
+import { chatEntries, tableEntries } from './logStreams.js';
 import { ZoneDock, type DockZone } from './ZoneDock.js';
 import { seating } from './seating.js';
 import { PASS_TURN_WARNING, turnHighlight, turnLabel } from './turnStatus.js';
@@ -20,9 +25,47 @@ import { ConfirmDialog } from './ConfirmDialog.js';
 import { HelpButton } from './HelpDialog.js';
 import { ManaChoice, type ManaChoicePrompt } from './ManaChoice.js';
 import { manaToRemove } from './manaSources.js';
+import { undoPromptText } from './undoPrompt.js';
+import { fanOverlap } from './handFan.js';
 
 function isOwnZone(obj: ProjectedObject, playerId: PlayerId, zone: string): boolean {
   return 'playerId' in obj.zone && obj.zone.playerId === playerId && obj.zone.zone === zone;
+}
+
+/**
+ * How tightly to fan the hand, measured rather than guessed (see handFan.ts).
+ *
+ * The hand's own width is the width the HUD's grid allotted it, which is exactly the space the
+ * fan has to stay inside; `--card-w` and the row's gap are read off the element so the fan
+ * follows the card-size steps at narrow windows without repeating their breakpoints here.
+ * Observed rather than measured once, because the window is resized mid-game and the flanks
+ * either side of the hand grow and shrink with what they are showing.
+ *
+ * Overlapping narrows the hand, which the observer then re-measures, so this has to be a loop
+ * that settles. It does because the column is sized by the grid and not by the hand (see
+ * `.hud-row` in styles.css): what is measured is the room available, which the overlap cannot
+ * change, so the next measurement asks the same question and gets the same answer. `handFan`'s
+ * pixel of slack covers the rounding at the exact boundary.
+ */
+function useFanOverlap(count: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [overlap, setOverlap] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const style = getComputedStyle(el);
+      const cardWidth = parseFloat(style.getPropertyValue('--card-w'));
+      setOverlap(fanOverlap(count, cardWidth, parseFloat(style.columnGap), el.clientWidth));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [count]);
+
+  return { ref, overlap };
 }
 
 /**
@@ -36,9 +79,12 @@ export function Table() {
   const act = useStore((s) => s.act);
   const pendingUndoRequest = useStore((s) => s.pendingUndoRequest);
   const send = useStore((s) => s.send);
+  const roomState = useStore((s) => s.roomState);
 
   const logRailOpen = useUiStore((s) => s.logRailOpen);
   const toggleLogRail = useUiStore((s) => s.toggleLogRail);
+  const chatRailOpen = useUiStore((s) => s.chatRailOpen);
+  const toggleChatRail = useUiStore((s) => s.toggleChatRail);
   const setLibraryDirty = useUiStore((s) => s.setLibraryDirty);
   const dismissedCommanders = useUiStore((s) => s.dismissedCommanders);
   const dismissCommander = useUiStore((s) => s.dismissCommander);
@@ -46,6 +92,13 @@ export function Table() {
   const dialogOpen = useUiStore((s) => s.openDialogs > 0);
   const bumpMana = useUiStore((s) => s.bumpMana);
   const resetMana = useUiStore((s) => s.resetMana);
+  const pointing = useUiStore((s) => s.pointing);
+  const cancelPointing = useUiStore((s) => s.cancelPointing);
+
+  // Set by a middle-click on the table: glide to whoever is active *now*. The player is captured
+  // rather than read live, so that with following switched off the view stays where it was put
+  // instead of chasing the next turn. The nonce lets the same player be asked for twice running.
+  const [focusRequest, setFocusRequest] = useState<{ key: PlayerId; nonce: number } | null>(null);
 
   const [menu, setMenu] = useState<{ obj: ProjectedObject; x: number; y: number } | null>(null);
   const [manaChoice, setManaChoice] = useState<ManaChoicePrompt | null>(null);
@@ -59,9 +112,16 @@ export function Table() {
   // PASS_TURN advances the table from whoever is active, so out of turn it ends someone else's
   // turn — one dialog in front of both the button and the shortcut (see turnStatus.ts).
   const [confirmingPass, setConfirmingPass] = useState(false);
+  // Floating mana does not survive the end of a turn, so passing empties the pad the same way
+  // untapping does. It is client-local either way (§8.4), so this is a local reset and not an
+  // action — nobody else's pad is anyone's business.
+  const passTurn = useCallback(() => {
+    act({ t: 'PASS_TURN' });
+    resetMana();
+  }, [act, resetMana]);
   const requestPassTurn = useCallback(
-    () => (isMyTurn ? act({ t: 'PASS_TURN' }) : setConfirmingPass(true)),
-    [act, isMyTurn]
+    () => (isMyTurn ? passTurn() : setConfirmingPass(true)),
+    [isMyTurn, passTurn]
   );
 
   // Untapping everything is the gesture that ends a turn's worth of mana, so it empties the pad
@@ -71,6 +131,12 @@ export function Table() {
     act({ t: 'UNTAP_ALL', playerId });
     resetMana();
   }, [act, playerId, resetMana]);
+
+  // Which revision one step back actually is belongs to the server: a revert carries older
+  // content under a newer number, so only the history can say (see tableHistory.ts). No
+  // confirmation in front of it either — undoing your own last action is the common case and is
+  // instant, and anything further back already has the table's vote in front of it.
+  const undoLast = useCallback(() => send({ t: 'undo' }), [send]);
 
   // §16.2 keyboard shortcuts for the high-frequency actions, listed by the `?` in the status bar
   // (HelpDialog). Gated on not-typing-in-an-input so it doesn't fire while the chat box or a
@@ -103,8 +169,16 @@ export function Table() {
         case 'l':
           toggleLogRail();
           break;
+        case 'c':
+          toggleChatRail();
+          break;
+        case 'z':
+          undoLast();
+          break;
         case 'escape':
           useUiStore.getState().clearSelection();
+          // Escape is already "stop what you were about to do"; an armed arrow is that.
+          useUiStore.getState().cancelPointing();
           break;
         default:
           return;
@@ -114,7 +188,7 @@ export function Table() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [act, playerId, dialogOpen, requestPassTurn, toggleLogRail, untapAll]);
+  }, [act, playerId, dialogOpen, requestPassTurn, toggleChatRail, toggleLogRail, undoLast, untapAll]);
 
   const objects = Object.values(tableState.objects);
 
@@ -123,6 +197,7 @@ export function Table() {
 
   const inZone = (pid: PlayerId, zone: string) => objects.filter((o) => isOwnZone(o, pid, zone));
   const myHand = inZone(playerId, 'hand');
+  const fan = useFanOverlap(myHand.length);
 
   // §12.3: every commander on the table, for the crossroads damage badges and the commander
   // prompt; your own HUD only offers the ones that can actually hit you.
@@ -134,6 +209,14 @@ export function Table() {
       obj: tableState.objects[id],
     }))
   );
+
+  // Every block and target arrow currently on the table (see combat.ts). Memoised on the objects
+  // map so the arrow layer isn't handed a new array on every unrelated re-render.
+  const relations = useMemo(() => combatRelations(tableState.objects, playerId), [tableState.objects, playerId]);
+
+  // Split once: each rail and each toast stack reads only the stream it owns.
+  const chatLog = useMemo(() => chatEntries(tableState.log), [tableState.log]);
+  const tableLog = useMemo(() => tableEntries(tableState.log), [tableState.log]);
 
   const me = tableState.players.find((p) => p.id === playerId)!;
   const opposingCommanders = allCommanders.filter((c) => c.ownerId !== playerId);
@@ -166,17 +249,23 @@ export function Table() {
   ];
 
   return (
-    <div className="table">
+    <div className={`table ${pointing ? 'targeting' : ''}`}>
       <header className="status-bar">
         {/* Leads the bar as a quiet identifier — someone joining late asks for it mid-game, and
             hunting for it shouldn't mean leaving the table. Subdued so it doesn't compete with
             the turn pill, which is what everyone is actually watching. */}
         <span className="room-code">{tableState.roomId}</span>
-        <span className={`turn-pill ${isMyTurn ? 'mine' : ''}`}>{turnLabel(tableState.turn, tableState.players, playerId)}</span>
+        {/* Until the host starts the game, whose turn it is doesn't mean anything yet — the pill
+            says which moment the table is in instead. The opening-hand step itself is down in
+            the HUD, where you can see the hand it is asking about; the pill keeps its slot here
+            either way, so nothing shifts when the game begins. */}
+        <span className={`turn-pill ${tableState.setupComplete && isMyTurn ? 'mine' : ''}`}>
+          {tableState.setupComplete ? turnLabel(tableState.turn, tableState.players, playerId) : 'Opening hands'}
+        </span>
 
         {pendingUndoRequest && (
           <div className="undo-request">
-            <span>{pendingUndoRequest.describes}?</span>
+            <span>{undoPromptText(pendingUndoRequest, tableState.log, tableState.players)}</span>
             <button className="btn" onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: true })}>
               Approve
             </button>
@@ -215,9 +304,30 @@ export function Table() {
       </header>
 
       <div className="table-main">
+        {/* Chat on the left, the log on the right, the table between them — talking and the
+            record of play are different things and were sharing one scroll. */}
+        <ChatRail
+          log={tableState.log}
+          players={tableState.players}
+          open={chatRailOpen}
+          onToggle={toggleChatRail}
+          onSend={(text) => act({ t: 'SAY', playerId, text })}
+        />
+
         {/* Refit only when the number of boards changes — the plane's size changes then, and a
             view that re-centered itself every time someone played a card would be unusable. */}
-        <Plane fitKey={seats.length} focusKey={followActivePlayer ? tableState.turn.activePlayerId : null}>
+        <Plane
+          fitKey={seats.length}
+          // Following re-aims every turn on its own; a middle-click only ever aims once.
+          focus={
+            followActivePlayer
+              ? { key: tableState.turn.activePlayerId, nonce: focusRequest?.nonce ?? 0 }
+              : focusRequest
+          }
+          onFocusRequest={() =>
+            setFocusRequest((prev) => ({ key: tableState.turn.activePlayerId, nonce: (prev?.nonce ?? 0) + 1 }))
+          }
+        >
           <div className={`mats ${seats.length <= 2 ? 'stacked' : 'quad'}`}>
             {seats.map((seat) => {
               const player = tableState.players.find((p) => p.id === seat.playerId);
@@ -275,6 +385,10 @@ export function Table() {
               myId={playerId}
               allCommanders={allCommanders}
             />
+
+            {/* Last child of the mats so it paints over them, and inside the plane so it moves
+                with them. `revision` is what tells it a card may have shifted. */}
+            <ArrowLayer relations={relations} revision={tableState.revision} />
           </div>
         </Plane>
 
@@ -284,13 +398,24 @@ export function Table() {
           myId={playerId}
           open={logRailOpen}
           onToggle={toggleLogRail}
-          onSend={(text) => act({ t: 'SAY', playerId, text })}
         />
       </div>
 
       {/* Fixed chrome, outside the plane: your hand has to stay readable no matter how far the
           table is zoomed out, and the actions you take every turn belong next to it. */}
       <div className={`hud ${isMyTurn ? 'my-turn' : ''}`}>
+        {/* A band of its own across the top of the HUD, directly above the cards it is asking
+            about: you cannot judge a mulligan without seeing your hand, so the decision sits
+            with it rather than in the status bar (where it read as chrome) or in a centred
+            modal (which would cover the very thing you are deciding on). */}
+        {!tableState.setupComplete && (
+          <SetupStep
+            players={tableState.players}
+            playerId={playerId}
+            isHost={roomState?.hostId === playerId}
+            handCount={myHand.length}
+          />
+        )}
         {/* Mana and your zones share the top strip: both are read-and-poke controls that want to
             be near the hand without stealing any of its height. */}
         <div className="hud-top">
@@ -317,14 +442,22 @@ export function Table() {
         <div className="hud-row">
           <ActionBar
             playerId={playerId}
-            players={tableState.players}
             isMyTurn={isMyTurn}
             onPassTurn={requestPassTurn}
             onUntapAll={untapAll}
+            onUndo={undoLast}
+            canUndo={tableState.revision > 0}
           />
           {/* Overlapping fan rather than a second row: a big hand must not steal height from
-              the table. */}
-          <div className={`hand ${myHand.length > 8 ? 'crowded' : ''}`}>
+              the table — and the overlap tightens only as far as it has to, so it doesn't steal
+              width from the controls either side of it instead (see handFan.ts). Crowding is
+              what the measurement found, not a card count: the hand overlaps exactly when it
+              would otherwise wrap, which an opening seven already does. */}
+          <div
+            ref={fan.ref}
+            className={`hand ${fan.overlap > 0 ? 'crowded' : ''}`}
+            style={{ '--fan-overlap': fan.overlap } as React.CSSProperties}
+          >
             {myHand.map((obj) => (
               <CardTile
                 key={obj.id}
@@ -337,8 +470,22 @@ export function Table() {
         </div>
       </div>
 
+      {/* An armed arrow changes what the next click does, so it has to say so — a crosshair
+          cursor alone is too quiet for a mode. It floats above the hand rather than sitting in
+          the status bar: the mode is about the next card you click, and your eye is down on the
+          board, hundreds of pixels from the top-left corner. */}
+      {pointing && (
+        <div className="targeting-hint">
+          <span>{pointing.kind === 'block' ? 'Click the attacker to block.' : 'Click the card to target.'}</span>
+          <button className="btn btn-ghost" onClick={cancelPointing}>
+            Cancel (Esc)
+          </button>
+        </div>
+      )}
       <SelectionBar />
-      <Toasts log={tableState.log} players={tableState.players} myId={playerId} railOpen={logRailOpen} />
+      {/* A toast for each stream, beside the rail it belongs to and only while that rail is shut. */}
+      <Toasts log={chatLog} players={tableState.players} myId={playerId} side="chat" enabled={!chatRailOpen} />
+      <Toasts log={tableLog} players={tableState.players} myId={playerId} side="log" enabled={!logRailOpen} />
 
       {confirmingPass && (
         <ConfirmDialog
@@ -347,7 +494,7 @@ export function Table() {
           confirmLabel="Pass turn"
           onConfirm={() => {
             setConfirmingPass(false);
-            act({ t: 'PASS_TURN' });
+            passTurn();
           }}
           onCancel={() => setConfirmingPass(false)}
         />

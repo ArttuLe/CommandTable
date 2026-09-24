@@ -49,3 +49,20 @@ export function typeLineOf(obj: ProjectedObject, card: Card | null): string | nu
 export function isCreature(typeLine: string | null): boolean {
   return zoneOf(typeLine) === 'creatures';
 }
+
+/**
+ * The power/toughness to print on a token's tile, or null for anything else.
+ *
+ * Tokens only, deliberately. `AdhocFace.power` was collected by the create-token dialog and then
+ * never shown, so a board of 1/1s and 4/4s looked identical — that is the gap this fills. A real
+ * card already prints its own P/T in the corner of its art, and repeating it in a badge only
+ * covers up more of the card.
+ *
+ * Values stay verbatim rather than being parsed: `*`, `1+*` and `∞` are all printed P/T, and none
+ * of them survive a trip through Number().
+ */
+export function powerToughness(obj: ProjectedObject): string | null {
+  if (isRedacted(obj) || obj.source.kind !== 'token' || !obj.source.adhoc) return null;
+  const { power, toughness } = obj.source.adhoc;
+  return power !== undefined && toughness !== undefined ? `${power}/${toughness}` : null;
+}

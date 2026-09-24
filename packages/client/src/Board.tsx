@@ -2,6 +2,7 @@ import { isRedacted, type GameObject, type PlayerState, type ProjectedObject } f
 import { CardTile } from './CardTile.js';
 import { useCards } from './useCard.js';
 import { useUiStore } from './uiStore.js';
+import { useStore } from './store.js';
 import { ZONES, groupByZone, typeLineOf } from './battlefieldZones.js';
 import { producedMana } from './manaSources.js';
 import type { ManaColor } from './uiStore.js';
@@ -147,13 +148,23 @@ function BattlefieldSlot({
 }) {
   const selected = useUiStore((s) => s.selectedIds.has(obj.id));
   const toggleSelected = useUiStore((s) => s.toggleSelected);
+  const act = useStore((s) => s.act);
+
+  // An armed target or block arrow never reaches this handler: CardTile takes the click first.
+  function onClick(e: React.MouseEvent) {
+    if (e.shiftKey) toggleSelected(obj.id);
+    else onTapToggle(obj, produces, e);
+  }
 
   return (
     <CardTile
       obj={obj}
       selected={selected}
-      onClick={(e) => (e.shiftKey ? toggleSelected(obj.id) : onTapToggle(obj, produces, e))}
+      onClick={onClick}
       onContextMenu={onContextMenu}
+      // Only on the battlefield: a label matters where the permanent is, and the zone popovers
+      // are for reading a pile, not editing it.
+      onRemoveLabel={(marker) => act({ t: 'CLEAR_MARKER', objectId: obj.id, marker })}
     />
   );
 }

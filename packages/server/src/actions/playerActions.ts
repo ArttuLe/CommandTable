@@ -76,8 +76,34 @@ export function mulligan(
   }
 
   const players = next.players.map((p) =>
-    p.id === action.playerId ? { ...p, counters: { ...p.counters, mulligan: (p.counters.mulligan ?? 0) + 1 } } : p
+    p.id === action.playerId
+      ? // Taking a mulligan un-keeps the hand: the seven you were looking at are back in the
+        // library, so whatever you had settled on is no longer a decision about this hand.
+        { ...p, keptHand: false, counters: { ...p.counters, mulligan: (p.counters.mulligan ?? 0) + 1 } }
+      : p
   );
 
   return ok({ ...next, players, revision: next.revision + 1 });
+}
+
+/** "This hand will do." Says nothing about whether play has begun — that is the host's call. */
+export function keepHand(state: TableState, action: Extract<Action, { t: 'KEEP_HAND' }>): ApplyResult {
+  if (!requirePlayer(state, action.playerId)) return err(`no such player: ${action.playerId}`);
+
+  return ok({
+    ...state,
+    players: state.players.map((p) => (p.id === action.playerId ? { ...p, keptHand: true } : p)),
+    revision: state.revision + 1,
+  });
+}
+
+/**
+ * Ends the opening-hand step and starts turn 1.
+ *
+ * Deliberately not conditional on everyone having kept (§1.1, "never block a legal play"): a
+ * player who has wandered off shouldn't be able to hold the table hostage, and the client warns
+ * the host rather than disabling the button.
+ */
+export function beginPlay(state: TableState): ApplyResult {
+  return ok({ ...state, setupComplete: true, revision: state.revision + 1 });
 }

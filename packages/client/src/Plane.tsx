@@ -22,18 +22,29 @@ const BUTTON_ZOOM_STEP = 1.25;
  * Panning is deliberately unbounded; "Fit" is one click away, which is simpler and less
  * frustrating than edge-clamping math that fights the user near the borders.
  *
- * `focusKey` names an element inside the plane (by `data-focus`) to glide to — the settings
- * gear's "follow the active player" points it at whoever's turn it is. Null means the view is
- * the user's own business, which is the default.
+ * `focus` names an element inside the plane (by `data-focus`) to glide to — the settings gear's
+ * "follow the active player" points it at whoever's turn it is, and a middle-click asks for the
+ * same thing once. Null means the view is the user's own business, which is the default.
+ *
+ * It carries a `nonce` as well as the key because the two callers want different things from the
+ * same mechanism: following re-aims when the turn changes, but a middle-click has to re-aim at a
+ * player the view is *already* pointed at, which a key-only effect would ignore as "no change".
  */
+export interface PlaneFocus {
+  key: string;
+  nonce: number;
+}
+
 export function Plane({
   children,
   fitKey,
-  focusKey,
+  focus,
+  onFocusRequest,
 }: {
   children: React.ReactNode;
   fitKey: unknown;
-  focusKey?: string | null;
+  focus?: PlaneFocus | null;
+  onFocusRequest?: () => void;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -61,8 +72,11 @@ export function Plane({
     fit();
   }, [fit, fitKey]);
 
-  // Glide to whichever board `focusKey` names, whenever it changes — i.e. once per turn while
-  // following is on. The easing is the CSS transition; this only sets the destination.
+  // Glide to whichever board `focus` names, whenever it changes — once per turn while following
+  // is on, or once per middle-click. The easing is the CSS transition; this only sets the
+  // destination.
+  const focusKey = focus?.key ?? null;
+  const focusNonce = focus?.nonce ?? 0;
   useEffect(() => {
     if (!focusKey) return;
     const viewport = viewportRef.current;
@@ -92,7 +106,7 @@ export function Plane({
     setGliding(true);
     const timer = setTimeout(() => setGliding(false), GLIDE_MS);
     return () => clearTimeout(timer);
-  }, [focusKey]);
+  }, [focusKey, focusNonce]);
 
   // Native listener rather than React's onWheel: React attaches wheel passively at the root, so
   // preventDefault() there is ignored and the page scrolls behind the zoom.
@@ -134,6 +148,14 @@ export function Plane({
   }, [panning]);
 
   function onMouseDown(e: React.MouseEvent) {
+    // Middle-click snaps to whoever's turn it is — the same glide the follow setting does, for
+    // people who want it on demand rather than every turn. preventDefault kills the browser's
+    // autoscroll, which would otherwise hijack the next mouse move.
+    if (e.button === 1) {
+      e.preventDefault();
+      onFocusRequest?.();
+      return;
+    }
     if (e.button !== 0) return;
     // Anything interactive keeps its own click; the background drags the table.
     if ((e.target as HTMLElement).closest('.card-tile, button, input, table')) return;
@@ -153,6 +175,8 @@ export function Plane({
       className={`plane-viewport ${panning ? 'panning' : ''}`}
       ref={viewportRef}
       onMouseDown={onMouseDown}
+      // Firefox fires the autoscroll on auxclick rather than mousedown, so both need suppressing.
+      onAuxClick={(e) => e.button === 1 && e.preventDefault()}
     >
       <div
         className={`plane ${gliding ? 'gliding' : ''}`}

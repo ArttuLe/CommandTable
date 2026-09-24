@@ -13,7 +13,7 @@ function seatedRoom() {
 }
 
 function table(roomId: string): TableState {
-  return { roomId, objects: {}, players: [], turn: { turnNumber: 1, activePlayerId: 'p1', phase: 'main' }, log: [], revision: 3, createdAt: NOW };
+  return { roomId, objects: {}, players: [], turn: { turnNumber: 1, activePlayerId: 'p1', phase: 'main' }, log: [], revision: 3, createdAt: NOW, setupComplete: true };
 }
 
 function fileWith(sessions: PersistedFile['sessions']): PersistedFile {
