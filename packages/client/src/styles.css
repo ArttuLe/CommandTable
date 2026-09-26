@@ -683,37 +683,70 @@ input[type='checkbox'] {
    cursor: pointer;
 }
 
-/* Boards are a fixed width so the plane's size — and therefore the "Fit" view — doesn't jump
-   around as cards are played; rows grow if a board outgrows its height. */
-/* The space between the mats is now only a seam. It used to be a track wide enough to hold the
-   life readouts, which was most of the distance between one player's board and the next; with
-   the readouts moved into the board headers (Board.tsx) there is nothing left to leave room for,
-   and the width it was holding went to the mats instead. The plane is the same size either way,
-   so "Fit" frames the same rectangle — the boards inside it are simply bigger. */
+/* Mats are a fixed width so the plane's size — and therefore the "Fit" view — doesn't jump
+   around as cards are played; rows grow if a mat outgrows its height. Each column is a player
+   rail plus the board width that column has always had (1170 / 1500): the rail was added to the
+   plane rather than taken out of the board, so moving the header off the board is a straight
+   gain of its height and costs the battlefield nothing.
+
+   The rows are taller than the three bands strictly need. A band sized to exactly one card is a
+   band that looks full the moment anything is in it, and the plane is a pan/zoom surface — the
+   room costs a little Fit zoom and buys every band air around its cards. It is also what makes
+   the rail's half-height floor real: half of 900px holds a full-size commander and the readouts
+   above it, where half of 700 did not.
+
+   The space between the mats is only a seam. It used to be a track wide enough to hold the life
+   readouts, which was most of the distance between one player's board and the next; with the
+   readouts on the mats themselves there is nothing left to leave room for. */
 .mats {
    position: relative;
    display: grid;
    gap: 0;
    padding: 40px;
+
+   /* Cards on the plane are their own size, bigger than the ones in the fixed chrome and not
+      stepped by the window breakpoints. The plane pans and zooms, so a narrow window is answered
+      by the camera rather than by shrinking what is on the table; the hand, the zone popovers
+      and the selection bar are the ones that genuinely run out of room and keep the root sizes.
+      Same 63:88 card (--card-ratio), so the tapped-card rotation still lands square. */
+   --card-w: 180px;
+   --card-h: 252px;
 }
 
 .mats.quad {
-   grid-template-columns: 1170px 40px 1170px;
-   grid-template-rows: minmax(700px, auto) 40px minmax(700px, auto);
+   grid-template-columns: 1380px 40px 1380px;
+   grid-template-rows: minmax(900px, auto) 40px minmax(900px, auto);
    grid-template-areas: "top-left . top-right" ". . ." "bottom-left . bottom-right";
 }
 
 /* Two players face each other down the screen, so there is no second column to share the width
    with — the one mat takes as much of it as the four-player plane gives a pair of them. */
 .mats.stacked {
-   grid-template-columns: 1500px;
-   grid-template-rows: minmax(700px, auto) 40px minmax(700px, auto);
+   grid-template-columns: 1710px;
+   grid-template-rows: minmax(900px, auto) 40px minmax(900px, auto);
    grid-template-areas: "top" "." "bottom";
 }
 
-/* Each mat faces its owner: column-reverse puts the header, command zone and lands against the
-   board's outer edge, so creatures advance inward toward the other players. */
+/* A mat is a player rail and a board, side by side. Which side is the outer flank of that mat's
+   column (seating.ts), and row-reverse is the whole mirror — one component, one child order. */
+.mat {
+   display: flex;
+   gap: 0.5rem;
+}
+
+.mat.rail-right {
+   flex-direction: row-reverse;
+}
+
+.mat.eliminated {
+   opacity: 0.5;
+}
+
+/* The board takes whatever the column has left after the rail — 1170px in a quad, 1500 stacked,
+   which is exactly what it had when the header was still a band across it. */
 .board {
+   flex: 1;
+   min-width: 0;
    display: flex;
    flex-direction: column;
    gap: 0.4rem;
@@ -724,50 +757,106 @@ input[type='checkbox'] {
    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.board.lands-bottom {
+/* The rail's column: the rail itself, packed against the mat's outer edge, and the turn pill on
+   the empty half above or below it. Fixed width in px like the board widths above, so the plane
+   never resizes itself; the tiles inside it follow --card-w and shrink with the card sizes.
+
+   `column-reverse` is the whole vertical mirror, the same trick the battlefield bands use: one
+   child order (pill, then rail) lands the rail against the outer edge and the pill just inside it
+   on both halves of the table. */
+.mat-side {
+   width: 210px;
+   flex: none;
+   display: flex;
+   flex-direction: column;
+   justify-content: flex-end;
+   gap: 0.5rem;
+}
+
+.mat.lands-top .mat-side {
    flex-direction: column-reverse;
 }
 
-.board.eliminated {
-   opacity: 0.5;
+/* Everything a player *is*, standing up in a column beside their board instead of lying across
+   it. Half the board's height is a floor rather than a fixed size: a full-size commander tile
+   plus the readouts above it comes to a little over half, and two partner commanders to more
+   than that — a rail that clipped them would be worse than one that runs a little long. */
+.player-rail {
+   min-height: 50%;
+   display: flex;
+   flex-direction: column;
+   gap: 0.5rem;
+   border: 2px solid var(--border);
+   border-radius: var(--radius-lg);
+   padding: 0.6rem;
+   background: var(--surface);
+   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 /* Whose turn it is. A glow, not just a hairline: at "Fit" zoom a 2px border is barely a pixel,
-   and this is the one piece of state that must read from across the table. */
-.board.turn-theirs {
+   and this is the one piece of state that must read from across the table. Both halves of the
+   mat take it, or the ring would stop halfway across the seat it belongs to. */
+.mat.turn-theirs .board,
+.mat.turn-theirs .player-rail {
    border-color: var(--accent-turn);
    box-shadow: 0 0 0 6px rgba(232, 179, 60, 0.13), 0 0 40px rgba(232, 179, 60, 0.18);
 }
 
-.board.turn-mine {
+.mat.turn-mine .board,
+.mat.turn-mine .player-rail {
    border-color: var(--accent);
    box-shadow: 0 0 0 6px rgba(90, 169, 230, 0.14), 0 0 40px rgba(90, 169, 230, 0.2);
 }
 
-.board-header {
+/* Centred, with the life under it: who the mat belongs to and how they are doing are the two
+   things read from across the table, so they sit on the rail's axis rather than ragged against
+   one edge of it. The name wraps rather than truncating — the rail is narrow and a player is
+   entitled to their whole name — and the badges that qualify it follow on their own lines. */
+.rail-identity {
    display: flex;
-   align-items: center;
-   gap: 0.5rem;
+   flex-wrap: wrap;
+   justify-content: center;
+   align-items: baseline;
+   gap: 0.3rem;
+   text-align: center;
 }
 
-.board-header .player-name {
+.rail-identity .player-name {
    font-weight: bold;
+   overflow-wrap: anywhere;
 }
 
-/* Life reads across a zoomed-out plane, so it is the biggest thing in the header — everything
-   else there is either a name you already know or a number you look up on purpose. The badges
-   sit with it and stay small: they are usually absent, and a board must not change shape the
-   first time somebody takes a point of poison. */
+/* Life reads across a zoomed-out plane, so it is the biggest thing on the rail — everything else
+   there is either a name you already know or a number you look up on purpose. The badges sit
+   with it and stay small: they are usually absent, and a mat must not change shape the first
+   time somebody takes a point of poison. */
 .board-vitals {
    display: flex;
+   flex-wrap: wrap;
+   justify-content: center;
    align-items: baseline;
    gap: 0.35rem;
 }
 
 .board-life {
-   font-size: 1.6rem;
+   display: inline-flex;
+   align-items: baseline;
+   gap: 0.3rem;
+   font-size: 2.1rem;
    line-height: 1;
    font-weight: 600;
+}
+
+.board-life .life-count {
+   font-variant-numeric: tabular-nums;
+}
+
+/* Quiet beside its number, the way it is in the pad — it labels the total, it is not part of it.
+   Opacity rather than a colour, so it survives the lethal tint. */
+.board-life .vital-symbol {
+   font-size: 1.6rem;
+   font-weight: normal;
+   opacity: 0.85;
 }
 
 /* Disconnected, conceded, eliminated: said out loud next to the name, because the mat going
@@ -778,36 +867,64 @@ input[type='checkbox'] {
    white-space: nowrap;
 }
 
-.board-header .counts {
-   margin-left: auto;
-   font-size: 0.8rem;
+/* Label left, number right, so the numbers line up into a column you can read down without
+   reading any of the labels — which is how you actually use them. */
+.rail-counts {
+   margin: 0;
+   font-size: 0.85rem;
    color: var(--text-dim);
 }
 
-/* The command zone lives here rather than in a band of its own, at roughly half scale: a
-   commander waiting to be cast is one card, and it was costing a full row of board height. */
-.board-header .command-zone .card-tile {
-   width: calc(var(--card-w) * 0.55);
-   height: calc(var(--card-h) * 0.55);
-   font-size: 0.55rem;
+.rail-count {
+   display: flex;
+   justify-content: space-between;
+   gap: 0.5rem;
 }
 
+.rail-count dt,
+.rail-count dd {
+   margin: 0;
+}
+
+.rail-count dd {
+   font-variant-numeric: tabular-nums;
+   color: var(--text);
+}
+
+/* Pushed to the far end of the rail, so it sits against the lands band the way the two sat
+   together when both were in the header. A commander is a card you read and cast like any other,
+   so it is drawn at the size every other card on the table is drawn at — which is what the rail's
+   width was chosen to hold. That is also why half the board's height is a floor and not a fixed
+   size: a full-size tile plus the readouts above it comes to a little over half. */
+.player-rail .command-zone {
+   margin-top: auto;
+   justify-content: center;
+}
+
+/* Alone on its half of the rail's column, so it can be a real pill at a size that reads from
+   across a zoomed-out table — the same shape the status bar's turn pill wears, which is the
+   idiom this app already spends on "whose moment is this". */
 .turn-badge {
-   font-size: 0.7rem;
+   align-self: center;
+   font-size: 1rem;
    font-weight: 600;
    text-transform: uppercase;
    letter-spacing: 0.06em;
-   padding: 0.1rem 0.45rem;
+   padding: 0.3rem 0.9rem;
    border-radius: 999px;
+   border: 1px solid transparent;
+   white-space: nowrap;
 }
 
-.board.turn-theirs .turn-badge {
-   background: rgba(232, 179, 60, 0.18);
+.mat.turn-theirs .turn-badge {
+   background: rgba(232, 179, 60, 0.14);
+   border-color: rgba(232, 179, 60, 0.45);
    color: var(--accent-turn);
 }
 
-.board.turn-mine .turn-badge {
-   background: rgba(90, 169, 230, 0.18);
+.mat.turn-mine .turn-badge {
+   background: rgba(90, 169, 230, 0.14);
+   border-color: rgba(90, 169, 230, 0.5);
    color: var(--accent);
 }
 
@@ -820,8 +937,8 @@ input[type='checkbox'] {
    gap: 0.3rem;
 }
 
-/* Three named bands, in the DOM from the board's outer edge inward, flipped for the near half
-   of the table by the same mirror the board itself uses. All three are always drawn, so a
+/* Three named bands, in the DOM from the board's outer edge inward, flipped for the near half of
+   the table by the same `lands-*` mirror the rail uses. All three are always drawn, so a
    permanent never changes band as the board around it fills up. */
 .battlefield {
    display: flex;
@@ -830,7 +947,7 @@ input[type='checkbox'] {
    gap: 0.3rem;
 }
 
-.board.lands-bottom .battlefield {
+.mat.lands-bottom .battlefield {
    flex-direction: column-reverse;
 }
 

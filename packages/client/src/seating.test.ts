@@ -51,6 +51,22 @@ describe('seating', () => {
     expect(two.map((s) => s.landsSide)).toEqual(['bottom', 'top']);
   });
 
+  // The rail carries what the board header used to, so it follows the same outer-edge rule the
+  // lands do — outer column as well as outer row, which is what keeps it off the contested middle.
+  it('puts every player rail on the outer flank of its column', () => {
+    const four = seating([at('me', 0), at('b', 1), at('c', 2), at('d', 3)], 'me');
+    expect(four.map((s) => s.railSide)).toEqual(['left', 'left', 'right', 'right']);
+
+    const three = seating([at('me', 0), at('b', 1), at('c', 2)], 'me');
+    expect(three.map((s) => s.railSide)).toEqual(['left', 'left', 'right']);
+  });
+
+  // One column, so there is no outer flank to pick and both rails take the left.
+  it('puts both rails on the left when the table is stacked', () => {
+    const two = seating([at('me', 0), at('b', 1)], 'me');
+    expect(two.map((s) => s.railSide)).toEqual(['left', 'left']);
+  });
+
   it('ignores seat numbering gaps, ordering by seat rather than by index', () => {
     const result = seating([at('c', 7), at('me', 2), at('b', 5)], 'me');
 

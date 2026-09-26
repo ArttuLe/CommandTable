@@ -90,7 +90,8 @@ Escape to clear; drag-box selection wasn't built since shift-click already satis
 tedium checklist. The fixed chrome gives way on a narrow window — the card-size custom property
 steps down at 1100px and 820px, and the HUD's two centring grids become wrapping rows below
 900px (the bottom of `styles.css`) — since the table itself is a pan/zoom plane and needs no
-help. That is a desktop window being narrow, not touch support: drag-and-drop and mobile are
+help. Only the chrome follows those steps: the plane sets a larger card size of its own on
+`.mats`, so nothing out there resizes when the window does. That is a desktop window being narrow, not touch support: drag-and-drop and mobile are
 deliberately not planned — see the deviation notes below, not the Phase 6/7 gap list.
 
 The §16.3 tedium checklist is now fully covered: passing turn untaps the incoming player's
@@ -123,26 +124,38 @@ and it earns its place: the alternative was every player hand-clearing a dead cr
 counters before it could be reused.
 
 The table is a pan-and-zoom plane holding every player's mat, laid out the way the group would
-sit around a physical table (`Plane.tsx`, `seating.ts`, `Board.tsx`). You
+sit around a physical table (`Plane.tsx`, `seating.ts`, `Board.tsx`, `PlayerRail.tsx`). You
 are always bottom-left and the other players run clockwise from you in turn order
 (`PlayerState.seat`), so the player who acts after you is the one on your left; two-player games
-stack vertically instead, since there's no clockwise worth modelling with one opponent. Each mat
-faces its owner — the header (with the command zone tucked into it at half scale, since an
-uncast commander is one card that was costing a full row of height) and the lands hug the
-board's *outer* edge, non-creature permanents sit behind the line, and creatures push inward
-toward the middle where combat happens. All three zones are always drawn, each with a faint label, so a permanent never
-changes band as the board fills. The mirroring is a CSS flip (`column-reverse` on both the
-board and its battlefield) over one `Board` component and one child order, not two layouts to
-keep in sync.
+stack vertically instead, since there's no clockwise worth modelling with one opponent.
 
-Life, poison and commander damage ride in each board's header, beside the name they belong to —
-where a physical table keeps them, behind the seat. They only *report*: a life total, a ☠ poison
-count, and a ⚔ badge per commander that has actually connected — nothing while there is nothing
-to say, so an untouched board shows a bare number. Which commander a ⚔ badge belongs to is in its
-hover title, not on its face; the badge has to stay readable at the zoom where a whole
-four-player table fits on screen. They used to sit out at the crossroads where the mats meet,
-which cost a readout's width of table between every pair of boards and gave each number a board
-it was merely *nearer*; the mats took that width back, and the boards are wider for it.
+A mat is a **player rail** and a board. Both face their owner: the rail and the lands hug the
+mat's *outer* edge, non-creature permanents sit behind the line, and creatures push inward toward
+the middle where combat happens. All three battlefield bands are always drawn, each with a faint
+label, so a permanent never changes band as the board fills. The mirroring is CSS in both
+directions — `.mat.lands-bottom` reverses the bands and the rail's anchor, `.mat.rail-right`
+reverses the rail and the board — over one component and one child order, not four layouts to
+keep in sync. Cards on the plane are their own size, larger than the ones in the fixed chrome and
+not stepped by the window breakpoints: the camera is what answers a narrow window out here.
+
+The rail is where a player's own things stand up in a column rather than lying across their board
+in a header band. It carries their name, their life with its ❤, a ☠ poison count and a ⚔ badge
+per commander that has actually connected, counts for hand / library / graveyard / exile, and
+their command zone at the same size as any other card on the table. It is half the board's height
+and sits at the mat's outer corner, so a player's readouts are behind their own seat and never in
+the space where the mats meet; whose turn it is stands just outside it as a pill, on the empty
+half of that column, because it is the one thing there that is about the moment rather than about
+the player. Graveyard and exile counts are new to the plane with it — before, nothing on the
+table said how big anybody's graveyard was, your own included.
+
+Everything on the rail only *reports*. The badges are absent while there is nothing to say, so an
+untouched mat shows a bare number; which commander a ⚔ badge belongs to is in its hover title,
+not on its face, since the badge has to stay readable at the zoom where a whole four-player table
+fits on screen. The readouts used to sit out at the crossroads where the mats meet, which cost a
+readout's width of table between every pair of boards and gave each number a board it was merely
+*nearer*; then they spent a while as a band across the board, which cost every board a row of the
+height its three bands were competing for. The column beside the board is the cheap dimension:
+the plane simply grew by the rail's width, so the battlefield kept every pixel it had.
 
 Everything on it is written from the vitals pad in your own bottom HUD (`ActionBar.tsx`, beside
 the mana pad): three pills of the same shape — ❤ life (whose number is also the button for a ±N
@@ -152,7 +165,9 @@ a list behind it, the pill then wearing your worst single total. Nobody edits a 
 numbers; you record what you took, the way you would across a physical table. That also keeps
 each board's readout a number you read at a glance rather than a cluster of small buttons
 repeated once per seat. The N×N damage matrix that used to sit at the crossroads is gone: with
-badges on every board and an editor in your own HUD it was a third copy of the same numbers.
+badges on every mat and an editor in your own HUD it was a third copy of the same numbers. Your
+own graveyard, exile and library keep their tiles in the HUD too, at a constant size no matter
+the plane's zoom: the rail says how big each pile is, the dock is where you open one.
 
 Pan by dragging the background, zoom with the wheel (exponential on the wheel delta, so
 trackpads stay smooth and notched mice don't jump a step per click), or use the −/Fit/+ controls.
@@ -202,7 +217,7 @@ one column on a narrow window; deck warnings reuse the coloured-left-border trea
 toasts use, so a caution reads the same on every screen.
 
 Whose turn it is, is a ring: amber around the active player's mat, blue when it's yours, mirrored
-on the turn badge in their board's header, beside their life. The
+on the pill standing beside their rail. The
 rule lives in `turnStatus.ts` behind unit tests. `TurnTracker.phase` is deliberately not shown —
 nothing mutates it (there's no `SET_PHASE` action), so it would permanently read "main".
 
@@ -281,10 +296,10 @@ packages/
             table factory, action applier (dispatch + actions/{object,zone,player,meta}Actions.ts),
             projection boundary, table history + undo, and the dev-only devtest/ table fixture
   client/   Minimal React client: Home (create/join room) → Lobby (seats, decklist, ready/start)
-            → Table (a pan/zoom plane of per-player boards, each header carrying that player's
-            read-only life, collapsible chat and log rails either side of it, an SVG arrow overlay for
-            blocks and spell targets, and a fixed bottom band of hand + vitals + mana +
-            zones + actions, wired
+            → Table (a pan/zoom plane of per-player mats — a board plus a rail carrying that
+            player's read-only life, zone counts and command zone — collapsible chat and log rails
+            either side of it, an SVG arrow overlay for blocks and spell targets, and a fixed
+            bottom band of hand + vitals + mana + zones + actions, wired
             straight to the WebSocket via a Zustand store)
 e2e/        Playwright specs driving the dev-table route in a real browser (see Testing)
 ```
@@ -292,7 +307,8 @@ e2e/        Playwright specs driving the dev-table route in a real browser (see 
 The client keeps its geometry and its rules-of-thumb in pure modules with their own tests, apart
 from the components that use them: `planeView.ts` (pan/zoom), `arrows.ts` (arrow geometry),
 `combat.ts` (reading combat off markers), `counters.ts`/`labels.ts` (how a badge reads),
-`seating.ts`, `battlefieldZones.ts`. A component measures the DOM and paints; these decide.
+`seating.ts`, `battlefieldZones.ts`, `playerRail.ts` (which rows a rail shows). A component
+measures the DOM and paints; these decide.
 
 ## Setup
 
@@ -648,7 +664,7 @@ assuming a change compiles.
   for a freeform client whose libraries get shuffled constantly.
 - **Mulligan is a plain redraw of seven, not the London mulligan:** `MULLIGAN` returns the hand,
   reshuffles and draws 7 without bottoming N cards, so a mulligan currently costs nothing. The
-  count is tracked (`counters.mulligan`) and shown in the board header, so players can enforce
+  count is tracked (`counters.mulligan`) and shown on the player's rail, so players can enforce
   the bottoming by hand; §10's freeform stance means the client wouldn't block them either way.
 - **`CLEAR_ALL_MARKERS` is `CLEAR_MARKERS_AND_COUNTERS`, and spares summoning sickness:** §8.1
   names the action for markers alone, but the markers/counters split is the model's and not the
