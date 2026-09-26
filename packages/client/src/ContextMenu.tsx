@@ -4,7 +4,7 @@
 // a redacted (hidden) object, unlike ownerId.
 
 import { useLayoutEffect, useRef, useState } from 'react';
-import { blockMarker, isRedacted, parseTargetMarker, targetMarker, type Action, type Card, type PlayerState, type ProjectedObject } from '@command-table/common';
+import { blockMarker, isRedacted, parseTargetMarker, targetMarker, type Action, type Card, type ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
 import { ATTACKING_MARKER, blocksOf, isAttacking, isLabelMarker } from './combat.js';
 import { useCard } from './useCard.js';
@@ -24,7 +24,7 @@ interface ContextMenuProps {
 }
 
 /** The items that ask a question before they act. */
-type MenuDialog = 'marker' | 'annotation' | 'controller' | null;
+type MenuDialog = 'marker' | 'annotation' | null;
 
 /**
  * The counter with no name. Four zombie tokens are one token tile reading `4`, and that is the
@@ -61,7 +61,6 @@ function menuTitle(obj: ProjectedObject, card: Card | null): string {
 
 export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
   const act = useStore((s) => s.act);
-  const players = useStore((s) => s.tableState?.players ?? []);
   // `obj` is the snapshot taken when the menu opened. The counter and label rows stay on screen
   // while you use them, so those two read from the live object instead; it falls back to the
   // snapshot for an object that has since left the table.
@@ -100,13 +99,7 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
 
   if (dialog) {
     return (
-      <MenuDialogs
-        which={dialog}
-        obj={obj}
-        players={players}
-        act={act}
-        onDone={onClose}
-      />
+      <MenuDialogs which={dialog} obj={obj} act={act} onDone={onClose} />
     );
   }
 
@@ -243,8 +236,6 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
 
         {!isRedacted(obj) && <button onClick={() => setDialog('annotation')}>Set annotation…</button>}
 
-        <button onClick={() => setDialog('controller')}>Change controller…</button>
-
         {/* §16.3's "create N copies of a token", minus the five prompts. */}
         {duplicate && <button onClick={() => run(() => act(duplicate))}>Duplicate</button>}
 
@@ -344,19 +335,17 @@ function CounterStepper({
  * Rendered *instead of* the menu rather than beside it: the menu's backdrop would otherwise sit
  * between the dialog and the table, and one click would close both.
  *
- * `onDone` puts the menu away, which is what all of these want — you moved the object, or named
- * its new controller, and there is nothing left to say.
+ * `onDone` puts the menu away, which is what all of these want — you have answered the question
+ * the dialog asked, and there is nothing left to say.
  */
 function MenuDialogs({
   which,
   obj,
-  players,
   act,
   onDone,
 }: {
   which: Exclude<MenuDialog, null>;
   obj: ProjectedObject;
-  players: PlayerState[];
   act: (action: Action) => void;
   onDone: () => void;
 }) {
@@ -387,31 +376,6 @@ function MenuDialogs({
           onSubmit={(annotation) => submit({ t: 'SET_ANNOTATION', objectId: obj.id, annotation: annotation || null })}
           onCancel={onDone}
         />
-      );
-
-    case 'controller':
-      // A list, not a typed name: the old prompt compared what you typed against every display
-      // name and silently did nothing when it didn't match.
-      return (
-        <Dialog title="Change controller" onCancel={onDone}>
-          <div className="dialog-choices">
-            {players.map((player) => (
-              <button
-                key={player.id}
-                className={`btn ${player.id === obj.controllerId ? 'btn-primary' : ''}`}
-                onClick={() => submit({ t: 'CHANGE_CONTROLLER', objectId: obj.id, newControllerId: player.id })}
-              >
-                {player.displayName}
-                {player.id === obj.controllerId && ' (controls it now)'}
-              </button>
-            ))}
-          </div>
-          <div className="dialog-actions">
-            <button type="button" className="btn btn-ghost" onClick={onDone}>
-              Cancel
-            </button>
-          </div>
-        </Dialog>
       );
   }
 }
