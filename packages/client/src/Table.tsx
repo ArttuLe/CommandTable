@@ -88,6 +88,7 @@ export function Table() {
   const dismissedCommanders = useUiStore((s) => s.dismissedCommanders);
   const dismissCommander = useUiStore((s) => s.dismissCommander);
   const followActivePlayer = useUiStore((s) => s.followActivePlayer);
+  const toggleFollowActivePlayer = useUiStore((s) => s.toggleFollowActivePlayer);
   const dialogOpen = useUiStore((s) => s.openDialogs > 0);
   const bumpMana = useUiStore((s) => s.bumpMana);
   const resetMana = useUiStore((s) => s.resetMana);
@@ -335,6 +336,8 @@ export function Table() {
           onFocusRequest={() =>
             setFocusRequest((prev) => ({ key: tableState.turn.activePlayerId, nonce: (prev?.nonce ?? 0) + 1 }))
           }
+          following={followActivePlayer}
+          onToggleFollow={toggleFollowActivePlayer}
         >
           <div className={`mats ${seats.length <= 2 ? 'stacked' : 'quad'}`}>
             {seats.map((seat) => {

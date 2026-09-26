@@ -63,3 +63,29 @@ test('right-clicking a card still opens that card, not the table', async ({ brow
   await expect(alice.locator('.context-menu-title')).not.toHaveText('The table');
   await expect(alice.getByRole('button', { name: 'Zoom in' })).toHaveCount(0);
 });
+
+// The menu carries the settings gear's follow toggle. One setting behind two controls is the
+// thing that can quietly become two, and each would then report a different answer.
+test('following can be switched from the table menu, and the gear agrees', async ({ browser }) => {
+  const alice = await openSeat(browser, 4, 'Alice');
+  await startPlay(alice, [await openSeat(browser, 4, 'Bob')]);
+
+  const gearToggle = alice.getByRole('checkbox');
+  await alice.getByRole('button', { name: 'Settings' }).click();
+  await expect(gearToggle).not.toBeChecked();
+  await alice.keyboard.press('Escape');
+
+  await alice.locator('.plane-viewport').click({ button: 'right', position: { x: 12, y: 12 } });
+  await alice.getByRole('button', { name: 'Follow the active player' }).click();
+
+  await alice.getByRole('button', { name: 'Settings' }).click();
+  await expect(gearToggle).toBeChecked();
+  await alice.keyboard.press('Escape');
+
+  // And the menu says what the next click would do, not what the last one did.
+  await alice.locator('.plane-viewport').click({ button: 'right', position: { x: 12, y: 12 } });
+  await expect(alice.getByRole('button', { name: 'Stop following the active player' })).toBeVisible();
+  await alice.getByRole('button', { name: 'Stop following the active player' }).click();
+  await alice.getByRole('button', { name: 'Settings' }).click();
+  await expect(gearToggle).not.toBeChecked();
+});

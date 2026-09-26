@@ -16,7 +16,8 @@ _Nothing outstanding._
   the buttons act on it directly; a table with several keeps the list behind the pill, since
   "which commander" is then a real question.
 - Right-clicking the table offers Zoom in / Zoom out / Fit at the cursor, zooming around the point
-  you clicked. `F` fits from the keyboard. Both are in the help dialog.
+  you clicked, and the "follow the active player" toggle the settings gear carries. `F` fits from
+  the keyboard. All of it is in the help dialog.
 - "You kept." reads with the step's other prose instead of sitting in among the buttons.
 - Player boards are wider — 1040px to 1170px in a four-player table, 1240px to 1500px in a
   two-player one.

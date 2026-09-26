@@ -29,6 +29,6 @@ export const MOUSE_SHORTCUTS: Shortcut[] = [
   { keys: 'Shift-click', what: 'Add a permanent to the selection for a bulk action' },
   { keys: 'Hover a card', what: 'Zoom it on the left edge' },
   { keys: 'Drag the table', what: 'Pan; the wheel zooms, and Fit frames everything' },
-  { keys: 'Right-click the table', what: 'Zoom in, zoom out, or fit — around the point you clicked' },
+  { keys: 'Right-click the table', what: 'Zoom, fit, or follow the active player — zooming around the point you clicked' },
   { keys: 'Middle-click the table', what: "Glide the view to whoever's turn it is" },
 ];

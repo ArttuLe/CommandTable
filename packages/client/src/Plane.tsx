@@ -41,11 +41,16 @@ export function Plane({
   fitKey,
   focus,
   onFocusRequest,
+  following,
+  onToggleFollow,
 }: {
   children: React.ReactNode;
   fitKey: unknown;
   focus?: PlaneFocus | null;
   onFocusRequest?: () => void;
+  /** Whether the view is currently chasing the active player, for the menu to report. */
+  following?: boolean;
+  onToggleFollow?: () => void;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -221,6 +226,8 @@ export function Plane({
           scale={view.scale}
           onZoom={(factor) => zoomBy(factor, menuAt)}
           onFit={fit}
+          following={following}
+          onToggleFollow={onToggleFollow}
           onClose={() => setMenuAt(null)}
         />
       )}
@@ -229,9 +236,10 @@ export function Plane({
 }
 
 /**
- * The plane's context menu: the same three commands the corner controls carry, where the cursor
- * already is. The controls stay — they are what a first-time player finds — but reaching a corner
- * to nudge the zoom is a trip away from the board you are looking at.
+ * The plane's context menu: the three commands the corner controls carry and the one view
+ * setting, where the cursor already is. The controls stay — they are what a first-time player
+ * finds — but reaching a corner, or the settings gear, is a trip away from the board you are
+ * looking at.
  *
  * Measured, then placed, for the same reason the card menu is (see menuPlacement.ts): it is fixed
  * at the cursor, and a right-click near the bottom edge would otherwise run it off-screen.
@@ -241,12 +249,16 @@ function PlaneMenu({
   scale,
   onZoom,
   onFit,
+  following,
+  onToggleFollow,
   onClose,
 }: {
   at: { x: number; y: number };
   scale: number;
   onZoom: (factor: number) => void;
   onFit: () => void;
+  following?: boolean;
+  onToggleFollow?: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -280,6 +292,18 @@ function PlaneMenu({
           Zoom out
         </button>
         <button onClick={() => run(onFit)}>Fit the whole table</button>
+
+        {/* The same setting the gear carries, offered where the view it acts on is. The label
+            says what the click will do rather than what is on, which is the idiom the card menu
+            already uses for Tap/Untap. */}
+        {onToggleFollow && (
+          <>
+            <hr />
+            <button onClick={() => run(onToggleFollow)}>
+              {following ? 'Stop following the active player' : 'Follow the active player'}
+            </button>
+          </>
+        )}
       </div>
     </>
   );

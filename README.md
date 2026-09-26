@@ -157,9 +157,12 @@ badges on every board and an editor in your own HUD it was a third copy of the s
 Pan by dragging the background, zoom with the wheel (exponential on the wheel delta, so
 trackpads stay smooth and notched mice don't jump a step per click), or use the −/Fit/+ controls.
 Right-clicking the background offers the same three commands at the cursor — zooming around the
-point you clicked rather than the middle of the screen — and `F` fits from the keyboard. The view refits only when the number of boards changes, never mid-turn — unless the
-settings gear's "follow the active player" is on, in which case each turn the plane glides to
-the new active player's mat and zooms in on it (`focusView` in `planeView.ts` frames the rect;
+point you clicked rather than the middle of the screen — along with the follow toggle below, and
+`F` fits from the keyboard.
+
+The view refits only when the number of boards changes, never mid-turn — unless "follow the
+active player" is on (the settings gear, or the table's own right-click menu), in which case each
+turn the plane glides to the new active player's mat and zooms in on it (`focusView` in `planeView.ts` frames the rect;
 the easing is a CSS transition added for the glide and removed after, so dragging stays
 frame-tight). It's off by default; middle-clicking the table does the same glide once, on
 demand, to whoever is active at that moment — captured, not tracked, so the view stays put
