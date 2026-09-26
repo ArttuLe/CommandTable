@@ -7,7 +7,7 @@
 //    acts after you is the one to your left — the same relationship you'd have sitting down.
 // 2. A board's lands hug its *outer* edge. Lands sit in front of their owner; creatures advance
 //    toward the middle of the table. So top-row boards put lands at the top, bottom-row boards
-//    put lands at the bottom, and the crossroads in the middle stays the contested space.
+//    put lands at the bottom, and the middle of the table stays the contested space.
 //
 // Two players get a vertical stack rather than a quadrant — there's no "clockwise" worth
 // modeling with one opponent, and half an empty grid just makes both boards smaller.

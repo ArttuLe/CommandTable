@@ -685,16 +685,11 @@ input[type='checkbox'] {
 
 /* Boards are a fixed width so the plane's size — and therefore the "Fit" view — doesn't jump
    around as cards are played; rows grow if a board outgrows its height. */
-/* The space between the mats is a real track rather than a gap, so the crossroads can be placed
-   in it as an ordinary grid item. It used to be absolutely centred on the whole plane, which is
-   only the same point while every board is exactly as tall as every other — the moment one mat
-   outgrew its row the life readouts drifted off the seam and onto a board.
-   The track is sized to hold the readouts and little else — whatever it has spare becomes a
-   moat between the mats and the boxes, since the crossroads centres itself in the track, so
-   these numbers are the distance between a board and the life total in front of it. Two 130px
-   boxes plus the column gap need ~280px across; two rows of a button-less readout, plus the
-   seam between them, ~200px down even when the badges wrap. Both tracks are cut to just over
-   that: the readouts belong to the boards either side of them, and a moat said otherwise. */
+/* The space between the mats is now only a seam. It used to be a track wide enough to hold the
+   life readouts, which was most of the distance between one player's board and the next; with
+   the readouts moved into the board headers (Board.tsx) there is nothing left to leave room for,
+   and the width it was holding went to the mats instead. The plane is the same size either way,
+   so "Fit" frames the same rectangle — the boards inside it are simply bigger. */
 .mats {
    position: relative;
    display: grid;
@@ -703,19 +698,21 @@ input[type='checkbox'] {
 }
 
 .mats.quad {
-   grid-template-columns: 1040px 300px 1040px;
-   grid-template-rows: minmax(700px, auto) 215px minmax(700px, auto);
-   grid-template-areas: "top-left . top-right" ". cross ." "bottom-left . bottom-right";
+   grid-template-columns: 1170px 40px 1170px;
+   grid-template-rows: minmax(700px, auto) 40px minmax(700px, auto);
+   grid-template-areas: "top-left . top-right" ". . ." "bottom-left . bottom-right";
 }
 
+/* Two players face each other down the screen, so there is no second column to share the width
+   with — the one mat takes as much of it as the four-player plane gives a pair of them. */
 .mats.stacked {
-   grid-template-columns: 1240px;
-   grid-template-rows: minmax(700px, auto) 215px minmax(700px, auto);
-   grid-template-areas: "top" "cross" "bottom";
+   grid-template-columns: 1500px;
+   grid-template-rows: minmax(700px, auto) 40px minmax(700px, auto);
+   grid-template-areas: "top" "." "bottom";
 }
 
 /* Each mat faces its owner: column-reverse puts the header, command zone and lands against the
-   board's outer edge, so creatures advance inward toward the crossroads. */
+   board's outer edge, so creatures advance inward toward the other players. */
 .board {
    display: flex;
    flex-direction: column;
@@ -755,6 +752,30 @@ input[type='checkbox'] {
 
 .board-header .player-name {
    font-weight: bold;
+}
+
+/* Life reads across a zoomed-out plane, so it is the biggest thing in the header — everything
+   else there is either a name you already know or a number you look up on purpose. The badges
+   sit with it and stay small: they are usually absent, and a board must not change shape the
+   first time somebody takes a point of poison. */
+.board-vitals {
+   display: flex;
+   align-items: baseline;
+   gap: 0.35rem;
+}
+
+.board-life {
+   font-size: 1.6rem;
+   line-height: 1;
+   font-weight: 600;
+}
+
+/* Disconnected, conceded, eliminated: said out loud next to the name, because the mat going
+   half-opaque is not something you can read at a glance from across the table. */
+.player-state {
+   font-size: 0.75rem;
+   color: var(--text-dim);
+   white-space: nowrap;
 }
 
 .board-header .counts {
@@ -868,80 +889,6 @@ input[type='checkbox'] {
    border: 1px solid var(--border-strong);
 }
 
-/* The readout where the mats meet. Each player's life sits in the corner nearest their board. */
-/* The row gap is the seam between the two halves of the table — wider than the column gap so
-   each readout still reads as belonging to the board behind it, now that nothing sits between
-   them (the damage matrix that used to hold the middle row is gone; see CrossroadsHub). */
-.crossroads {
-   grid-area: cross;
-   place-self: center;
-   display: grid;
-   gap: 1.5rem 1.2rem;
-   z-index: 2;
-}
-
-.crossroads.quad {
-   grid-template-areas: "top-left . top-right" "bottom-left . bottom-right";
-}
-
-.crossroads.stacked {
-   grid-template-areas: "top" "bottom";
-}
-
-/* Shadowed so it reads as floating over the table rather than as part of whichever mat it is
-   nearest, should a tall board ever grow far enough to meet it. */
-.life-readout {
-   display: flex;
-   flex-direction: column;
-   align-items: center;
-   gap: 0.15rem;
-   background: var(--surface);
-   border: 2px solid var(--border-strong);
-   border-radius: var(--radius-lg);
-   padding: 0.3rem 0.6rem;
-   min-width: 130px;
-   box-shadow: var(--shadow);
-   transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.life-readout.eliminated {
-   opacity: 0.5;
-}
-
-.life-readout.turn-theirs {
-   border-color: var(--accent-turn);
-   box-shadow: 0 0 0 4px rgba(232, 179, 60, 0.13), var(--shadow);
-}
-
-.life-readout.turn-mine {
-   border-color: var(--accent);
-   box-shadow: 0 0 0 4px rgba(90, 169, 230, 0.14), var(--shadow);
-}
-
-.readout-name {
-   font-size: 0.75rem;
-   color: var(--text-dim);
-   white-space: nowrap;
-}
-
-/* Read-only: the numbers are written from their owner's own HUD (see .vitals-pad), so the
-   readout is sized to be legible across a zoomed-out plane rather than to be clicked. */
-.readout-life {
-   font-size: 1.6rem;
-   line-height: 1;
-   font-weight: 600;
-}
-
-/* Poison and commander damage only appear once there is any, so the row is usually empty and
-   costs the box no height. It wraps rather than widening the box: three opponents' commanders
-   would otherwise stretch every readout on the table to fit the worst case. */
-.readout-badges {
-   display: flex;
-   flex-wrap: wrap;
-   justify-content: center;
-   gap: 0.25rem;
-}
-
 .poison,
 .cmdr-damage {
    font-size: 0.75rem;
@@ -950,10 +897,10 @@ input[type='checkbox'] {
 }
 
 /* One lethal treatment wherever a number can be lethal. Your own life is deliberately on screen
-   twice — the crossroads reports it for everyone, the vitals pad is where you write your own row
-   — but the two used to go red in different shapes, which read as two unrelated designs rather
+   twice — your board reports it for everyone, the vitals pad is where you write your own row —
+   but the two used to go red in different shapes, which read as two unrelated designs rather
    than as one fact seen twice. The pad's pill radius wins, since it is a real pill. */
-.readout-life.lethal,
+.board-life.lethal,
 .poison.lethal,
 .cmdr-damage.lethal,
 .damage-value.lethal,
@@ -965,7 +912,7 @@ input[type='checkbox'] {
 }
 
 /* The bare numbers have no pill of their own, so the tint has to make its own room. */
-.readout-life.lethal,
+.board-life.lethal,
 .poison.lethal,
 .cmdr-damage.lethal,
 .damage-value.lethal {
@@ -1038,9 +985,14 @@ input[type='checkbox'] {
    still sizes its middle column to its contents, which the row below can no longer afford to do;
    both are centred on the same line either way. The third column of `.hud-row` is left empty on
    purpose so the hand stays centred too. */
+/* The two pads and the zone dock. The vitals and the dock take the width their controls need
+   and the mana pad takes what is left — it is the one of the three that wraps gracefully, being
+   six identical pips. The other way round, with the pads sharing the width equally, the vitals
+   overflowed a column too narrow for them and slid under the pips, which then swallowed clicks
+   meant for the poison pill. */
 .hud-top {
    display: grid;
-   grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+   grid-template-columns: auto minmax(0, 1fr) auto;
    align-items: center;
    gap: 0.75rem;
 }
@@ -1200,6 +1152,8 @@ input[type='checkbox'] {
 .zone-dock {
    position: relative;
    display: flex;
+   flex-wrap: wrap;
+   justify-content: flex-end;
    gap: 0.4rem;
    flex-shrink: 0;
 }
@@ -1533,9 +1487,18 @@ input[type='checkbox'] {
    gap: 0.35rem;
 }
 
+/* The step's prose, kept together on one baseline: your own decision and the table's, read as
+   one sentence rather than as a label wedged between two buttons. */
+.setup-status {
+   display: flex;
+   align-items: baseline;
+   gap: 0.4rem;
+}
+
 .setup-kept {
    color: #7fd6a4;
    font-weight: 600;
+   font-size: 0.78rem;
 }
 
 .setup-waiting {
@@ -1758,10 +1721,14 @@ input[type='checkbox'] {
    cursor: default;
 }
 
-/* Life and poison, poked the same way mana is — the two sit side by side in the HUD's top strip
-   and reading alike keeps it from looking like two unrelated toolbars. */
+/* Life, poison and commander damage, poked the same way mana is — they sit side by side in the
+   HUD's top strip and reading alike keeps it from looking like two unrelated toolbars.
+   It wraps for the same reason the mana pad does: its grid column is free to shrink below its
+   content (.hud-top), and three pills that cannot wrap would slide under the pad beside them
+   instead — which put the poison pill's buttons behind a mana pip that swallowed the click. */
 .vitals-pad {
    display: flex;
+   flex-wrap: wrap;
    align-items: center;
    gap: 0.35rem;
    font-size: 0.85rem;
@@ -1797,6 +1764,14 @@ button.vital-count:hover {
    styling a <button> would otherwise fight. */
 .damage-menu {
    position: relative;
+}
+
+/* That pill is the only one with no −/+ of its own, and those are what give every other pill its
+   height — left alone it sits visibly short beside life and poison, which reads as three sizes of
+   one control rather than one row. The height is the pill's own arithmetic: a 1.7rem button (the
+   rule above), the pill's padding, and its border. */
+.damage-menu button.vital {
+   min-height: calc(1.7rem + 0.3rem + 2px);
 }
 
 button.vital {
@@ -2384,8 +2359,14 @@ button.vital:hover {
    font-size: 0.8rem;
 }
 
-.context-menu button:hover {
+.context-menu button:hover:not(:disabled) {
    background: #343a44;
+}
+
+/* The plane menu offers zoom in both directions, and either end of the scale can be reached. */
+.context-menu button:disabled {
+   opacity: 0.4;
+   cursor: default;
 }
 
 .context-menu hr {

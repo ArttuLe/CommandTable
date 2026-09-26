@@ -1,5 +1,5 @@
 // The thresholds that mean "this player is dead", and the two readings of the commander damage
-// grid that the UI actually asks for. Both the crossroads readouts and the HUD's vitals pad show
+// grid that the UI actually asks for. Both the boards' readouts and the HUD's vitals pad show
 // these numbers, so they have to agree on when to flag one.
 
 import type { ObjectId, PlayerState } from '@command-table/common';

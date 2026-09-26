@@ -123,7 +123,7 @@ and it earns its place: the alternative was every player hand-clearing a dead cr
 counters before it could be reused.
 
 The table is a pan-and-zoom plane holding every player's mat, laid out the way the group would
-sit around a physical table (`Plane.tsx`, `seating.ts`, `Board.tsx`, `CrossroadsHub.tsx`). You
+sit around a physical table (`Plane.tsx`, `seating.ts`, `Board.tsx`). You
 are always bottom-left and the other players run clockwise from you in turn order
 (`PlayerState.seat`), so the player who acts after you is the one on your left; two-player games
 stack vertically instead, since there's no clockwise worth modelling with one opponent. Each mat
@@ -135,26 +135,34 @@ changes band as the board fills. The mirroring is a CSS flip (`column-reverse` o
 board and its battlefield) over one `Board` component and one child order, not two layouts to
 keep in sync.
 
-Life, poison and commander damage live at the crossroads where the mats meet, each player's
-readout in the corner nearest their own board. Those readouts only *report*: a name, a life
-total, and a badge row that carries a ☠ poison count and a ⚔ badge per commander that has
-actually connected — nothing while there is nothing to say, so an untouched board shows a bare
-number. Which commander a ⚔ badge belongs to is in its hover title, not on its face; the badge
-has to stay readable at the zoom where a whole four-player table fits on screen.
+Life, poison and commander damage ride in each board's header, beside the name they belong to —
+where a physical table keeps them, behind the seat. They only *report*: a life total, a ☠ poison
+count, and a ⚔ badge per commander that has actually connected — nothing while there is nothing
+to say, so an untouched board shows a bare number. Which commander a ⚔ badge belongs to is in its
+hover title, not on its face; the badge has to stay readable at the zoom where a whole
+four-player table fits on screen. They used to sit out at the crossroads where the mats meet,
+which cost a readout's width of table between every pair of boards and gave each number a board
+it was merely *nearer*; the mats took that width back, and the boards are wider for it.
 
 Everything on it is written from the vitals pad in your own bottom HUD (`ActionBar.tsx`, beside
-the mana pad): −1/+1 life, a ±N dialog, poison −/+, and a ⚔ button — wearing your worst single
-commander total — that opens a list of the other players' commanders with −/+ each. Nobody edits
-a neighbour's numbers; you record what you took, the way you would across a physical table. That
-also keeps the readout a number you read at a glance rather than a cluster of small buttons
+the mana pad): three pills of the same shape — ❤ life (whose number is also the button for a ±N
+dialog), ☠ poison, and ⚔ commander damage. With one opponent's commander on the table the ⚔ pill
+takes −/+ directly, because "which commander" is a question with one answer; a bigger table keeps
+a list behind it, the pill then wearing your worst single total. Nobody edits a neighbour's
+numbers; you record what you took, the way you would across a physical table. That also keeps
+each board's readout a number you read at a glance rather than a cluster of small buttons
 repeated once per seat. The N×N damage matrix that used to sit at the crossroads is gone: with
-badges on every box and an editor in your own HUD it was a third copy of the same numbers.
+badges on every board and an editor in your own HUD it was a third copy of the same numbers.
 
 Pan by dragging the background, zoom with the wheel (exponential on the wheel delta, so
-trackpads stay smooth and notched mice don't jump a step per click), or use the −/Fit/+
-controls. The view refits only when the number of boards changes, never mid-turn — unless the
-settings gear's "follow the active player" is on, in which case each turn the plane glides to
-the new active player's mat and zooms in on it (`focusView` in `planeView.ts` frames the rect;
+trackpads stay smooth and notched mice don't jump a step per click), or use the −/Fit/+ controls.
+Right-clicking the background offers the same three commands at the cursor — zooming around the
+point you clicked rather than the middle of the screen — along with the follow toggle below, and
+`F` fits from the keyboard.
+
+The view refits only when the number of boards changes, never mid-turn — unless "follow the
+active player" is on (the settings gear, or the table's own right-click menu), in which case each
+turn the plane glides to the new active player's mat and zooms in on it (`focusView` in `planeView.ts` frames the rect;
 the easing is a CSS transition added for the glide and removed after, so dragging stays
 frame-tight). It's off by default; middle-clicking the table does the same glide once, on
 demand, to whoever is active at that moment — captured, not tracked, so the view stays put
@@ -194,7 +202,7 @@ one column on a narrow window; deck warnings reuse the coloured-left-border trea
 toasts use, so a caution reads the same on every screen.
 
 Whose turn it is, is a ring: amber around the active player's mat, blue when it's yours, mirrored
-on their life readout at the crossroads so it reads even when their mat is panned off-screen. The
+on the turn badge in their board's header, beside their life. The
 rule lives in `turnStatus.ts` behind unit tests. `TurnTracker.phase` is deliberately not shown —
 nothing mutates it (there's no `SET_PHASE` action), so it would permanently read "main".
 
@@ -273,8 +281,8 @@ packages/
             table factory, action applier (dispatch + actions/{object,zone,player,meta}Actions.ts),
             projection boundary, table history + undo, and the dev-only devtest/ table fixture
   client/   Minimal React client: Home (create/join room) → Lobby (seats, decklist, ready/start)
-            → Table (a pan/zoom plane of per-player boards, the read-only crossroads life
-            readout, collapsible chat and log rails either side of it, an SVG arrow overlay for
+            → Table (a pan/zoom plane of per-player boards, each header carrying that player's
+            read-only life, collapsible chat and log rails either side of it, an SVG arrow overlay for
             blocks and spell targets, and a fixed bottom band of hand + vitals + mana +
             zones + actions, wired
             straight to the WebSocket via a Zustand store)
@@ -410,8 +418,9 @@ npm run test:e2e
 
 Playwright, in `e2e/`. These drive a real browser against `/devtest/:playerAmount/:playerName` to
 cover what the pure-logic modules structurally cannot: measured layout and the CSS acting on it
-(the hand fan clearing the action bar, the context menu staying reachable), and anything two
-clients have to agree about (the change pulse landing on the same card on both screens). Because
+(the hand fan clearing the action bar, the context menu staying reachable), which of two menus a
+right-click opens, and anything two clients have to agree about (the change pulse landing on the
+same card on both screens, one player's life landing on their own board on everyone's). Because
 the route is behind `import.meta.env.DEV`, they run against the Vite dev server and never a build.
 
 The suite starts a server and a Vite of its own on 8091/5174, so it neither collides with a
@@ -658,8 +667,8 @@ assuming a change compiles.
   §8.3 the life total as separate actions, and doing both by hand is how the two readouts drift
   apart. The HUD's ⚔ ±1 buttons fire both. They stay two actions in the log, so an undo reverts
   one half — worth it against forgetting the second click every combat.
-- **Nothing in the client writes another player's life:** every readout at the crossroads is
-  read-only and the vitals pad only ever targets `playerId`, so the damage you dealt is recorded
+- **Nothing in the client writes another player's life:** every board's readout is read-only and
+  the vitals pad only ever targets `playerId`, so the damage you dealt is recorded
   by the player who took it. `SET_LIFE` still takes a list of players, but nothing in the client
   aims it at anyone but yourself any more — "Adjust all life…" was the last caller that did, and
   it is gone. The gap this leaves is a disconnected player whose total has drifted: nobody can

@@ -6,7 +6,6 @@ import { CardTile } from './CardTile.js';
 import { ContextMenu } from './ContextMenu.js';
 import { Plane } from './Plane.js';
 import { Board } from './Board.js';
-import { CrossroadsHub } from './CrossroadsHub.js';
 import { SetupStep } from './SetupStep.js';
 import { ArrowLayer } from './ArrowLayer.js';
 import { combatRelations } from './combat.js';
@@ -89,6 +88,7 @@ export function Table() {
   const dismissedCommanders = useUiStore((s) => s.dismissedCommanders);
   const dismissCommander = useUiStore((s) => s.dismissCommander);
   const followActivePlayer = useUiStore((s) => s.followActivePlayer);
+  const toggleFollowActivePlayer = useUiStore((s) => s.toggleFollowActivePlayer);
   const dialogOpen = useUiStore((s) => s.openDialogs > 0);
   const bumpMana = useUiStore((s) => s.bumpMana);
   const resetMana = useUiStore((s) => s.resetMana);
@@ -99,6 +99,11 @@ export function Table() {
   // rather than read live, so that with following switched off the view stays where it was put
   // instead of chasing the next turn. The nonce lets the same player be asked for twice running.
   const [focusRequest, setFocusRequest] = useState<{ key: PlayerId; nonce: number } | null>(null);
+
+  // Bumped by the F shortcut. Plane already refits whenever its fitKey changes, so asking for a
+  // fit is a change to that key — no second channel into the component, and the keyboard guards
+  // that keep shortcuts out of dialogs and text fields stay in the one place they live.
+  const [fitNonce, setFitNonce] = useState(0);
 
   const [menu, setMenu] = useState<{ obj: ProjectedObject; x: number; y: number } | null>(null);
   const [manaChoice, setManaChoice] = useState<ManaChoicePrompt | null>(null);
@@ -175,6 +180,9 @@ export function Table() {
         case 'z':
           undoLast();
           break;
+        case 'f':
+          setFitNonce((n) => n + 1);
+          break;
         case 'escape':
           useUiStore.getState().clearSelection();
           // Escape is already "stop what you were about to do"; an armed arrow is that.
@@ -199,7 +207,7 @@ export function Table() {
   const myHand = inZone(playerId, 'hand');
   const fan = useFanOverlap(myHand.length);
 
-  // §12.3: every commander on the table, for the crossroads damage badges and the commander
+  // §12.3: every commander on the table, for the boards' damage badges and the commander
   // prompt; your own HUD only offers the ones that can actually hit you.
   const allCommanders: CommanderRef[] = tableState.players.flatMap((owner) =>
     owner.commanderIds.map((id) => ({
@@ -314,10 +322,11 @@ export function Table() {
           onSend={(text) => act({ t: 'SAY', playerId, text })}
         />
 
-        {/* Refit only when the number of boards changes — the plane's size changes then, and a
-            view that re-centered itself every time someone played a card would be unusable. */}
+        {/* Refit when the number of boards changes — the plane's size changes then, and a view
+            that re-centered itself every time someone played a card would be unusable — or when
+            F is pressed, which is the same request made on purpose. */}
         <Plane
-          fitKey={seats.length}
+          fitKey={`${seats.length}:${fitNonce}`}
           // Following re-aims every turn on its own; a middle-click only ever aims once.
           focus={
             followActivePlayer
@@ -327,6 +336,8 @@ export function Table() {
           onFocusRequest={() =>
             setFocusRequest((prev) => ({ key: tableState.turn.activePlayerId, nonce: (prev?.nonce ?? 0) + 1 }))
           }
+          following={followActivePlayer}
+          onToggleFollow={toggleFollowActivePlayer}
         >
           <div className={`mats ${seats.length <= 2 ? 'stacked' : 'quad'}`}>
             {seats.map((seat) => {
@@ -343,6 +354,7 @@ export function Table() {
                   libraryCount={tableState.libraryCounts[player.id]}
                   battlefield={inZone(player.id, 'battlefield')}
                   commandZone={inZone(player.id, 'commandZone')}
+                  allCommanders={allCommanders}
                   commanderCastCount={player.commanderCastCount}
                   // Tapping your own permanent also fills your mana pad with what it makes
                   // (§8.4 — the pad is client-local, so this never leaves the browser). One
@@ -378,14 +390,6 @@ export function Table() {
               );
             })}
 
-            <CrossroadsHub
-              players={tableState.players}
-              seats={seats}
-              turn={tableState.turn}
-              myId={playerId}
-              allCommanders={allCommanders}
-            />
-
             {/* Last child of the mats so it paints over them, and inside the plane so it moves
                 with them. `revision` is what tells it a card may have shifted. */}
             <ArrowLayer relations={relations} revision={tableState.revision} />
@@ -419,8 +423,8 @@ export function Table() {
         {/* Mana and your zones share the top strip: both are read-and-poke controls that want to
             be near the hand without stealing any of its height. */}
         <div className="hud-top">
-          {/* Your life and poison are written here and read at the crossroads: the readouts out
-              on the plane are a scoreboard, and only their owner's own HUD changes a row of it. */}
+          {/* Your life and poison are written here and read off your board: the readouts out on
+              the plane are a scoreboard, and only their owner's own HUD changes a row of it. */}
           <VitalsPad
             player={me}
             commanders={opposingCommanders}

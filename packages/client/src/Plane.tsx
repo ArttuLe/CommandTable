@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { placeMenu } from './menuPlacement.js';
 import { MAX_SCALE, MIN_SCALE, fitView, focusView, zoomAt, type View } from './planeView.js';
 
 const FIT_PADDING = 24;
@@ -40,17 +41,23 @@ export function Plane({
   fitKey,
   focus,
   onFocusRequest,
+  following,
+  onToggleFollow,
 }: {
   children: React.ReactNode;
   fitKey: unknown;
   focus?: PlaneFocus | null;
   onFocusRequest?: () => void;
+  /** Whether the view is currently chasing the active player, for the menu to report. */
+  following?: boolean;
+  onToggleFollow?: () => void;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<View>({ x: 0, y: 0, scale: 1 });
   const [panning, setPanning] = useState(false);
   const [gliding, setGliding] = useState(false);
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
   const panRef = useRef<{ startX: number; startY: number; origin: View } | null>(null);
 
   const fit = useCallback(() => {
@@ -163,11 +170,25 @@ export function Plane({
     setPanning(true);
   }
 
-  function zoomByButton(factor: number) {
+  // Around a viewport point, defaulting to the middle: the zoom buttons have no cursor to keep
+  // anything under, but the context menu does — it zooms around where you right-clicked.
+  function zoomBy(factor: number, at?: { x: number; y: number }) {
     const viewport = viewportRef.current;
     if (!viewport) return;
-    const center = { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
-    setView((v) => zoomAt(v, center, factor));
+    const rect = viewport.getBoundingClientRect();
+    const point = at
+      ? { x: at.x - rect.left, y: at.y - rect.top }
+      : { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
+    setView((v) => zoomAt(v, point, factor));
+  }
+
+  // The table's own right-click menu. A card's menu wins on a card (CardTile binds its own), and
+  // the same guard as panning decides what counts as the table: the background, not the chrome
+  // sitting on it.
+  function onContextMenu(e: React.MouseEvent) {
+    if ((e.target as HTMLElement).closest('.card-tile, button, input, table')) return;
+    e.preventDefault();
+    setMenuAt({ x: e.clientX, y: e.clientY });
   }
 
   return (
@@ -175,6 +196,7 @@ export function Plane({
       className={`plane-viewport ${panning ? 'panning' : ''}`}
       ref={viewportRef}
       onMouseDown={onMouseDown}
+      onContextMenu={onContextMenu}
       // Firefox fires the autoscroll on auxclick rather than mousedown, so both need suppressing.
       onAuxClick={(e) => e.button === 1 && e.preventDefault()}
     >
@@ -187,16 +209,102 @@ export function Plane({
       </div>
 
       <div className="plane-controls">
-        <button onClick={() => zoomByButton(1 / BUTTON_ZOOM_STEP)} disabled={view.scale <= MIN_SCALE} title="Zoom out">
+        <button onClick={() => zoomBy(1 / BUTTON_ZOOM_STEP)} disabled={view.scale <= MIN_SCALE} title="Zoom out">
           −
         </button>
-        <button onClick={fit} title="Fit the whole table on screen">
+        <button onClick={fit} title="Fit the whole table on screen (F)">
           Fit
         </button>
-        <button onClick={() => zoomByButton(BUTTON_ZOOM_STEP)} disabled={view.scale >= MAX_SCALE} title="Zoom in">
+        <button onClick={() => zoomBy(BUTTON_ZOOM_STEP)} disabled={view.scale >= MAX_SCALE} title="Zoom in">
           +
         </button>
       </div>
+
+      {menuAt && (
+        <PlaneMenu
+          at={menuAt}
+          scale={view.scale}
+          onZoom={(factor) => zoomBy(factor, menuAt)}
+          onFit={fit}
+          following={following}
+          onToggleFollow={onToggleFollow}
+          onClose={() => setMenuAt(null)}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * The plane's context menu: the three commands the corner controls carry and the one view
+ * setting, where the cursor already is. The controls stay — they are what a first-time player
+ * finds — but reaching a corner, or the settings gear, is a trip away from the board you are
+ * looking at.
+ *
+ * Measured, then placed, for the same reason the card menu is (see menuPlacement.ts): it is fixed
+ * at the cursor, and a right-click near the bottom edge would otherwise run it off-screen.
+ */
+function PlaneMenu({
+  at,
+  scale,
+  onZoom,
+  onFit,
+  following,
+  onToggleFollow,
+  onClose,
+}: {
+  at: { x: number; y: number };
+  scale: number;
+  onZoom: (factor: number) => void;
+  onFit: () => void;
+  following?: boolean;
+  onToggleFollow?: () => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    setPos(placeMenu(at, { width, height }, { width: window.innerWidth, height: window.innerHeight }));
+  }, [at]);
+
+  function run(fn: () => void) {
+    fn();
+    onClose();
+  }
+
+  return (
+    <>
+      <div className="context-menu-backdrop" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }} />
+      <div
+        ref={ref}
+        className="context-menu"
+        style={{ left: pos?.left ?? at.x, top: pos?.top ?? at.y, visibility: pos ? 'visible' : 'hidden' }}
+      >
+        <div className="context-menu-title">The table</div>
+        <button disabled={scale >= MAX_SCALE} onClick={() => run(() => onZoom(BUTTON_ZOOM_STEP))}>
+          Zoom in
+        </button>
+        <button disabled={scale <= MIN_SCALE} onClick={() => run(() => onZoom(1 / BUTTON_ZOOM_STEP))}>
+          Zoom out
+        </button>
+        <button onClick={() => run(onFit)}>Fit the whole table</button>
+
+        {/* The same setting the gear carries, offered where the view it acts on is. The label
+            says what the click will do rather than what is on, which is the idiom the card menu
+            already uses for Tap/Untap. */}
+        {onToggleFollow && (
+          <>
+            <hr />
+            <button onClick={() => run(onToggleFollow)}>
+              {following ? 'Stop following the active player' : 'Follow the active player'}
+            </button>
+          </>
+        )}
+      </div>
+    </>
   );
 }
