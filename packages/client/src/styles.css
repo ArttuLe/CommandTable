@@ -2331,8 +2331,14 @@ button.vital:hover {
    font-size: 0.8rem;
 }
 
-.context-menu button:hover {
+.context-menu button:hover:not(:disabled) {
    background: #343a44;
+}
+
+/* The plane menu offers zoom in both directions, and either end of the scale can be reached. */
+.context-menu button:disabled {
+   opacity: 0.4;
+   cursor: default;
 }
 
 .context-menu hr {

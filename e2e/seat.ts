@@ -7,8 +7,10 @@
 // server process it started itself, so each count begins the run untouched.
 //
 //   2  opening-hand.spec.ts   exclusively — it is the only spec that needs setupComplete false
-//   3  targeting, change-pulse  they start play and play a card; neither minds the other's mess
-//   4  context-menu, hand-fan   read-only after starting play, and hand-fan needs all seven cards
+//   3  targeting, change-pulse, board-vitals  they start play and play a card or move a number;
+//                                             none of them minds what the others left behind
+//   4  context-menu, hand-fan, plane-menu   read-only after starting play (plane-menu only moves
+//                                           its own camera), and hand-fan needs all seven cards
 //
 // Two rules keep that true, and both break quietly if ignored: nothing else may use 2 seats, and
 // nothing that plays a card may join the 4-seat bucket (hand-fan asserts the hand is crowded,

@@ -99,6 +99,11 @@ export function Table() {
   // instead of chasing the next turn. The nonce lets the same player be asked for twice running.
   const [focusRequest, setFocusRequest] = useState<{ key: PlayerId; nonce: number } | null>(null);
 
+  // Bumped by the F shortcut. Plane already refits whenever its fitKey changes, so asking for a
+  // fit is a change to that key — no second channel into the component, and the keyboard guards
+  // that keep shortcuts out of dialogs and text fields stay in the one place they live.
+  const [fitNonce, setFitNonce] = useState(0);
+
   const [menu, setMenu] = useState<{ obj: ProjectedObject; x: number; y: number } | null>(null);
   const [manaChoice, setManaChoice] = useState<ManaChoicePrompt | null>(null);
   const openMenu = (obj: ProjectedObject) => (e: React.MouseEvent) => {
@@ -173,6 +178,9 @@ export function Table() {
           break;
         case 'z':
           undoLast();
+          break;
+        case 'f':
+          setFitNonce((n) => n + 1);
           break;
         case 'escape':
           useUiStore.getState().clearSelection();
@@ -313,10 +321,11 @@ export function Table() {
           onSend={(text) => act({ t: 'SAY', playerId, text })}
         />
 
-        {/* Refit only when the number of boards changes — the plane's size changes then, and a
-            view that re-centered itself every time someone played a card would be unusable. */}
+        {/* Refit when the number of boards changes — the plane's size changes then, and a view
+            that re-centered itself every time someone played a card would be unusable — or when
+            F is pressed, which is the same request made on purpose. */}
         <Plane
-          fitKey={seats.length}
+          fitKey={`${seats.length}:${fitNonce}`}
           // Following re-aims every turn on its own; a middle-click only ever aims once.
           focus={
             followActivePlayer
