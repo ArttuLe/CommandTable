@@ -36,12 +36,9 @@ export function SetupStep({
 
       <div className="setup-actions">
         {me?.keptHand ? (
-          <>
-            <span className="setup-kept">You kept.</span>
-            <button className="btn" onClick={() => act({ t: 'MULLIGAN', playerId })}>
-              Mulligan anyway
-            </button>
-          </>
+          <button className="btn" onClick={() => act({ t: 'MULLIGAN', playerId })}>
+            Mulligan anyway
+          </button>
         ) : (
           <>
             <button className="btn" onClick={() => act({ t: 'MULLIGAN', playerId })}>
@@ -54,11 +51,17 @@ export function SetupStep({
         )}
       </div>
 
-      {/* Who everyone is waiting on, so nobody has to ask out loud. */}
-      <span className="setup-waiting">
-        {waiting.length === 0
-          ? 'Everyone has kept.'
-          : `Still deciding: ${waiting.map((p) => p.displayName).join(', ')}`}
+      {/* Where the step stands: your own decision, then whoever everybody is waiting on, so
+          nobody has to ask out loud. Both are prose and read as one sentence, which is why "You
+          kept." sits here rather than in among the buttons — it is a statement about the table,
+          not a control. */}
+      <span className="setup-status">
+        {me?.keptHand && <span className="setup-kept">You kept.</span>}
+        <span className="setup-waiting">
+          {waiting.length === 0
+            ? 'Everyone has kept.'
+            : `Still deciding: ${waiting.map((p) => p.displayName).join(', ')}`}
+        </span>
       </span>
 
       {isHost && (

@@ -1480,9 +1480,18 @@ input[type='checkbox'] {
    gap: 0.35rem;
 }
 
+/* The step's prose, kept together on one baseline: your own decision and the table's, read as
+   one sentence rather than as a label wedged between two buttons. */
+.setup-status {
+   display: flex;
+   align-items: baseline;
+   gap: 0.4rem;
+}
+
 .setup-kept {
    color: #7fd6a4;
    font-weight: 600;
+   font-size: 0.78rem;
 }
 
 .setup-waiting {

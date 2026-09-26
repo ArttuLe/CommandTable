@@ -26,6 +26,13 @@ test('mulligan, keep, and the host starting the game', async ({ browser }) => {
   // Keeping is reported to the other seat, not just this one.
   await alice.getByRole('button', { name: 'Keep', exact: true }).click();
   await expect(alice.locator('.setup-kept')).toBeVisible();
+
+  // "You kept." is prose, and sits on the line with the step's other prose rather than in among
+  // the buttons — same row, same baseline, whatever the two of them say.
+  const kept = (await alice.locator('.setup-kept').boundingBox())!;
+  const waiting = (await alice.locator('.setup-waiting').boundingBox())!;
+  expect(kept.y + kept.height).toBeCloseTo(waiting.y + waiting.height, 0);
+
   await expect(bob.locator('.setup-waiting')).toHaveText(/Bob/);
   await expect(bob.locator('.setup-waiting')).not.toHaveText(/Alice/);
 
