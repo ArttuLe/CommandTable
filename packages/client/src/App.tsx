@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { joinDevTable } from './api.js';
+import { parseDevRoute } from './devRoute.js';
 import { loadSession } from './session.js';
 import { useStore } from './store.js';
 import { useUiStore } from './uiStore.js';
@@ -14,13 +16,25 @@ export function App() {
   const hoveredCard = useUiStore((s) => s.hoveredCard);
   const status = useStore((s) => s.status);
   const resume = useStore((s) => s.resume);
+  const showError = useStore((s) => s.showError);
 
   // Refresh recovery: this tab owned the stored session, so take the seat back without asking.
   // A session belonging to some other tab is offered on Home instead (see session.ts).
+  //
+  // /devtest/:playerAmount/:playerName comes first and wins: the URL names the seat, so whatever
+  // this browser happened to have stored is not what was asked for. Dev builds only — the check
+  // is a constant Vite folds away, so the route does not exist in a built client (devRoute.ts).
   useEffect(() => {
+    const dev = import.meta.env.DEV ? parseDevRoute(window.location.pathname) : null;
+    if (dev) {
+      joinDevTable(dev.playerAmount, dev.playerName)
+        .then((seat) => resume({ ...seat, secret: 'dev' }))
+        .catch((e: Error) => showError(e.message));
+      return;
+    }
     const stored = loadSession();
     if (stored?.sameTab) resume(stored.session);
-  }, [resume]);
+  }, [resume, showError]);
 
   return (
     <>

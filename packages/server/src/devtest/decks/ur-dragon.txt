@@ -1,0 +1,67 @@
+// Dev-only fixture deck. See ../devTable.ts.
+
+Commander
+1 The Ur-Dragon
+
+Deck
+1 Sol Ring
+1 Arcane Signet
+1 Chromatic Lantern
+1 Commander's Sphere
+1 Darksteel Ingot
+1 Coalition Relic
+1 Dragon's Hoard
+1 Herald's Horn
+1 Cultivate
+1 Kodama's Reach
+1 Farseek
+1 Nature's Lore
+1 Explosive Vegetation
+1 Skyshroud Claim
+1 Birds of Paradise
+1 Bloom Tender
+1 Dragonspeaker Shaman
+1 Dragonlord's Servant
+1 Utvara Hellkite
+1 Dragonlord Dromoka
+1 Dragonlord Ojutai
+1 Dragonlord Silumgar
+1 Dragonlord Kolaghan
+1 Dragonlord Atarka
+1 Scourge of Valkas
+1 Steel Hellkite
+1 Balefire Dragon
+1 Hellkite Charger
+1 Terror of the Peaks
+1 Old Gnawbone
+1 Ancient Copper Dragon
+1 Miirym, Sentinel Wyrm
+1 Lathliss, Dragon Queen
+1 Savage Ventmaw
+1 Thunderbreak Regent
+1 Stormbreath Dragon
+1 Glorybringer
+1 Dragon Tempest
+1 Crux of Fate
+1 Blasphemous Act
+1 Swords to Plowshares
+1 Beast Within
+1 Anguished Unmaking
+1 Cyclonic Rift
+1 Rhystic Study
+1 Harmonize
+1 Return of the Wildspeaker
+1 Command Tower
+1 Path of Ancestry
+1 Exotic Orchard
+1 Haven of the Spirit Dragon
+1 Evolving Wilds
+1 Terramorphic Expanse
+1 Jungle Shrine
+1 Crumbling Necropolis
+1 Sandsteppe Citadel
+9 Mountain
+9 Forest
+8 Plains
+8 Island
+9 Swamp

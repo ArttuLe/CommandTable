@@ -17,10 +17,14 @@ import { TableHistory } from './tableHistory.js';
 import { applyUndo } from './undo.js';
 import { checkSecret, resolveHostSecret } from './hostSecret.js';
 import { SessionStore, type SessionEntry } from './sessionStore.js';
+import { buildDevTable, devSeatName, MAX_DEV_PLAYERS, MIN_DEV_PLAYERS } from './devtest/devTable.js';
 
 const PORT = Number(process.env.PORT ?? 8080);
 const DB_PATH = process.env.CARD_DB_PATH ?? './data/cards.sqlite3';
 const SESSION_PATH = process.env.SESSION_PATH ?? './data/sessions.json';
+// Set only by `npm run dev` (scripts/dev.ts). It drops the passphrase and opens /api/devtest —
+// both things that must never be true on a machine hosting a real game.
+const DEV_MODE = process.env.DEV_MODE === '1';
 
 const cardIndex = new CardIndex(new Database(DB_PATH, { readonly: true }));
 const roomManager = new RoomManager();
@@ -64,6 +68,14 @@ interface PendingUndo {
   votes: Map<PlayerId, boolean>;
 }
 const pendingUndosByRoom = new Map<RoomId, PendingUndo>();
+
+// One shared dev table per player count, so a second tab at /devtest/4/Bob sits down with the
+// /devtest/4/Alice already open rather than at a table of its own.
+const devRoomsByCount = new Map<number, { roomId: RoomId; rejoinTokensByName: Map<string, string> }>();
+
+function authorized(provided: string | undefined): boolean {
+  return DEV_MODE || checkSecret(HOST_SECRET, provided);
+}
 
 interface ConnectionState {
   roomId: RoomId | null;
@@ -111,7 +123,7 @@ function unregisterSocket(roomId: RoomId, playerId: PlayerId, socket: WebSocket)
 function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMessage): void {
   switch (raw.t) {
     case 'join': {
-      if (!checkSecret(HOST_SECRET, raw.secret)) {
+      if (!authorized(raw.secret)) {
         send(socket, { t: 'error', message: 'wrong passphrase' });
         return;
       }
@@ -391,7 +403,7 @@ const httpServer = createServer((req, res) => {
   }
 
   if (req.method === 'POST' && req.url === '/api/rooms') {
-    if (!checkSecret(HOST_SECRET, req.headers['x-host-secret'] as string | undefined)) {
+    if (!authorized(req.headers['x-host-secret'] as string | undefined)) {
       res.writeHead(403);
       res.end();
       return;
@@ -415,9 +427,39 @@ const httpServer = createServer((req, res) => {
     return;
   }
 
+  const devMatch = DEV_MODE && req.method === 'GET' && req.url?.match(/^\/api\/devtest\/(\d+)\/([^/?]+)$/);
+  if (devMatch) {
+    const playerAmount = Number(devMatch[1]);
+    const seatName = devSeatName(playerAmount, decodeURIComponent(devMatch[2]));
+    if (playerAmount < MIN_DEV_PLAYERS || playerAmount > MAX_DEV_PLAYERS || !seatName) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ message: `dev tables seat ${MIN_DEV_PLAYERS}-${MAX_DEV_PLAYERS} players, named in order from Alice` }));
+      return;
+    }
+    const dev = devTableFor(playerAmount);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ roomId: dev.roomId, displayName: seatName, rejoinToken: dev.rejoinTokensByName.get(seatName) }));
+    return;
+  }
+
   res.writeHead(404);
   res.end();
 });
+
+// Built on first ask and kept until the room goes away (a server restart with no dev session
+// file, say) — rebuilding per request would put every tab at a different table.
+function devTableFor(playerAmount: number): { roomId: RoomId; rejoinTokensByName: Map<string, string> } {
+  const existing = devRoomsByCount.get(playerAmount);
+  if (existing && roomManager.getRoom(existing.roomId)) return existing;
+
+  const { room, table, rejoinTokensByName } = buildDevTable(playerAmount, { roomManager, cardIndex });
+  tablesByRoom.set(room.roomId, table);
+  historiesByRoom.set(room.roomId, new TableHistory(table));
+  const entry = { roomId: room.roomId, rejoinTokensByName };
+  devRoomsByCount.set(playerAmount, entry);
+  sessions.markDirty();
+  return entry;
+}
 
 const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
@@ -461,5 +503,9 @@ httpServer.listen(PORT, () => {
   if (restoredCount > 0) {
     console.log(`Restored ${restoredCount} saved table(s) from ${SESSION_PATH}`);
   }
-  console.log(`Passphrase: ${HOST_SECRET}  (share it with your table; set HOST_SECRET to choose your own)`);
+  if (DEV_MODE) {
+    console.log('DEV_MODE: no passphrase required, /api/devtest is open');
+  } else {
+    console.log(`Passphrase: ${HOST_SECRET}  (share it with your table; set HOST_SECRET to choose your own)`);
+  }
 });
