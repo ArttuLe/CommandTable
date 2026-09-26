@@ -70,6 +70,26 @@ describe('session storage', () => {
     saveSession(SESSION, storages);
     expect(storedSecret(storages)).toBe('forest3');
   });
+
+  // The passphrase is the one piece of authentication in the stack, so it must not be sitting in
+  // storage that outlives the browser.
+  it('keeps the passphrase out of localStorage', () => {
+    saveSession(SESSION, storages);
+
+    expect(storages.local.getItem('command-table-session')).not.toContain('forest3');
+    expect(storages.tab.getItem('command-table-secret')).toBe('forest3');
+  });
+
+  // A restarted browser: localStorage survives, sessionStorage does not. Nothing resumes, and
+  // the passphrase has to be typed again.
+  it('offers no passphrase and no silent resume to a tab that has lost its sessionStorage', () => {
+    saveSession(SESSION, storages);
+    const restarted = { local: storages.local, tab: memoryStorage() };
+
+    expect(storedSecret(restarted)).toBe('');
+    expect(loadSession(restarted)?.sameTab).toBe(false);
+    expect(loadSession(restarted)?.session.secret).toBe('');
+  });
 });
 
 describe('decklist storage', () => {
