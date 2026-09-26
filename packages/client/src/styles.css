@@ -985,9 +985,14 @@ input[type='checkbox'] {
    still sizes its middle column to its contents, which the row below can no longer afford to do;
    both are centred on the same line either way. The third column of `.hud-row` is left empty on
    purpose so the hand stays centred too. */
+/* The two pads and the zone dock. The vitals and the dock take the width their controls need
+   and the mana pad takes what is left — it is the one of the three that wraps gracefully, being
+   six identical pips. The other way round, with the pads sharing the width equally, the vitals
+   overflowed a column too narrow for them and slid under the pips, which then swallowed clicks
+   meant for the poison pill. */
 .hud-top {
    display: grid;
-   grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+   grid-template-columns: auto minmax(0, 1fr) auto;
    align-items: center;
    gap: 0.75rem;
 }
@@ -1147,6 +1152,8 @@ input[type='checkbox'] {
 .zone-dock {
    position: relative;
    display: flex;
+   flex-wrap: wrap;
+   justify-content: flex-end;
    gap: 0.4rem;
    flex-shrink: 0;
 }
@@ -1714,10 +1721,14 @@ input[type='checkbox'] {
    cursor: default;
 }
 
-/* Life and poison, poked the same way mana is — the two sit side by side in the HUD's top strip
-   and reading alike keeps it from looking like two unrelated toolbars. */
+/* Life, poison and commander damage, poked the same way mana is — they sit side by side in the
+   HUD's top strip and reading alike keeps it from looking like two unrelated toolbars.
+   It wraps for the same reason the mana pad does: its grid column is free to shrink below its
+   content (.hud-top), and three pills that cannot wrap would slide under the pad beside them
+   instead — which put the poison pill's buttons behind a mana pip that swallowed the click. */
 .vitals-pad {
    display: flex;
+   flex-wrap: wrap;
    align-items: center;
    gap: 0.35rem;
    font-size: 0.85rem;
@@ -1753,6 +1764,14 @@ button.vital-count:hover {
    styling a <button> would otherwise fight. */
 .damage-menu {
    position: relative;
+}
+
+/* That pill is the only one with no −/+ of its own, and those are what give every other pill its
+   height — left alone it sits visibly short beside life and poison, which reads as three sizes of
+   one control rather than one row. The height is the pill's own arithmetic: a 1.7rem button (the
+   rule above), the pill's padding, and its border. */
+.damage-menu button.vital {
+   min-height: calc(1.7rem + 0.3rem + 2px);
 }
 
 button.vital {

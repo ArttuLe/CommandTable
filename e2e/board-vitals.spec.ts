@@ -49,3 +49,17 @@ test('poison appears on the board only once there is any', async ({ browser }) =
   await expect(boardOf(bob, 'Carol').locator('.poison')).toHaveCount(0);
 });
 
+// The three vitals read as one row of one control, which means one height — and the commander
+// pill is the one that can lose it: at three seats or more it opens a list instead of carrying
+// its own −/+, and those buttons are what give the other two their height (styles.css).
+test('life, poison and commander damage are the same height', async ({ browser }) => {
+  const alice = await openSeat(browser, 3, 'Alice');
+  await startPlay(alice, [await openSeat(browser, 3, 'Bob'), await openSeat(browser, 3, 'Carol')]);
+
+  const pills = alice.locator('.vitals-pad > .vital, .vitals-pad > .damage-menu > .vital');
+  await expect(pills).toHaveCount(3);
+
+  const heights = await pills.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+  expect(heights[1]).toBeCloseTo(heights[0], 1);
+  expect(heights[2]).toBeCloseTo(heights[0], 1);
+});

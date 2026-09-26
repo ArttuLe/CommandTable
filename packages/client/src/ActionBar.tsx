@@ -220,9 +220,9 @@ function MoreMenu({
   );
 }
 
-// §8.3 life and poison, and §12.3 commander damage, for yourself. The crossroads readouts
-// (CrossroadsHub) are the scoreboard everyone reads; this is the one place you write to your own
-// row of it, sat with the hand where your cursor already is rather than out on the plane.
+// §8.3 life and poison, and §12.3 commander damage, for yourself. The readouts in the board
+// headers (Board.tsx) are the scoreboard everyone reads; this is the one place you write to your
+// own row of it, sat with the hand where your cursor already is rather than out on the plane.
 export function VitalsPad({
   player,
   commanders,
@@ -258,19 +258,9 @@ export function VitalsPad({
         </button>
       </span>
 
-      <span className={`vital ${isLethalPoison(poison) ? 'lethal' : ''}`}>
-        <b className="vital-symbol">☠</b>
-        <span className="vital-count">{poison}</span>
-        {/* The server adds the delta as given (applyCounterUpdate), so the floor is held here. */}
-        <button disabled={poison === 0} onClick={() => onPoisonDelta(-1)}>
-          −
-        </button>
-        <button onClick={() => onPoisonDelta(1)}>
-          +
-        </button>
-      </span>
+      <VitalPill symbol="☠" value={poison} lethal={isLethalPoison(poison)} title="Poison counters" onDelta={onPoisonDelta} />
 
-      <CommanderDamageMenu player={player} commanders={commanders} onDelta={onCommanderDamageDelta} />
+      <CommanderDamage player={player} commanders={commanders} onDelta={onCommanderDamageDelta} />
 
       {adjusting && (
         <NumberDialog
@@ -290,13 +280,79 @@ export function VitalsPad({
 }
 
 /**
- * §12.3 commander damage, from the side that takes it. Behind a button rather than out in the
- * pad because it is consulted a few times a game where life is consulted constantly — and a
- * four-player table would otherwise park three permanent rows of zeroes in the strip.
- *
- * The button wears your worst single total, so the one number the 21 rule turns on is readable
- * without opening anything.
+ * Poison and commander damage: the symbol, the number, and −/+. One component because they are
+ * the same control twice, and reading alike is the point — the two sit beside life in one strip.
+ * Life itself is not one of these: its number is also a button (see VitalsPad).
  */
+function VitalPill({
+  symbol,
+  value,
+  lethal,
+  title,
+  onDelta,
+}: {
+  symbol: string;
+  value: number;
+  lethal: boolean;
+  title: string;
+  onDelta: (delta: number) => void;
+}) {
+  return (
+    <span className={`vital ${lethal ? 'lethal' : ''}`} title={title}>
+      <b className="vital-symbol">{symbol}</b>
+      <span className="vital-count">{value}</span>
+      {/* The server adds the delta as given (applyCounterUpdate), so the floor is held here. */}
+      <button disabled={value === 0} onClick={() => onDelta(-1)}>
+        −
+      </button>
+      <button onClick={() => onDelta(1)}>
+        +
+      </button>
+    </span>
+  );
+}
+
+/**
+ * §12.3 commander damage, from the side that takes it.
+ *
+ * With one opponent there is only ever one commander the damage can be coming from, so asking
+ * which is a question with one answer: the pill takes −/+ directly and is the poison pill in
+ * every other respect. A bigger table has a real question to ask, and keeps the list — the
+ * button then wears your worst single total, so the one number the 21 rule turns on is readable
+ * without opening anything.
+ *
+ * Nothing at all while no other commander is on the table: a pill whose buttons have nowhere to
+ * put the damage is worse than no pill.
+ */
+function CommanderDamage({
+  player,
+  commanders,
+  onDelta,
+}: {
+  player: PlayerState;
+  commanders: CommanderRef[];
+  onDelta: (fromCommanderObjectId: string, delta: number) => void;
+}) {
+  const [sole] = commanders;
+  if (!sole) return null;
+
+  if (commanders.length === 1) {
+    const damage = player.commanderDamageTaken[sole.id] ?? 0;
+    return (
+      <VitalPill
+        symbol="⚔"
+        value={damage}
+        lethal={isLethalCommanderDamage(damage)}
+        title="Commander damage taken"
+        // Each click also moves life (see Table) — commander damage *is* life lost.
+        onDelta={(delta) => onDelta(sole.id, delta)}
+      />
+    );
+  }
+
+  return <CommanderDamageMenu player={player} commanders={commanders} onDelta={onDelta} />;
+}
+
 function CommanderDamageMenu({
   player,
   commanders,
@@ -326,26 +382,22 @@ function CommanderDamageMenu({
       {open && (
         <div className="more-popover">
           <p className="popover-group">Commander damage taken</p>
-          {commanders.length === 0 ? (
-            <p className="popover-note">No other commanders on the table.</p>
-          ) : (
-            commanders.map((commander) => {
-              const damage = player.commanderDamageTaken[commander.id] ?? 0;
-              return (
-                <div key={commander.id} className="damage-row">
-                  <span className="damage-name">
-                    <CommanderName commander={commander} />
-                  </span>
-                  {/* Each click also moves life (see Table) — commander damage *is* life lost. */}
-                  <button disabled={damage === 0} onClick={() => onDelta(commander.id, -1)}>
-                    −
-                  </button>
-                  <span className={`damage-value ${isLethalCommanderDamage(damage) ? 'lethal' : ''}`}>{damage}</span>
-                  <button onClick={() => onDelta(commander.id, 1)}>+</button>
-                </div>
-              );
-            })
-          )}
+          {commanders.map((commander) => {
+            const damage = player.commanderDamageTaken[commander.id] ?? 0;
+            return (
+              <div key={commander.id} className="damage-row">
+                <span className="damage-name">
+                  <CommanderName commander={commander} />
+                </span>
+                {/* Each click also moves life (see Table) — commander damage *is* life lost. */}
+                <button disabled={damage === 0} onClick={() => onDelta(commander.id, -1)}>
+                  −
+                </button>
+                <span className={`damage-value ${isLethalCommanderDamage(damage) ? 'lethal' : ''}`}>{damage}</span>
+                <button onClick={() => onDelta(commander.id, 1)}>+</button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
