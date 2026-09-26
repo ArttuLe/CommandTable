@@ -1,6 +1,6 @@
 // A commander as the UI needs it: an id to key damage by, an owner, and the object its card
 // data hangs off. Lives on its own because three unrelated places name a commander — the
-// crossroads damage badges, the HUD's damage menu, and the status bar's "it's in your
+// boards' damage badges, the HUD's damage pill, and the status bar's "it's in your
 // graveyard" prompt — and none of them should have to import from one of the others.
 
 import type { ObjectId, PlayerId, ProjectedObject } from '@command-table/common';

@@ -2,7 +2,7 @@ import { isRedacted, type Card, type ProjectedObject } from '@command-table/comm
 
 // Where a permanent sits on its owner's mat.
 //
-// Three bands, running from the board's outer edge inward toward the crossroads: lands in front
+// Three bands, running from the board's outer edge inward toward the table's middle: lands in front
 // of their owner, ongoing non-creature permanents behind the line, and creatures at the front
 // where combat happens. Which physical direction "inward" is depends on the quadrant — that flip
 // is CSS (see `.board.lands-bottom` in styles.css), not a second ordering here.

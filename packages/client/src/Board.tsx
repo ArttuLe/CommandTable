@@ -9,6 +9,14 @@ import type { ManaColor } from './uiStore.js';
 import { stackLands, stackNameOf } from './landStacks.js';
 import type { Seat } from './seating.js';
 import type { TurnHighlight } from './turnStatus.js';
+import { useCommanderName, type CommanderRef } from './commanders.js';
+import {
+  COMMANDER_DAMAGE_LETHAL,
+  damageTakenFrom,
+  isLethalCommanderDamage,
+  isLethalLife,
+  isLethalPoison,
+} from './vitals.js';
 
 export interface BoardProps {
   player: PlayerState;
@@ -18,6 +26,8 @@ export interface BoardProps {
   libraryCount: number;
   battlefield: ProjectedObject[];
   commandZone: ProjectedObject[];
+  /** Every commander on the table, for the damage badges — anyone's can have hit this player. */
+  allCommanders: CommanderRef[];
   commanderCastCount: Record<string, number>;
   /** The second argument is what tapping would put in the mana pad (see manaSources.ts). */
   onTapToggle: (obj: { id: string; tapped: boolean }, produces: ManaColor[], e: React.MouseEvent) => void;
@@ -28,7 +38,7 @@ export interface BoardProps {
 /**
  * One player's mat on the plane, oriented to face its owner: the header and command zone sit
  * against the board's outer edge with the lands, and creatures push inward toward the
- * crossroads — the same way a physical mat is laid out from the seat behind it.
+ * middle of the table — the same way a physical mat is laid out from the seat behind it.
  *
  * The battlefield itself is three named zones (see `battlefieldZones.ts`), all three always
  * drawn so nothing shifts band as the board fills.
@@ -47,6 +57,7 @@ export function Board({
   libraryCount,
   battlefield,
   commandZone,
+  allCommanders,
   commanderCastCount,
   onTapToggle,
   onCastCommander,
@@ -71,7 +82,10 @@ export function Board({
           zone sits on a physical table. */}
       <div className="board-header">
         <span className="player-name">{player.displayName}</span>
+        {!player.connected && <span className="player-state">(disconnected)</span>}
+        {player.status !== 'active' && <span className="player-state">— {player.status}</span>}
         {turn && <span className="turn-badge">{turn === 'mine' ? 'Your turn' : 'Their turn'}</span>}
+        <BoardVitals player={player} allCommanders={allCommanders} />
         {/* Mulligans are otherwise invisible: the action swaps your hand out and says nothing.
             The server already tracks the count (playerActions.mulligan). */}
         <span className="counts">
@@ -194,5 +208,48 @@ function CommanderTile({
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * What everyone at the table reads off this board: life, and whatever is actually happening to
+ * its owner. It sits in the header with the player's name — where a physical table keeps it,
+ * behind the seat — rather than out in the middle where the mats meet. The middle was the one
+ * place that belonged to nobody, which meant every readout had a board it was *nearer* and a
+ * board it could be confused for, and it held the two mats a readout's width apart.
+ *
+ * Read-only, and that is the point: every number here is written from its owner's own HUD
+ * (ActionBar's VitalsPad), so nobody can quietly edit a neighbour's total.
+ *
+ * Poison and commander damage show only when there is any — a badge per commander that has
+ * actually connected, rather than the row of zeroes every game starts with.
+ */
+function BoardVitals({ player, allCommanders }: { player: PlayerState; allCommanders: CommanderRef[] }) {
+  const poison = player.counters.poison ?? 0;
+  const damage = damageTakenFrom(player, allCommanders);
+
+  return (
+    <span className="board-vitals">
+      {/* Sized to be legible across a zoomed-out plane rather than to be clicked. */}
+      <span className={`board-life ${isLethalLife(player.life) ? 'lethal' : ''}`}>{player.life}</span>
+      {poison > 0 && <span className={`poison ${isLethalPoison(poison) ? 'lethal' : ''}`}>☠ {poison}</span>}
+      {damage.map((entry) => (
+        <DamageBadge key={entry.commander.id} commander={entry.commander} damage={entry.damage} />
+      ))}
+    </span>
+  );
+}
+
+/** Which commander dealt it is in the title rather than on the badge — the badge has to stay
+    readable at the zoom where a whole four-player table fits on screen. */
+function DamageBadge({ commander, damage }: { commander: CommanderRef; damage: number }) {
+  const name = useCommanderName(commander);
+  return (
+    <span
+      className={`cmdr-damage ${isLethalCommanderDamage(damage) ? 'lethal' : ''}`}
+      title={`${damage} commander damage from ${name} — lethal at ${COMMANDER_DAMAGE_LETHAL}`}
+    >
+      ⚔ {damage}
+    </span>
   );
 }
