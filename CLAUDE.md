@@ -15,6 +15,7 @@ When implementing:
     Follow these design principles as much as you can in order to generate easily readable code.
     Principles in question are SOLID KISS and DRY. Also follow TDD principles where applicable, generate concise and easy to understand unit-tests for behavior that is being developed.
     ensure the unit-tests evolve when developing the features further. Start with minimal features that have simple unit-tests
+    When the behavior is one a unit-test cannot reach — measured layout, the CSS acting on it, something two clients must agree on, or a mode that changes what a click means — write a Playwright spec in e2e/ alongside the unit-tests, not instead of them. Use judgement: the behaviors above, and regressions in them, not every button. See "Writing them" under Testing in README.md.
 
 2. Simplicity First
 

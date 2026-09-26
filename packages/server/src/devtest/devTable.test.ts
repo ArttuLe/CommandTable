@@ -48,11 +48,11 @@ describe('buildDevTable', () => {
     expect([...rejoinTokensByName.keys()]).toEqual(['Alice', 'Bob', 'Carol']);
   });
 
-  it('hands back a table that is already past the opening-hand step', () => {
+  it('hands back a table still waiting on its opening hands', () => {
     const { table } = build(4);
 
-    expect(table.setupComplete).toBe(true);
-    expect(table.players.every((p) => p.keptHand)).toBe(true);
+    expect(table.setupComplete).toBe(false);
+    expect(table.players.some((p) => p.keptHand)).toBe(false);
   });
 
   it('deals every player an opening hand and leaves the rest in their library', () => {

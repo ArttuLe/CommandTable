@@ -278,6 +278,7 @@ packages/
             blocks and spell targets, and a fixed bottom band of hand + vitals + mana +
             zones + actions, wired
             straight to the WebSocket via a Zustand store)
+e2e/        Playwright specs driving the dev-table route in a real browser (see Testing)
 ```
 
 The client keeps its geometry and its rules-of-thumb in pure modules with their own tests, apart
@@ -296,6 +297,19 @@ npm run ingest --workspace @command-table/server      # fetch Scryfall Oracle Ca
 Ingestion writes to `packages/server/data/cards.sqlite3` (gitignored — it's a rebuildable cache,
 not user state; re-run weekly or whenever Oracle Cards updates). Requires network access to
 `api.scryfall.com`.
+
+For the end-to-end tests only, one more step — `npx playwright install chromium`.
+
+> On NixOS that download will not run, because it is dynamically linked against libraries the
+> system does not provide. Use the browsers from nixpkgs instead:
+>
+> ```
+> export PLAYWRIGHT_BROWSERS_PATH=$(nix-build '<nixpkgs>' -A playwright-driver.browsers --no-out-link)
+> ```
+>
+> That is also why `@playwright/test` is pinned to an exact version rather than a caret range: it
+> has to be the version whose browser revisions nixpkgs' `playwright-driver` ships, or it refuses
+> to launch. Bump the two together.
 
 ## Running the server
 
@@ -363,15 +377,18 @@ The local-only counterpart to `npm run host`: same two processes, but with the p
 switched off and a dev-table route open. Dev tables are saved to `data/dev-sessions.json`, so
 they never mix with real games.
 
-`/devtest/:playerAmount/:playerName` boots straight into a started game — N seats filled with
-the precon decklists in `packages/server/src/devtest/decks/`, libraries shuffled, opening hands
-dealt and kept, turn 1 underway. Open `/devtest/4/Alice` in one tab and `/devtest/4/Bob` in
-another and both sit at the same table; the seat count picks the table, so `/devtest/2/Alice` is
-a different one. Names are Alice, Bob, Carol, Dave in seat order.
+`/devtest/:playerAmount/:playerName` boots a dealt table — N seats filled with the precon
+decklists in `packages/server/src/devtest/decks/`, libraries shuffled, opening hands dealt — and
+stops at the opening-hand step. Keep (or mulligan), then start the game; Alice is the host, and
+the host's button is live whether or not anyone else has kept. Open `/devtest/4/Alice` in one tab
+and `/devtest/4/Bob` in another and both sit at the same table; the seat count picks the table, so
+`/devtest/2/Alice` is a different one. Names are Alice, Bob, Carol, Dave in seat order.
 
-It is built out of the same pieces a real start uses (`parseDecklist` → `resolveDecklist` →
-`createTableState` → `KEEP_HAND`/`BEGIN_PLAY` through `applyAction`), so the fixture cannot
-drift from what the host's Start button produces — see
+It stops there rather than keeping and beginning on the players' behalf because that step is a
+screen like any other, and pressing through it here would put it out of reach of both a look and
+an end-to-end test. What is left is built out of the same pieces a real start uses
+(`parseDecklist` → `resolveDecklist` → `createTableState`) and invents nothing, so the fixture
+cannot drift from what the host's Start button produces — see
 `packages/server/src/devtest/devTable.ts`.
 
 Both the missing passphrase and the route are gated on `DEV_MODE=1`, which only `npm run dev`
@@ -387,9 +404,57 @@ npm test
 Vitest across all packages. `deckResolver.integration.test.ts` runs against the real ingested
 SQLite index and is skipped automatically if `npm run ingest` hasn't been run yet.
 
+```
+npm run test:e2e
+```
+
+Playwright, in `e2e/`. These drive a real browser against `/devtest/:playerAmount/:playerName` to
+cover what the pure-logic modules structurally cannot: measured layout and the CSS acting on it
+(the hand fan clearing the action bar, the context menu staying reachable), and anything two
+clients have to agree about (the change pulse landing on the same card on both screens). Because
+the route is behind `import.meta.env.DEV`, they run against the Vite dev server and never a build.
+
+The suite starts a server and a Vite of its own on 8091/5174, so it neither collides with a
+`npm run dev` you already have open nor disturbs its table. It needs the ingested card index and
+skips itself without one. Isolation is by seat count — the server keeps one dev table per player
+amount, so each spec picks a number that suits what it does to the table; see the comment at the
+top of `e2e/seat.ts` before adding a spec.
+
+### Writing them
+
+A UI change wants a spec here for the same reason a rules change wants one in Vitest, so write
+them together rather than leaving the browser half to be checked by hand. The suite exists to
+make that cheap — all of it runs in about five seconds, which is the budget worth protecting.
+
+Write one when the claim is only true in a browser:
+
+- **Measured layout, and the CSS acting on it.** `handFan.ts` returning the right number proves
+  nothing about where the cards actually land.
+- **Something two clients have to agree on.** One browser cannot show you that Bob saw it too.
+- **A mode that changes what an interaction means** — an armed arrow, an open menu, a drag.
+- **A regression you just fixed in any of the above**, so that it stays fixed.
+
+Don't write one when a pure module can answer it. That is what the `foo.ts` + `foo.test.ts` pairs
+are for, they run in milliseconds, and a browser test of arithmetic is the slow way to learn
+nothing. Not every button needs a spec; the behaviours above do.
+
+Two things to get right, both of which have already bitten:
+
+- **Check that the spec can fail.** Break the thing on purpose — make `fanOverlap` return `0`, or
+  `place()` return `at` — and watch it go red before trusting it green.
+- **Never assert "nothing changed" on its own.** Actions round-trip the WebSocket and nothing is
+  optimistic, so "the hand is the same" is true for a moment whether or not the bug is there, and
+  a check like that passes forever. Wait for the change the interaction *is* meant to make, then
+  assert what it must not have done. `targeting.spec.ts` is the worked example.
+
+Specs are `e2e/*.spec.ts` — `.spec.ts`, not `.test.ts`, which is what keeps Vitest out of them.
+Adding one means picking a seat count, so read the comment at the top of `e2e/seat.ts` first: the
+three tables are fully spoken for.
+
 Note that `npm run typecheck` covers `common` and `server` only — the root `tsconfig.json`
 references those two. The client is typechecked by its own build, so check it with
-`npx tsc -b packages/client` (or `npm run build`) before assuming a client change compiles.
+`npx tsc -b packages/client` (or `npm run build`), and the e2e specs with `npx tsc -p e2e`, before
+assuming a change compiles.
 
 ## Notable deviations from the design doc
 
