@@ -1,8 +1,8 @@
-// Life, poison and commander damage on the board that owns them (Board.tsx's BoardVitals).
+// Life, poison and commander damage on the mat that owns them (PlayerRail.tsx's RailVitals).
 //
-// They used to sit at the crossroads where the mats meet; they now ride in each board's header.
-// Two things about that only a browser can check: that the numbers land on the *right* board —
-// the header is the only thing naming whose they are now — and that they land on everyone's
+// They used to sit at the crossroads where the mats meet; they now ride on each player's rail.
+// Two things about that only a browser can check: that the numbers land on the *right* mat —
+// the rail is the only thing naming whose they are now — and that they land on everyone's
 // screen, since each player writes only their own row from their own HUD.
 //
 // Three seats, the bucket that already plays cards: this spec changes life and poison, which
@@ -13,9 +13,9 @@ import { needsCardIndex, openSeat, startPlay } from './seat.js';
 
 test.beforeEach(needsCardIndex);
 
-/** One player's mat, found the way a person finds it: by the name in its header. */
+/** One player's mat, found the way a person finds it: by the name on its rail. */
 function boardOf(page: Page, name: string) {
-  return page.locator('.board').filter({ has: page.locator('.player-name', { hasText: name }) });
+  return page.locator('.mat').filter({ has: page.locator('.player-name', { hasText: name }) });
 }
 
 test('a life change shows on its own board, on both screens', async ({ browser }) => {
@@ -23,15 +23,15 @@ test('a life change shows on its own board, on both screens', async ({ browser }
   const bob = await openSeat(browser, 3, 'Bob');
   await startPlay(alice, [bob, await openSeat(browser, 3, 'Carol')]);
 
-  const before = Number(await boardOf(alice, 'Alice').locator('.board-life').textContent());
+  const before = Number(await boardOf(alice, 'Alice').locator('.life-count').textContent());
 
   // The one place a player writes their own row: their own HUD, never a neighbour's board.
   await alice.locator('.vitals-pad .vital').first().getByRole('button', { name: '−' }).click();
 
-  await expect(boardOf(alice, 'Alice').locator('.board-life')).toHaveText(String(before - 1));
-  await expect(boardOf(bob, 'Alice').locator('.board-life')).toHaveText(String(before - 1));
+  await expect(boardOf(alice, 'Alice').locator('.life-count')).toHaveText(String(before - 1));
+  await expect(boardOf(bob, 'Alice').locator('.life-count')).toHaveText(String(before - 1));
   // Bob's own board is not where Alice's life went.
-  await expect(boardOf(bob, 'Bob').locator('.board-life')).not.toHaveText(String(before - 1));
+  await expect(boardOf(bob, 'Bob').locator('.life-count')).not.toHaveText(String(before - 1));
 });
 
 // The badges are absent until there is something to say, which is why they cost an empty board

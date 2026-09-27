@@ -18,6 +18,15 @@ _Nothing outstanding._
 - Right-clicking the table offers Zoom in / Zoom out / Fit at the cursor, zooming around the point
   you clicked, and the "follow the active player" toggle the settings gear carries. `F` fits from
   the keyboard. All of it is in the help dialog.
+- Each player's name, life, zone counts and command zone moved off the board into a **player
+  rail** beside it, half the board's height and hugging the mat's outer corner. The header band
+  they were in cost every board a row of the height its three battlefield bands were competing
+  for; the rail was added to the plane's width rather than taken out of the board, so the
+  battlefield kept every pixel it had. Graveyard and exile counts are on the table for the first
+  time — for everyone, not just yourself. The turn pill stands just outside the rail.
+- Boards are taller (700px to 900px) and the cards on them are bigger (156px to 180px wide). The
+  plane now keeps its own card size, separate from the hand and the zone popovers, since a narrow
+  window is answered out there by the camera rather than by shrinking the table.
 - "You kept." reads with the step's other prose instead of sitting in among the buttons.
 - Player boards are wider — 1040px to 1170px in a four-player table, 1240px to 1500px in a
   two-player one.

@@ -350,8 +350,14 @@ export function Table() {
                   player={player}
                   seat={seat}
                   turn={turnHighlight(player.id, tableState.turn, playerId)}
-                  handCount={tableState.handCounts[player.id]}
-                  libraryCount={tableState.libraryCounts[player.id]}
+                  // Hand and library are counted by the server (§9.2); graveyard and exile are
+                  // public zones and counted off the projection, the same way the dock does it.
+                  counts={{
+                    hand: tableState.handCounts[player.id],
+                    library: tableState.libraryCounts[player.id],
+                    graveyard: inZone(player.id, 'graveyard').length,
+                    exile: inZone(player.id, 'exile').length,
+                  }}
                   battlefield={inZone(player.id, 'battlefield')}
                   commandZone={inZone(player.id, 'commandZone')}
                   allCommanders={allCommanders}
