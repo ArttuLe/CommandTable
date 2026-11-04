@@ -14,6 +14,7 @@ import {
   applyCounterUpdate,
   defaultVisibilityFor,
   detachFrom,
+  rekeyIfHidden,
   markersOnArrival,
   err,
   ok,
@@ -180,7 +181,7 @@ function setFaceDown(state: TableState, objectId: string, faceDown: boolean): Ap
   const existing = requireObject(state, objectId);
   if (!existing) return err(`no such object: ${objectId}`);
   const faceVisibility = defaultVisibilityFor(existing.zone, existing.controllerId, faceDown);
-  return ok(withObject(state, { ...existing, faceDown, faceVisibility }));
+  return ok(rekeyIfHidden(withObject(state, { ...existing, faceDown, faceVisibility }), existing, existing.id));
 }
 
 export function setAnnotation(state: TableState, action: Extract<Action, { t: 'SET_ANNOTATION' }>): ApplyResult {
@@ -198,7 +199,7 @@ export function changeController(state: TableState, action: Extract<Action, { t:
       : existing.zone;
   // A face-down permanent is seen by whoever controls it (§9), so the right to look goes with it.
   const faceVisibility = existing.faceDown ? defaultVisibilityFor(zone, action.newControllerId, true) : existing.faceVisibility;
-  return ok(withObject(state, { ...existing, controllerId: action.newControllerId, zone, faceVisibility }));
+  return ok(rekeyIfHidden(withObject(state, { ...existing, controllerId: action.newControllerId, zone, faceVisibility }), existing, existing.id));
 }
 
 export function createToken(state: TableState, action: Extract<Action, { t: 'CREATE_TOKEN' }>): ApplyResult {

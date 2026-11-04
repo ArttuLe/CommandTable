@@ -43,7 +43,9 @@ function computeLeakedViewers(current: TableState, target: TableState): PlayerId
   const leaked = new Set<PlayerId>();
 
   for (const obj of Object.values(current.objects)) {
-    const afterRevert = target.objects[obj.id];
+    // A card that went out of someone's sight since the target carries a fresh id now (see
+    // rekeyIfHidden), so it is looked up by what it is as well: same owner, same printing.
+    const afterRevert = target.objects[obj.id] ?? sameCardIn(target, obj);
     // Something everyone could see that didn't exist yet at the target — a token, a copy — reveals
     // nothing by disappearing. Counting it put a false "may still be known" note on every undone
     // token. A hidden one that vanishes is still a leak: someone saw what nobody else did.
@@ -58,6 +60,13 @@ function computeLeakedViewers(current: TableState, target: TableState): PlayerId
   }
 
   return [...leaked];
+}
+
+function sameCardIn(target: TableState, obj: TableState['objects'][string]): TableState['objects'][string] | undefined {
+  const source = JSON.stringify(obj.source);
+  return Object.values(target.objects).find(
+    (candidate) => candidate.ownerId === obj.ownerId && JSON.stringify(candidate.source) === source
+  );
 }
 
 function viewersOf(visibility: Visibility, allPlayerIds: PlayerId[]): Set<PlayerId> {

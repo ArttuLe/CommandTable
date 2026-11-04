@@ -537,3 +537,51 @@ describe('applyAction: an action that changes nothing', () => {
     expect(result.state).toBe(state);
   });
 });
+
+// §9.3: opening dev tools shouldn't spoil a game. A card everyone saw on the battlefield kept its id
+// when it went to a hand or turned face down, so the redacted object each opponent received still
+// said exactly which card it was.
+describe('fresh ids when a card goes out of sight', () => {
+  const objectIds = (state: TableState) => Object.keys(state.objects);
+
+  it('gives a card a new id when someone loses sight of it', () => {
+    const state = makeState([card({ id: 'x', zone: { playerId: ALICE, zone: 'battlefield' }, faceVisibility: { kind: 'all' } })]);
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'x', toZone: { playerId: ALICE, zone: 'hand' } });
+    if (!result.ok) throw new Error(result.reason);
+    expect(objectIds(result.state)).toHaveLength(1);
+    expect(objectIds(result.state)[0]).not.toBe('x');
+  });
+
+  it('keeps the id of a card coming into view, which every client already follows', () => {
+    const state = makeState([card({ id: 'x', zone: { playerId: ALICE, zone: 'hand' }, faceVisibility: { kind: 'players', ids: [ALICE] } })]);
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'x', toZone: { playerId: ALICE, zone: 'battlefield' } });
+    if (!result.ok) throw new Error(result.reason);
+    expect(objectIds(result.state)).toEqual(['x']);
+  });
+
+  it('carries a commander’s bookkeeping over to its new id', () => {
+    const base = makeState([card({ id: 'cmd', zone: { playerId: ALICE, zone: 'battlefield' }, faceVisibility: { kind: 'all' } })]);
+    const state: TableState = {
+      ...base,
+      players: base.players.map((p) =>
+        p.id === ALICE
+          ? { ...p, commanderIds: ['cmd'], commanderCastCount: { cmd: 2 } }
+          : { ...p, commanderDamageTaken: { cmd: 7 } }
+      ),
+    };
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'cmd', toZone: { playerId: ALICE, zone: 'hand' } });
+    if (!result.ok) throw new Error(result.reason);
+    const [fresh] = objectIds(result.state);
+    const [alice, bob] = result.state.players;
+    expect(alice.commanderIds).toEqual([fresh]);
+    expect(alice.commanderCastCount).toEqual({ [fresh]: 2 });
+    expect(bob.commanderDamageTaken).toEqual({ [fresh]: 7 });
+  });
+
+  it('gives a card turned face down a new id', () => {
+    const state = makeState([card({ id: 'x', zone: { playerId: ALICE, zone: 'battlefield' }, faceVisibility: { kind: 'all' } })]);
+    const result = applyAction(state, { t: 'TURN_FACE_DOWN', objectId: 'x' });
+    if (!result.ok) throw new Error(result.reason);
+    expect(objectIds(result.state)[0]).not.toBe('x');
+  });
+});

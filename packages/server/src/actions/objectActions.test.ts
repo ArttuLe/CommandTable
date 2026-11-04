@@ -175,17 +175,19 @@ describe('TRANSFORM / TURN_FACE_DOWN / TURN_FACE_UP', () => {
 
   it('turning a battlefield object face down restricts visibility to its controller', () => {
     const state = makeState([card({ id: 'c1', controllerId: BOB })]);
-    const next = unwrap(state, { t: 'TURN_FACE_DOWN', objectId: 'c1' });
-    expect(next.objects['c1'].faceDown).toBe(true);
-    expect(next.objects['c1'].faceVisibility).toEqual({ kind: 'players', ids: [BOB] });
+    // Under a fresh id: the table saw it face up (see rekeyIfHidden), so it's the only object.
+    const [obj] = Object.values(unwrap(state, { t: 'TURN_FACE_DOWN', objectId: 'c1' }).objects);
+    expect(obj.faceDown).toBe(true);
+    expect(obj.faceVisibility).toEqual({ kind: 'players', ids: [BOB] });
   });
 
   it('turning back face up restores visible-to-all', () => {
     let state = makeState([card({ id: 'c1' })]);
     state = unwrap(state, { t: 'TURN_FACE_DOWN', objectId: 'c1' });
-    state = unwrap(state, { t: 'TURN_FACE_UP', objectId: 'c1' });
-    expect(state.objects['c1'].faceDown).toBe(false);
-    expect(state.objects['c1'].faceVisibility).toEqual({ kind: 'all' });
+    const [faceDown] = Object.keys(state.objects);
+    state = unwrap(state, { t: 'TURN_FACE_UP', objectId: faceDown });
+    expect(state.objects[faceDown].faceDown).toBe(false);
+    expect(state.objects[faceDown].faceVisibility).toEqual({ kind: 'all' });
   });
 });
 
@@ -273,6 +275,7 @@ describe('CHANGE_CONTROLLER', () => {
     ]);
     const result = applyAction(state, { t: 'CHANGE_CONTROLLER', objectId: 'm', newControllerId: BOB });
     if (!result.ok) throw new Error(result.reason);
-    expect(result.state.objects['m'].faceVisibility).toEqual({ kind: 'players', ids: [BOB] });
+    // Alice lost sight of it, so it carries a fresh id (rekeyIfHidden); it is the only object.
+    expect(Object.values(result.state.objects)[0].faceVisibility).toEqual({ kind: 'players', ids: [BOB] });
   });
 });

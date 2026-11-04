@@ -1,7 +1,8 @@
 // Shared plumbing for action modules, split out of actionApplier.ts so each §8 subsection
 // (object/zone/player actions) can live in its own file without duplicating this.
 
-import { SUMMONING_SICK_MARKER, type CounterUpdate, type GameObject, type LogKind, type PlayerId, type TableState, type Visibility, type ZoneRef } from '@command-table/common';
+import { randomUUID } from 'node:crypto';
+import { SUMMONING_SICK_MARKER, parseBlockMarker, parseTargetMarker, type CounterUpdate, type GameObject, type LogKind, type PlayerId, type TableState, type Visibility, type ZoneRef } from '@command-table/common';
 
 // `log` lets an action override the generic, action-type-derived log description from
 // actionDescriptions.ts — needed when the log text depends on the *outcome*, not just the
@@ -147,4 +148,54 @@ export function placeInLibrary(state: TableState, objectId: string, index: numbe
     (next, obj, position) => (obj.position === position ? next : withObject(next, { ...obj, position }, false)),
     state
   );
+}
+
+function seenBy(visibility: Visibility, playerIds: PlayerId[]): PlayerId[] {
+  switch (visibility.kind) {
+    case 'all':
+      return playerIds;
+    case 'players':
+      return visibility.ids;
+    case 'none':
+      return [];
+  }
+}
+
+/**
+ * Gives an object a fresh id if `before` → its current state took it out of anyone's sight.
+ *
+ * §9.3: opening dev tools shouldn't spoil a game. Ids are what every client tracks objects by, and
+ * the projection keeps a hidden object's id — so a card everyone saw on the battlefield, bounced to
+ * a hand or turned face down under the same id, was still plainly that card to anyone who looked.
+ * A new id makes it a new object as far as anyone watching can tell, which is what CR 400.7 says
+ * it is anyway. A card coming *into* view keeps its id: every client already follows it.
+ *
+ * What was keyed by the old id comes along: the commander bookkeeping. Combat markers on other
+ * objects that pointed at it are dropped — what they pointed at has left.
+ */
+export function rekeyIfHidden(state: TableState, before: GameObject, objectId: string): TableState {
+  const after = state.objects[objectId];
+  const playerIds = state.players.map((p) => p.id);
+  const stillSees = new Set(seenBy(after.faceVisibility, playerIds));
+  if (seenBy(before.faceVisibility, playerIds).every((id) => stillSees.has(id))) return state;
+
+  const fresh = randomUUID();
+  const pointsHere = (marker: string) => parseBlockMarker(marker) === objectId || parseTargetMarker(marker) === objectId;
+  const objects: TableState['objects'] = {};
+  for (const obj of Object.values(state.objects)) {
+    if (obj.id === objectId) objects[fresh] = { ...obj, id: fresh };
+    else objects[obj.id] = obj.markers.some(pointsHere) ? { ...obj, markers: obj.markers.filter((m) => !pointsHere(m)) } : obj;
+  }
+  const renamed = <T>(byId: Record<string, T>): Record<string, T> => {
+    if (!(objectId in byId)) return byId;
+    const { [objectId]: value, ...rest } = byId;
+    return { ...rest, [fresh]: value };
+  };
+  const players = state.players.map((p) => ({
+    ...p,
+    commanderIds: p.commanderIds.map((id) => (id === objectId ? fresh : id)),
+    commanderCastCount: renamed(p.commanderCastCount),
+    commanderDamageTaken: renamed(p.commanderDamageTaken),
+  }));
+  return { ...state, objects, players };
 }

@@ -6,6 +6,7 @@ import {
   defaultVisibilityFor,
   detachFrom,
   placeInLibrary,
+  rekeyIfHidden,
   err,
   ok,
   objectsInZone,
@@ -90,6 +91,7 @@ export function moveAll(state: TableState, action: Extract<Action, { t: 'MOVE_AL
     // Into a library, each goes under what is there, in order — not all at position 0, tied with
     // the top card (see placeInLibrary).
     if (action.toZone.zone === 'library') next = placeInLibrary(next, obj.id, Number.MAX_SAFE_INTEGER);
+    next = rekeyIfHidden(next, obj, obj.id);
   }
   return ok({ ...next, revision: next.revision + 1 });
 }

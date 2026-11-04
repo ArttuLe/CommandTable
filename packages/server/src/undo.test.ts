@@ -108,6 +108,17 @@ describe('applyUndo: objects the revert simply removes', () => {
   });
 });
 
+describe('applyUndo: a card that came back under a fresh id', () => {
+  // Bounced to Alice's hand, the card has a new id; undoing the bounce puts it back on the table
+  // under its old one. Nobody learns anything from that — it is not a leak.
+  it('recognises the same card by owner and printing', () => {
+    const source = { kind: 'card' as const, scryfallId: 's1', oracleId: 'o1' };
+    const target = makeState([card({ id: 'old', source, zone: { playerId: ALICE, zone: 'battlefield' }, faceVisibility: { kind: 'all' } })], 0);
+    const current = makeState([card({ id: 'fresh', source, zone: { playerId: ALICE, zone: 'hand' }, faceVisibility: { kind: 'players', ids: [ALICE] } })], 1);
+    expect(applyUndo(current, target, ALICE).leakedTo).toEqual([]);
+  });
+});
+
 describe('tallyUndoVotes', () => {
   const votes = (...ballots: boolean[]) => new Map(ballots.map((approve, i) => [`p${i}`, approve]));
   const seats = (n: number) => new Set(Array.from({ length: n }, (_, i) => `p${i}`));

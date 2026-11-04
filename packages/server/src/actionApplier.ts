@@ -18,6 +18,7 @@ import { fisherYatesShuffle } from './shuffle.js';
 import {
   asNewObject,
   placeInLibrary,
+  rekeyIfHidden,
   bumpRevision,
   defaultVisibilityFor,
   detachFrom,
@@ -187,7 +188,8 @@ function moveObject(state: TableState, action: Extract<Action, { t: 'MOVE_OBJECT
   };
 
   const placed = withObject(changedZone ? detachFrom(state, existing.id) : state, updated);
-  const next = action.toZone.zone === 'library' ? placeInLibrary(placed, existing.id, action.toPosition ?? 0) : placed;
+  const ordered = action.toZone.zone === 'library' ? placeInLibrary(placed, existing.id, action.toPosition ?? 0) : placed;
+  const next = rekeyIfHidden(ordered, existing, existing.id);
   const isCommanderCast = existing.zone.zone === 'commandZone' && !('playerId' in action.toZone) && action.toZone.zone === 'stack';
   if (!isCommanderCast) {
     return ok(next);
