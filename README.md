@@ -374,12 +374,11 @@ assuming a change compiles.
   an earlier flex-`order` trick, which could not give the zones labels or reserved height.
   Cost: a permanent sits in the middle zone for one frame while its card data loads, then moves
   itself — an acceptable, self-healing cost for the "ugly by design" client.
-- **"Bottom of library" is `toPosition: libraryCount`, which can tie:** `SHUFFLE_LIBRARY`
-  renumbers positions densely `0..n-1`, so the card count is always past the last card and a
-  bottomed card really does land underneath everything. Two cards bottomed in a row, though,
-  both get that same position, leaving their relative order arbitrary until the next shuffle.
-  Renumbering server-side on every insert would fix it and isn't worth the write amplification
-  for a freeform client whose libraries get shuffled constantly.
+- **A library move's `toPosition` is an index, and the server renumbers:** the doc gives
+  `toPosition` no semantics. The server treats it as an index into the library as it stands and
+  renumbers that library `0..n-1` on every insert, so `0` is the top and the card count is the
+  bottom however many cards have been drawn — writing it straight into `position` let "top" tie
+  with the card already there and put "bottom" mid-library after a draw.
 - **Mulligan is a plain redraw of seven, not the London mulligan:** `MULLIGAN` returns the hand,
   reshuffles and draws 7 without bottoming N cards, so a mulligan currently costs nothing. The
   count is tracked (`counters.mulligan`) and shown on the player's rail, so players can enforce

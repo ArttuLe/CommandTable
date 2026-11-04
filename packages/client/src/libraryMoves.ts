@@ -24,9 +24,8 @@ export function libraryMoveAction(
   if (move === 'hand' || move === 'battlefield') {
     return { t: 'MOVE_OBJECT', objectId, toZone: { playerId, zone: move } };
   }
-  // Positions are dense 0..n-1 after any shuffle, so the card count is always past the last
-  // card. Two cards bottomed in a row therefore share a position and their relative order is
-  // arbitrary until the next shuffle — not worth a server-side renumber to fix.
+  // An index into the library as it stands (the server renumbers on insert), so the card count
+  // is the slot past the last card: the bottom.
   return {
     t: 'MOVE_OBJECT',
     objectId,

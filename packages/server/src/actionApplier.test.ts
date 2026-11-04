@@ -233,7 +233,8 @@ describe('applyAction: MOVE_OBJECT treats a zone change as a new object', () => 
     });
 
     if (!result.ok) throw new Error('unreachable');
-    expect(result.state.objects['c1']).toMatchObject({ position: 7, counters: { charge: 2 }, markers: ['noted'] });
+    // A one-card library: index 7 is past its end, so the card is its bottom (and top), position 0.
+    expect(result.state.objects['c1']).toMatchObject({ position: 0, counters: { charge: 2 }, markers: ['noted'] });
   });
 });
 
@@ -455,3 +456,43 @@ function unwrap(result: ReturnType<typeof applyAction>) {
   if (!result.ok) throw new Error(`expected ok, got: ${result.reason}`);
   return result.state;
 }
+
+describe('applyAction: MOVE_OBJECT into a library', () => {
+  // A library a few cards into the game: drawing leaves positions starting above zero.
+  const library = () =>
+    ['c5', 'c6', 'c7'].map((id, i) => card({ id, position: 5 + i }));
+  const order = (state: TableState) =>
+    Object.values(state.objects)
+      .filter((o) => o.zone.zone === 'library')
+      .sort((a, b) => a.position - b.position)
+      .map((o) => o.id);
+  const move = (state: TableState, objectId: string, toPosition: number) => {
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId, toZone: { playerId: ALICE, zone: 'library' }, toPosition });
+    if (!result.ok) throw new Error(result.reason);
+    return result.state;
+  };
+
+  // `toPosition` is an index into the library as it stands. Written straight into `position`,
+  // 0 tied with the card already on top and the stable sort kept the old one there.
+  it('puts a card on top, above the card that was there', () => {
+    const state = makeState([...library(), card({ id: 'z', zone: { playerId: ALICE, zone: 'hand' } })]);
+    expect(order(move(state, 'z', 0))).toEqual(['z', 'c5', 'c6', 'c7']);
+  });
+
+  // The client sends the card count for "bottom", which after a draw used to land mid-library.
+  it('puts a card on the bottom after cards have been drawn', () => {
+    const state = makeState([...library(), card({ id: 'z', zone: { playerId: ALICE, zone: 'hand' } })]);
+    expect(order(move(state, 'z', 3))).toEqual(['c5', 'c6', 'c7', 'z']);
+  });
+
+  it('keeps a scry order: two cards put on top in turn sit in the order they were put', () => {
+    const state = makeState([...library(), card({ id: 'a', zone: { playerId: ALICE, zone: 'hand' } }), card({ id: 'b', zone: { playerId: ALICE, zone: 'hand' } })]);
+    expect(order(move(move(state, 'b', 0), 'a', 0))).toEqual(['a', 'b', 'c5', 'c6', 'c7']);
+  });
+
+  it('reorders within the library, and leaves positions dense', () => {
+    const next = move(makeState(library()), 'c5', 2);
+    expect(order(next)).toEqual(['c6', 'c7', 'c5']);
+    expect(Object.values(next.objects).map((o) => o.position).sort()).toEqual([0, 1, 2]);
+  });
+});

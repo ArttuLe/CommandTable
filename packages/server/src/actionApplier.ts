@@ -177,7 +177,8 @@ function moveObject(state: TableState, action: Extract<Action, { t: 'MOVE_OBJECT
     markers: changedZone ? markersOnArrival(action.toZone) : base.markers,
   };
 
-  const next = withObject(changedZone ? detachFrom(state, existing.id) : state, updated);
+  const placed = withObject(changedZone ? detachFrom(state, existing.id) : state, updated);
+  const next = action.toZone.zone === 'library' ? placeInLibrary(placed, existing.id, action.toPosition ?? 0) : placed;
   const isCommanderCast = existing.zone.zone === 'commandZone' && !('playerId' in action.toZone) && action.toZone.zone === 'stack';
   if (!isCommanderCast) {
     return ok(next);
@@ -193,6 +194,25 @@ function moveObject(state: TableState, action: Extract<Action, { t: 'MOVE_OBJECT
         : p
     ),
   });
+}
+
+/**
+ * Puts a card at an index of the library it just joined (or moved within), and renumbers that
+ * library 0..n-1. `toPosition` is an index, not a sort key: written straight into `position`,
+ * "top" (0) tied with the card already on top — and the stable sort kept the old one there — while
+ * "bottom" (the card count) landed mid-library once a draw had left positions starting above 0.
+ */
+function placeInLibrary(state: TableState, objectId: string, index: number): TableState {
+  const moved = state.objects[objectId];
+  const others = Object.values(state.objects)
+    .filter((o) => o.id !== objectId && zonesEqual(o.zone, moved.zone))
+    .sort((a, b) => a.position - b.position);
+  const at = Math.max(0, Math.min(index, others.length));
+  const ordered = [...others.slice(0, at), moved, ...others.slice(at)];
+  return ordered.reduce(
+    (next, obj, position) => (obj.position === position ? next : withObject(next, { ...obj, position }, false)),
+    state
+  );
 }
 
 function shuffleLibrary(state: TableState, action: Extract<Action, { t: 'SHUFFLE_LIBRARY' }>, deps: ApplyDeps): ApplyResult {
