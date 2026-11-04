@@ -23,7 +23,7 @@ e2e/        Playwright specs driving the dev-table route in a real browser (see 
 The client keeps its geometry and its rules-of-thumb in pure modules with their own tests, apart
 from the components that use them: `planeView.ts` (pan/zoom), `arrows.ts` (arrow geometry),
 `combat.ts` (reading combat off markers), `counters.ts`/`labels.ts` (how a badge reads),
-`seating.ts`, `battlefieldZones.ts`, `playerRail.ts` (which rows a rail shows). A component
+`seating.ts`, `battlefieldZones.ts`, `railCounts.ts` (which rows a rail shows). A component
 measures the DOM and paints; these decide.
 
 ## Setup

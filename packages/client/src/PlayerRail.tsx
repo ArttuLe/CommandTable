@@ -1,7 +1,7 @@
 import { isRedacted, type GameObject, type PlayerState, type ProjectedObject } from '@command-table/common';
 import { CardTile } from './CardTile.js';
 import { useCommanderName, type CommanderRef } from './commanders.js';
-import { railCounts, type ZoneCounts } from './playerRail.js';
+import { railCounts, type ZoneCounts } from './railCounts.js';
 import type { TurnHighlight } from './turnStatus.js';
 import {
   COMMANDER_DAMAGE_LETHAL,

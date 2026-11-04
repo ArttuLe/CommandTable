@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { railCounts } from './playerRail.js';
+import { railCounts } from './railCounts.js';
 import type { PlayerState } from '@command-table/common';
 
 const player = (counters: Record<string, number> = {}) => ({ counters }) as PlayerState;

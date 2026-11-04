@@ -11,7 +11,7 @@ import type { Seat } from './seating.js';
 import type { TurnHighlight } from './turnStatus.js';
 import type { CommanderRef } from './commanders.js';
 import { PlayerRail } from './PlayerRail.js';
-import type { ZoneCounts } from './playerRail.js';
+import type { ZoneCounts } from './railCounts.js';
 
 export interface BoardProps {
   player: PlayerState;
