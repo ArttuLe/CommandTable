@@ -142,6 +142,10 @@ function BattlefieldSlot({
 
   // An armed target or block arrow never reaches this handler: CardTile takes the click first.
   function onClick(e: React.MouseEvent) {
+    // The second click of a double-click: nothing is optimistic, so both clicks read the card as
+    // untapped and the land was tapped twice, filling the pad with two mana. Double-click is what
+    // the hand now asks for, so it is the habit people bring to the board.
+    if (e.detail > 1) return;
     if (e.shiftKey) toggleSelected(obj.id);
     else onTapToggle(obj, produces, e);
   }
