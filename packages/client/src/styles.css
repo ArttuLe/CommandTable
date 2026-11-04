@@ -347,9 +347,11 @@ input[type='checkbox'] {
    color: var(--text-dim);
 }
 
-/* Your own row is marked by an accent edge rather than a fill, so it doesn't fight the pills. */
-.seats .me td:first-child {
-   box-shadow: inset 2px 0 0 var(--accent);
+/* Your own row, as a faint wash of the accent across the whole row rather than a stripe down one
+   edge of it: quiet enough not to fight the pills, and it reads as "this row" rather than as one
+   cell that happens to be highlighted. */
+.seats .me td {
+   background: rgba(90, 169, 230, 0.08);
 }
 
 .dot-on {
@@ -419,7 +421,8 @@ input[type='checkbox'] {
    cursor: pointer;
 }
 
-/* Same coloured-left-border idiom as the table's toasts, so a warning reads the same everywhere. */
+/* The same idiom as the table's toasts — a tinted outline, never a stripe — so a warning reads the
+   same everywhere. */
 .deck-result {
    display: flex;
    flex-direction: column;
@@ -432,7 +435,7 @@ input[type='checkbox'] {
    font-size: 0.8rem;
    border-radius: var(--radius);
    background: var(--surface-raised);
-   border-left: 3px solid var(--border-strong);
+   border: 1px solid var(--border-strong);
 }
 
 .deck-note ul {
@@ -449,16 +452,20 @@ input[type='checkbox'] {
    margin-bottom: 0.1rem;
 }
 
+/* The outcome tints the whole note, edge and fill, rather than a stripe down its left side. */
 .deck-note.ok {
-   border-left-color: #2f9e5e;
+   border-color: #2f9e5e;
+   background: rgba(47, 158, 94, 0.12);
 }
 
 .deck-note.unresolved {
-   border-left-color: var(--danger);
+   border-color: var(--danger);
+   background: rgba(196, 84, 76, 0.12);
 }
 
 .deck-note.warnings {
-   border-left-color: var(--accent-turn);
+   border-color: var(--accent-turn);
+   background: rgba(232, 179, 60, 0.1);
 }
 
 /* Three bands: a status bar that only reports, the table plus its log rail, and your own things
@@ -2362,7 +2369,6 @@ button.vital:hover {
 .toast {
    background: rgba(39, 43, 51, 0.96);
    border: 1px solid var(--border-strong);
-   border-left: 3px solid var(--border-strong);
    border-radius: var(--radius);
    padding: 0.35rem 0.6rem;
    font-size: 0.78rem;
@@ -2412,11 +2418,11 @@ button.vital:hover {
 }
 
 .toast-chat {
-   border-left-color: var(--accent);
+   border-color: rgba(90, 169, 230, 0.6);
 }
 
 .toast-random {
-   border-left-color: var(--accent-turn);
+   border-color: rgba(232, 179, 60, 0.6);
 }
 
 .reconnect-banner {
