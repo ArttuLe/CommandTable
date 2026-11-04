@@ -2295,6 +2295,16 @@ button.vital:hover {
    padding: 0.05rem 0.3rem;
 }
 
+/* Quick replies for the two signals (shortcuts.ts), above the box they would otherwise be typed in. */
+.chat-signals {
+   display: flex;
+   gap: 0.35rem;
+}
+
+.chat-signals .btn {
+   flex: 1;
+}
+
 .chat-box {
    display: flex;
    gap: 0.3rem;

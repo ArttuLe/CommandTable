@@ -9,6 +9,15 @@ import { useUiStore } from './uiStore.js';
 import { isAttacking, isLabelMarker, isSummoningSick } from './combat.js';
 import { SummoningSickIcon } from './icons.js';
 
+/**
+ * A mouse event at the middle of a tile, for the keyboard ways into a tile's own handlers: Enter
+ * here, and T over a permanent (Table). The handlers read where the click landed, so it has one.
+ */
+export function fireAtCentre(el: HTMLElement, type: 'click' | 'dblclick' | 'contextmenu'): void {
+  const r = el.getBoundingClientRect();
+  el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+}
+
 interface CardTileProps {
   obj: ProjectedObject;
   selected?: boolean;
@@ -77,12 +86,7 @@ export function CardTile({ obj, selected, onClick, onDoubleClick, onContextMenu,
   const tileRef = useRef<HTMLDivElement>(null);
   const interactive = Boolean(onClick || onDoubleClick || onContextMenu);
   function fire(type: 'click' | 'dblclick' | 'contextmenu') {
-    const el = tileRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    el.dispatchEvent(
-      new MouseEvent(type, { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 })
-    );
+    if (tileRef.current) fireAtCentre(tileRef.current, type);
   }
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.target !== e.currentTarget) return;

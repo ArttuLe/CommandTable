@@ -3,7 +3,34 @@
 //
 // The keys themselves are handled by Table's `onKeyDown`; this list has to be kept in step with
 // that switch by hand. Driving the switch from here would mean an action map per entry, which is
-// more indirection than six shortcuts are worth.
+// more indirection than six shortcuts are worth. The exceptions are the hover moves and the
+// signals below, which are data the switch reads too.
+
+import type { Action, PlayerId, ProjectedObject } from '@command-table/common';
+import type { MoveTarget } from './cardMenu.js';
+
+/** Keys that send the card under the cursor somewhere, as the context menu's chips would. */
+const HOVER_MOVES: Record<string, MoveTarget['zone']> = { g: 'graveyard', e: 'exile', h: 'hand' };
+
+/**
+ * What a hover-move key does to the card under the cursor, or null for nothing. Only your own
+ * cards: the menu can move anyone's, but a key is pressed far more casually than a menu item is
+ * picked, and a slip should not send someone else's commander to the graveyard.
+ */
+export function hoverMove(key: string, obj: Pick<ProjectedObject, 'id' | 'controllerId' | 'zone'>, playerId: PlayerId): Action | null {
+  const zone = HOVER_MOVES[key];
+  if (!zone || obj.controllerId !== playerId || obj.zone.zone === zone) return null;
+  return { t: 'MOVE_OBJECT', objectId: obj.id, toZone: { playerId, zone } };
+}
+
+/**
+ * Two things said across a real table so often they get a key each, sent as chat. There's no
+ * priority to enforce in freeform play, but "wait, I have a response" still has to be said.
+ */
+export const SIGNALS = [
+  { key: 'r', label: 'Hold on', text: 'Hold on — I have a response' },
+  { key: 'k', label: 'Go ahead', text: 'Go ahead' },
+];
 
 export interface Shortcut {
   keys: string;
@@ -19,6 +46,9 @@ export const KEY_SHORTCUTS: Shortcut[] = [
   { keys: 'C', what: 'Open or close the chat rail' },
   { keys: 'Z', what: 'Undo the last action (instant if it was yours, otherwise the table votes)' },
   { keys: 'F', what: 'Fit the whole table on screen' },
+  { keys: 'T', what: 'Tap or untap the permanent under the cursor, as a click would' },
+  { keys: 'G / E / H', what: 'Send your card under the cursor to the graveyard, exile, or your hand' },
+  { keys: 'R / K', what: 'Tell the table "Hold on — I have a response" or "Go ahead"' },
   { keys: 'Esc', what: 'Clear the selection, or close whatever is open' },
 ];
 

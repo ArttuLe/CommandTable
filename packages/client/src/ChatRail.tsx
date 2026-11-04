@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { LogEntry, PlayerId, PlayerState } from '@command-table/common';
 import { playerHue } from './LogRail.js';
 import { chatEntries } from './logStreams.js';
+import { SIGNALS } from './shortcuts.js';
 
 export function ChatRail({
   log,
@@ -87,11 +88,20 @@ function ChatBox({ onSend }: { onSend: (text: string) => void }) {
     setText('');
   }
   return (
-    <form className="chat-box" onSubmit={submit}>
-      <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Say something…" />
-      <button className="btn" type="submit">
-        Send
-      </button>
-    </form>
+    <>
+      <div className="chat-signals">
+        {SIGNALS.map((signal) => (
+          <button key={signal.key} className="btn btn-ghost" title={`Says "${signal.text}" — shortcut: ${signal.key.toUpperCase()}`} onClick={() => onSend(signal.text)}>
+            {signal.label}
+          </button>
+        ))}
+      </div>
+      <form className="chat-box" onSubmit={submit}>
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Say something…" />
+        <button className="btn" type="submit">
+          Send
+        </button>
+      </form>
+    </>
   );
 }
