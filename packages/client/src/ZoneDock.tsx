@@ -16,6 +16,7 @@ import { LIBRARY_MOVES, type LibraryMove } from './libraryMoves.js';
 import { useCloseOnEscape } from './useCloseOnEscape.js';
 import { useCards } from './useCard.js';
 import { matchesCardQuery } from './cardSearch.js';
+import { CloseIcon } from './icons.js';
 
 /** Past this many revealed cards, the popover offers a box to type into. */
 const FILTER_FROM = 9;
@@ -91,8 +92,8 @@ export function ZoneDock({
               <span>
                 {open.label} ({open.count})
               </span>
-              <button className="icon-button" onClick={close}>
-                ×
+              <button className="icon-button" aria-label="Close" onClick={close}>
+                <CloseIcon />
               </button>
             </div>
             {visible.length === 0 ? (

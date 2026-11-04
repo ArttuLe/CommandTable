@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from './Dialog.js';
 import { HOW_TOS, KEY_SHORTCUTS, MOUSE_SHORTCUTS, type Shortcut } from './shortcuts.js';
+import { HelpIcon } from './icons.js';
 
 export function HelpButton() {
   const [open, setOpen] = useState(false);
@@ -23,7 +24,7 @@ export function HelpButton() {
         aria-label="Help"
         onClick={() => setOpen((o) => !o)}
       >
-        ?
+        <HelpIcon />
       </button>
       {open && <HelpDialog onClose={() => setOpen(false)} buttonRef={ref} />}
     </>

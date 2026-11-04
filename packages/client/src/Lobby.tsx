@@ -3,6 +3,7 @@ import type { DeckStatus, DeckWarningKind } from '@command-table/common';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { saveDecklist, storedDecklist } from './session.js';
 import { useStore } from './store.js';
+import { CopiedIcon, CopyIcon } from './icons.js';
 
 export function Lobby() {
   const roomState = useStore((s) => s.roomState)!;
@@ -62,7 +63,7 @@ export function Lobby() {
             title="Copy room code"
             aria-label="Copy room code"
           >
-            {copied ? '✓' : '⧉'}
+            {copied ? <CopiedIcon /> : <CopyIcon />}
           </button>
         </span>
         {isHost && (

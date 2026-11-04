@@ -10,6 +10,7 @@ import {
   isLethalLife,
   isLethalPoison,
 } from './vitals.js';
+import { CommanderDamageIcon, LifeIcon, PoisonIcon } from './icons.js';
 
 export interface PlayerRailProps {
   player: PlayerState;
@@ -151,12 +152,16 @@ function RailVitals({ player, allCommanders }: { player: PlayerState; allCommand
           one the vitals pad wears (ActionBar), so the number you read off a mat and the number
           you write in your own HUD are plainly the same number. */}
       <span className={`board-life ${isLethalLife(player.life) ? 'lethal' : ''}`}>
-        <b className="vital-symbol">❤</b>
+        <b className="vital-symbol">
+          <LifeIcon />
+        </b>
         {/* The number in its own element, the way the pad keeps its `vital-count`: the glyph
             labels the total and must not be part of reading it. */}
         <span className="life-count">{player.life}</span>
       </span>
-      {poison > 0 && <span className={`poison ${isLethalPoison(poison) ? 'lethal' : ''}`}>☠ {poison}</span>}
+      {poison > 0 && <span className={`poison ${isLethalPoison(poison) ? 'lethal' : ''}`}>
+          <PoisonIcon /> {poison}
+        </span>}
       {damage.map((entry) => (
         <DamageBadge key={entry.commander.id} commander={entry.commander} damage={entry.damage} />
       ))}
@@ -173,7 +178,7 @@ function DamageBadge({ commander, damage }: { commander: CommanderRef; damage: n
       className={`cmdr-damage ${isLethalCommanderDamage(damage) ? 'lethal' : ''}`}
       title={`${damage} commander damage from ${name} — lethal at ${COMMANDER_DAMAGE_LETHAL}`}
     >
-      ⚔ {damage}
+      <CommanderDamageIcon /> {damage}
     </span>
   );
 }

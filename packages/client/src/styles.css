@@ -51,9 +51,12 @@
    box-sizing: border-box;
 }
 
+/* Alegreya Sans: a humanist face with a little of the card table's warmth, still plain enough to
+   read at 12px in a menu. One family for everything — the cards carry the flourish. */
 body {
    margin: 0;
-   font-family: system-ui, sans-serif;
+   font-family: 'Alegreya Sans', system-ui, sans-serif;
+   font-variant-numeric: lining-nums;
    background: var(--bg);
    color: var(--text);
 }
@@ -2877,4 +2880,14 @@ button.mana-pip:hover {
 
 .mana-add-popover .mana-pip {
    margin: 0 0.6rem;
+}
+
+/* Drawn icons (icons.tsx) sit on the text's baseline like the glyphs they replaced. */
+.icon {
+   flex: none;
+   vertical-align: -0.125em;
+}
+
+.mana-symbol .icon {
+   vertical-align: 0;
 }

@@ -9,6 +9,7 @@ import { ConfirmDialog } from './ConfirmDialog.js';
 import { useStore } from './store.js';
 import { useUiStore } from './uiStore.js';
 import { useCloseOnEscape } from './useCloseOnEscape.js';
+import { SettingsIcon } from './icons.js';
 
 type Pending = 'leave' | 'endGame' | null;
 
@@ -40,7 +41,7 @@ export function SettingsMenu() {
         aria-label="Settings"
         onClick={() => setOpen((o) => !o)}
       >
-        ⚙
+        <SettingsIcon />
       </button>
       {open && (
         <div className="settings-popover">

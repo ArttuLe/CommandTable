@@ -18,6 +18,7 @@ import { isLethalCommanderDamage, isLethalLife, isLethalPoison, worstDamageTaken
 import { TokenDialog } from './TokenDialog.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { playerActionGroups, type PlayerDialog } from './playerActions.js';
+import { CommanderDamageIcon, LifeIcon, ManaEmblem, PoisonIcon, TotalIcon } from './icons.js';
 
 interface ActionBarProps {
   playerId: PlayerId;
@@ -273,7 +274,9 @@ export function VitalsPad({
   return (
     <div className="vitals-pad">
       <span className={`vital ${isLethalLife(player.life) ? 'lethal' : ''}`}>
-        <b className="vital-symbol">❤</b>
+        <b className="vital-symbol">
+          <LifeIcon />
+        </b>
         {/* The number is the button for any jump bigger than one. As a loose "±N…" beside the
             pill it read as a third vital; inside the pill it is plainly life's own control, and
             it is the thing you are already looking at when you need to change it by six. */}
@@ -288,7 +291,7 @@ export function VitalsPad({
         </button>
       </span>
 
-      <VitalPill symbol="☠" value={poison} lethal={isLethalPoison(poison)} title="Poison counters" onDelta={onPoisonDelta} />
+      <VitalPill symbol={<PoisonIcon />} value={poison} lethal={isLethalPoison(poison)} title="Poison counters" onDelta={onPoisonDelta} />
 
       <CommanderDamage player={player} commanders={commanders} onDelta={onCommanderDamageDelta} />
 
@@ -321,7 +324,7 @@ function VitalPill({
   title,
   onDelta,
 }: {
-  symbol: string;
+  symbol: React.ReactNode;
   value: number;
   lethal: boolean;
   title: string;
@@ -370,7 +373,7 @@ function CommanderDamage({
     const damage = player.commanderDamageTaken[sole.id] ?? 0;
     return (
       <VitalPill
-        symbol="⚔"
+        symbol={<CommanderDamageIcon />}
         value={damage}
         lethal={isLethalCommanderDamage(damage)}
         title="Commander damage taken"
@@ -406,7 +409,9 @@ function CommanderDamageMenu({
         title="Commander damage taken"
         onClick={() => setOpen((o) => !o)}
       >
-        <b className="vital-symbol">⚔</b>
+        <b className="vital-symbol">
+          <CommanderDamageIcon />
+        </b>
         <span className="vital-count">{worst}</span>
       </button>
 
@@ -468,7 +473,7 @@ export function ManaPad() {
             onClick={() => bumpMana(color, -1)}
           >
             <b className="mana-symbol" aria-hidden="true">
-              {color}
+              <ManaEmblem color={color} />
             </b>
             <span className="mana-count">{manaPad[color]}</span>
           </button>
@@ -478,7 +483,9 @@ export function ManaPad() {
           is the one sum the pad was meant to save you. */}
       {held.length > 1 && (
         <span className="mana-pip mana-total has-mana" title="Total mana in your pool">
-          <b className="mana-symbol">Σ</b>
+          <b className="mana-symbol">
+            <TotalIcon />
+          </b>
           <span className="mana-count">{total}</span>
         </span>
       )}
@@ -513,7 +520,7 @@ function AddMana() {
                 −
               </button>
               <b className="mana-symbol" aria-hidden="true">
-                {color}
+                <ManaEmblem color={color} />
               </b>
               <span className="mana-count" aria-label={`${manaPad[color]} ${MANA_NAMES[color]}`}>
                 {manaPad[color]}

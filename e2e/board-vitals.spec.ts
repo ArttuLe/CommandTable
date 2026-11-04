@@ -45,7 +45,7 @@ test('poison appears on the board only once there is any', async ({ browser }) =
 
   await alice.locator('.vitals-pad').getByRole('button', { name: 'Poison counters: one more' }).click();
 
-  await expect(boardOf(bob, 'Alice').locator('.poison')).toHaveText('☠ 1');
+  await expect(boardOf(bob, 'Alice').locator('.poison')).toHaveText('1');
   await expect(boardOf(bob, 'Carol').locator('.poison')).toHaveCount(0);
 });
 

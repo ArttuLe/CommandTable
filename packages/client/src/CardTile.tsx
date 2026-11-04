@@ -7,6 +7,7 @@ import { labelTone } from './labels.js';
 import { isCreature, powerToughness, typeLineOf } from './battlefieldZones.js';
 import { useUiStore } from './uiStore.js';
 import { isAttacking, isLabelMarker, isSummoningSick } from './combat.js';
+import { SummoningSickIcon } from './icons.js';
 
 interface CardTileProps {
   obj: ProjectedObject;
@@ -172,7 +173,7 @@ export function CardTile({ obj, selected, onClick, onDoubleClick, onContextMenu,
           differ. It clears itself when its controller's next turn starts. */}
       {sick && (
         <span className="sick-badge" title="Summoning sick — arrived this turn">
-          ☾
+          <SummoningSickIcon />
         </span>
       )}
       {/* A strip, like the counters above — these used to be absolutely positioned at the same
