@@ -20,6 +20,7 @@ import { PASS_TURN_WARNING, turnHighlight, turnLabel } from './turnStatus.js';
 import { libraryMoveAction } from './libraryMoves.js';
 import { commanderPrompts, spentDismissals } from './commanderPrompt.js';
 import { SettingsMenu } from './SettingsMenu.js';
+import { GameOver } from './GameOver.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { HelpButton } from './HelpDialog.js';
 import { ManaChoice, type ManaChoicePrompt } from './ManaChoice.js';
@@ -522,6 +523,7 @@ export function Table() {
         </div>
       )}
       <SelectionBar />
+      <GameOver table={tableState} playerId={playerId} isHost={roomState?.hostId === playerId} />
       {/* A toast for each stream, beside the rail it belongs to and only while that rail is shut. */}
       <Toasts log={chatLog} players={tableState.players} myId={playerId} side="chat" enabled={!chatRailOpen} />
       <Toasts log={tableLog} players={tableState.players} myId={playerId} side="log" enabled={!logRailOpen} />

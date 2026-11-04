@@ -2744,3 +2744,49 @@ button.vital:hover {
       display: none;
    }
 }
+/* The end of a game: over the table, not instead of it (GameOver.tsx). Centred near the top so the
+   boards underneath — who had what out — stay in view. */
+.game-over {
+   position: fixed;
+   top: 4.5rem;
+   left: 50%;
+   transform: translateX(-50%);
+   z-index: 45;
+   width: min(26rem, calc(100vw - 2rem));
+   display: grid;
+   gap: 0.6rem;
+   padding: 1.1rem 1.25rem;
+   background: var(--surface-raised);
+   border: 1px solid var(--accent-turn);
+   border-radius: var(--radius-lg);
+   box-shadow: var(--shadow);
+}
+
+.game-over-title {
+   margin: 0;
+   font-size: 1.5rem;
+}
+
+.game-over-summary {
+   margin: 0;
+   color: var(--text-dim);
+}
+
+.game-over-standings {
+   margin: 0;
+   padding: 0;
+   list-style: none;
+   display: grid;
+   gap: 0.2rem;
+}
+
+.game-over-standings li {
+   display: flex;
+   justify-content: space-between;
+   gap: 1rem;
+}
+
+.game-over-life {
+   color: var(--text-dim);
+   font-variant-numeric: tabular-nums;
+}
