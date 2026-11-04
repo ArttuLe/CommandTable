@@ -352,8 +352,14 @@ function performUndo(room: Room, current: TableState, target: TableState, actorI
 function progressUndo(room: Room): void {
   const pending = pendingUndosByRoom.get(room.roomId);
   if (!pending) return;
-  const connectedCount = room.toState().seats.filter((s) => s.connected && s.playerId).length;
-  const { approvals, needed, outcome } = tallyUndoVotes(pending.votes, connectedCount);
+  const connected = new Set(room.toState().seats.flatMap((s) => (s.connected && s.playerId ? [s.playerId] : [])));
+  // A vote whose requester has left has nobody to want it any more.
+  if (!connected.has(pending.requesterId)) {
+    pendingUndosByRoom.delete(room.roomId);
+    broadcastToRoom(room.roomId, { t: 'undoResolved', targetRevision: pending.targetRevision, outcome: 'cancelled' });
+    return;
+  }
+  const { approvals, needed, outcome } = tallyUndoVotes(pending.votes, connected);
 
   if (outcome === 'pending') {
     broadcastToRoom(room.roomId, {

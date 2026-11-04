@@ -17,6 +17,7 @@ import {
 import { fisherYatesShuffle } from './shuffle.js';
 import {
   asNewObject,
+  placeInLibrary,
   bumpRevision,
   defaultVisibilityFor,
   detachFrom,
@@ -202,25 +203,6 @@ function moveObject(state: TableState, action: Extract<Action, { t: 'MOVE_OBJECT
         : p
     ),
   });
-}
-
-/**
- * Puts a card at an index of the library it just joined (or moved within), and renumbers that
- * library 0..n-1. `toPosition` is an index, not a sort key: written straight into `position`,
- * "top" (0) tied with the card already on top — and the stable sort kept the old one there — while
- * "bottom" (the card count) landed mid-library once a draw had left positions starting above 0.
- */
-function placeInLibrary(state: TableState, objectId: string, index: number): TableState {
-  const moved = state.objects[objectId];
-  const others = Object.values(state.objects)
-    .filter((o) => o.id !== objectId && zonesEqual(o.zone, moved.zone))
-    .sort((a, b) => a.position - b.position);
-  const at = Math.max(0, Math.min(index, others.length));
-  const ordered = [...others.slice(0, at), moved, ...others.slice(at)];
-  return ordered.reduce(
-    (next, obj, position) => (obj.position === position ? next : withObject(next, { ...obj, position }, false)),
-    state
-  );
 }
 
 function shuffleLibrary(state: TableState, action: Extract<Action, { t: 'SHUFFLE_LIBRARY' }>, deps: ApplyDeps): ApplyResult {

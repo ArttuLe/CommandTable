@@ -137,3 +137,22 @@ describe('CONCEDE: what the conceding player leaves behind', () => {
     expect(result.state.objects['aura'].attachedTo).toBeNull();
   });
 });
+
+describe('CONCEDE: face-down permanents and the conceder’s own attachments', () => {
+  it('hands sight of a borrowed face-down permanent back with control', () => {
+    const state = makeState([card({ id: 'm', ownerId: BOB, controllerId: ALICE, zone: { playerId: ALICE, zone: 'battlefield' }, faceDown: true, faceVisibility: { kind: 'players', ids: [ALICE] } })]);
+    const result = applyAction(state, { t: 'CONCEDE', playerId: ALICE });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.state.objects['m'].faceVisibility).toEqual({ kind: 'players', ids: [BOB] });
+  });
+
+  it('lets the conceder’s aura go of an opponent’s creature', () => {
+    const state = makeState([
+      card({ id: 'theirs', ownerId: BOB, controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' } }),
+      card({ id: 'aura', ownerId: ALICE, controllerId: ALICE, zone: { playerId: ALICE, zone: 'battlefield' }, attachedTo: 'theirs' }),
+    ]);
+    const result = applyAction(state, { t: 'CONCEDE', playerId: ALICE });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.state.objects['aura'].attachedTo).toBeNull();
+  });
+});

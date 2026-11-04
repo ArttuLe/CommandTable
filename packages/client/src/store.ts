@@ -181,8 +181,11 @@ export const useStore = create<Store>((set, get) => {
           break;
         // §11.2: a refused action is surfaced, not dropped — a stale card or a finished game
         // otherwise looks like a frozen table.
+        // The server's reason is written for the log ("no such object: 3f2a…"); the player gets what
+        // it means for them, which is nearly always that the table moved under a stale click.
         case 'rejected':
-          set({ errorMessage: msg.reason });
+          console.warn('action rejected:', msg.reason);
+          set({ errorMessage: 'That didn’t go through: the table had already changed. Try again.' });
           break;
         case 'state':
           set({

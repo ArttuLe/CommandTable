@@ -105,16 +105,15 @@ describe('parseDecklist: export forms that used to vanish', () => {
     expect(parseDecklist('1 Sol Ring (LTC) 284 *F*').lines[0]).toMatchObject({ name: 'Sol Ring', set: 'LTC', collectorNumber: '284' });
   });
 
-  // A line with no count at all is still a card someone meant to list: one of it, and if the name
-  // is wrong it surfaces as unresolved instead of disappearing.
-  it('reads a line without a count as one copy', () => {
-    expect(parseDecklist('Sol Ring').lines[0]).toMatchObject({ quantity: 1, name: 'Sol Ring' });
+  // Exporters write prose and group headers without counts; those are not cards.
+  it('skips lines without a count, and a line that is only a tag', () => {
+    expect(parseDecklist('About\nName My Deck\nCreatures (30)\n1 #Ramp').lines).toEqual([]);
   });
 });
 
 describe('parseDecklist: section headers as exporters write them', () => {
   it('reads a header with a trailing colon or a count', () => {
-    const lines = parseDecklist('Commander (1)\n1 Korvold\nDeck (99)\n1 Sol Ring\nSIDEBOARD:\n1 Swords').lines;
+    const lines = parseDecklist('Commander (1)\n1 Korvold\nDeck (99)\n1 Sol Ring\nSideboard (15):\n1 Swords').lines;
     expect(lines.map((l) => [l.section, l.name])).toEqual([
       ['commander', 'Korvold'],
       ['deck', 'Sol Ring'],

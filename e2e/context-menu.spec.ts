@@ -122,3 +122,25 @@ test('Escape puts away whichever menu is open', async ({ browser }) => {
     });
   }
 });
+
+// One Escape closes one thing. With a card's menu open over the library popover, both listened, and
+// closing the library as well ran its shuffle-on-close behind the player's back.
+test('Escape closes only the menu on top', async ({ browser }) => {
+  // Three seats: searching changes what is visible in the library, which the read-only bucket must
+  // not do (see seat.ts).
+  const page = await openSeat(browser, 3, 'Carol');
+  await page.getByRole('button', { name: /^More/ }).click();
+  await page.getByRole('button', { name: 'Search library' }).click();
+  await expect(page.locator('.zone-popover .card-tile').first()).toBeVisible();
+
+  await page.locator('.zone-popover .card-tile').first().focus();
+  await page.keyboard.press('Shift+F10');
+  await expect(page.locator('.context-menu')).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.context-menu')).toHaveCount(0);
+  await expect(page.locator('.zone-popover')).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.zone-popover')).toHaveCount(0);
+});

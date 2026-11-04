@@ -9,11 +9,12 @@
 //   2  opening-hand.spec.ts   exclusively — it is the only spec that needs setupComplete false
 //   3  targeting, change-pulse, board-vitals,  they start play and play a card,
 //      player-rail, hover-preview, hand-play,  move a number or bin a permanent; none of them
-//      undo-vote, target-size                  minds what the others left behind (undo-vote
+//      undo-vote, target-size, context-menu's  minds what the others left behind (undo-vote
+//      stacked-Escape test (searches)
 //                                              must resolve its vote before it ends, or the
 //                                              next spec's first action cancels it under them)
 //   4  context-menu, hand-fan, plane-menu,  read-only after starting play (plane-menu only moves
-//      rail-legibility                      its own camera), and hand-fan needs all seven cards
+//      rail-legibility, one-seat-one-tab    its own camera), and hand-fan needs all seven cards
 //
 // Two rules keep that true, and both break quietly if ignored: nothing else may use 2 seats, and
 // nothing that plays a card may join the 4-seat bucket (hand-fan asserts the hand is crowded,

@@ -145,3 +145,24 @@ describe('MOVE_ALL', () => {
     expect(next.objects['wiped']).toMatchObject({ tapped: false, counters: {}, markers: [] });
   });
 });
+
+describe('MOVE_ALL: the same new-object rules as MOVE_OBJECT', () => {
+  it('turns face-down cards face up and lets everyone see them', () => {
+    const state = makeState([card({ id: 'm', zone: { playerId: ALICE, zone: 'battlefield' }, faceDown: true, faceVisibility: { kind: 'players', ids: [ALICE] } })]);
+    const result = applyAction(state, { t: 'MOVE_ALL', fromZone: { playerId: ALICE, zone: 'battlefield' }, toZone: { playerId: ALICE, zone: 'exile' } });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.state.objects['m']).toMatchObject({ faceDown: false, faceVisibility: { kind: 'all' } });
+  });
+
+  it('puts the moved cards under the library, not tied with its top card', () => {
+    const state = makeState([
+      card({ id: 'top', zone: { playerId: ALICE, zone: 'library' }, position: 0 }),
+      card({ id: 'g1', zone: { playerId: ALICE, zone: 'graveyard' } }),
+      card({ id: 'g2', zone: { playerId: ALICE, zone: 'graveyard' } }),
+    ]);
+    const result = applyAction(state, { t: 'MOVE_ALL', fromZone: { playerId: ALICE, zone: 'graveyard' }, toZone: { playerId: ALICE, zone: 'library' } });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.state.objects['top'].position).toBe(0);
+    expect([result.state.objects['g1'].position, result.state.objects['g2'].position].sort()).toEqual([1, 2]);
+  });
+});

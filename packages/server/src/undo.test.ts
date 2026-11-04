@@ -110,22 +110,30 @@ describe('applyUndo: objects the revert simply removes', () => {
 
 describe('tallyUndoVotes', () => {
   const votes = (...ballots: boolean[]) => new Map(ballots.map((approve, i) => [`p${i}`, approve]));
+  const seats = (n: number) => new Set(Array.from({ length: n }, (_, i) => `p${i}`));
 
   it('passes on a strict majority of the connected players', () => {
-    expect(tallyUndoVotes(votes(true, true), 3)).toEqual({ approvals: 2, needed: 2, outcome: 'applied' });
+    expect(tallyUndoVotes(votes(true, true), seats(3))).toEqual({ approvals: 2, needed: 2, outcome: 'applied' });
   });
 
   it('waits while neither side has it', () => {
-    expect(tallyUndoVotes(votes(true), 3)).toEqual({ approvals: 1, needed: 2, outcome: 'pending' });
+    expect(tallyUndoVotes(votes(true), seats(3))).toEqual({ approvals: 1, needed: 2, outcome: 'pending' });
   });
 
   it('fails as soon as a majority is out of reach', () => {
-    expect(tallyUndoVotes(votes(true, false, false), 4).outcome).toBe('rejected');
+    expect(tallyUndoVotes(votes(true, false, false), seats(4)).outcome).toBe('rejected');
   });
 
   // The requester's own approval counts. Alone at the table it already is the majority, but the
   // vote used to be opened anyway — with nobody connected to cast another ballot, it never closed.
+  // Bob approved and left; Alice, alone and still deciding, must not be outvoted by his absence.
+  it('ignores the ballot of a player who is no longer connected', () => {
+    const left = new Map([['bob', true], ['alice', false]]);
+    expect(tallyUndoVotes(new Map([['bob', true]]), new Set(['alice'])).outcome).toBe('pending');
+    expect(tallyUndoVotes(left, new Set(['alice'])).outcome).toBe('rejected');
+  });
+
   it('passes at once when the requester is the only one connected', () => {
-    expect(tallyUndoVotes(votes(true), 1).outcome).toBe('applied');
+    expect(tallyUndoVotes(votes(true), seats(1)).outcome).toBe('applied');
   });
 });

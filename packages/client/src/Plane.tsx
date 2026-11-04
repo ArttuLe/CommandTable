@@ -88,17 +88,16 @@ export function Plane({
 
   // The first fit is measured before the HUD below has settled — the hand fans and the opening-hand
   // band comes and goes after it — so on its own it framed the table for a viewport that was about
-  // to change, and stayed that way until F. Watching both sizes lets a fit follow them, and
-  // following the window too comes for free, for as long as the view is still the fit's own.
+  // to change, and stayed that way until F. Watching the viewport lets a fit follow it, and the
+  // window too, for as long as the view is still the fit's own. Not the plane: its size depends on
+  // the scale (the rails' type is counter-scaled to it), so refitting on it chased its own tail.
   useEffect(() => {
     const viewport = viewportRef.current;
-    const content = contentRef.current;
-    if (!viewport || !content) return;
+    if (!viewport) return;
     const observer = new ResizeObserver(() => {
       if (framed.current) fit();
     });
     observer.observe(viewport);
-    observer.observe(content);
     return () => observer.disconnect();
   }, [fit]);
 

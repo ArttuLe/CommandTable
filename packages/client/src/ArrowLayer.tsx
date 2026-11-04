@@ -24,9 +24,19 @@ export function ArrowLayer({ relations, revision }: { relations: Relation[]; rev
     // offsetWidth is the untransformed layout width, so it is already in plane units; the
     // measured rect is in screen pixels. Their ratio is the plane's live scale, which is how
     // every measurement below gets back into plane space without this needing to know the view.
+    // Nothing to draw, nothing to measure: this runs on every DOM change in the mats (below).
+    if (relations.length === 0) {
+      setPaths((current) => (current.length === 0 ? current : []));
+      return;
+    }
+
     const hostRect = host.getBoundingClientRect();
     const scale = host.offsetWidth > 0 ? hostRect.width / host.offsetWidth : 1;
-    setSize({ width: host.offsetWidth, height: host.offsetHeight });
+    setSize((current) =>
+      current.width === host.offsetWidth && current.height === host.offsetHeight
+        ? current
+        : { width: host.offsetWidth, height: host.offsetHeight }
+    );
 
     const wanted = new Set(relations.flatMap((r) => [r.fromId, r.toId]));
     const boxes: Record<ObjectId, Box> = {};

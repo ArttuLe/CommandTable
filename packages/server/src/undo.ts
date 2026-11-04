@@ -80,9 +80,13 @@ export type UndoVoteOutcome = 'applied' | 'rejected' | 'pending';
  */
 export function tallyUndoVotes(
   votes: ReadonlyMap<PlayerId, boolean>,
-  connectedCount: number
+  connected: ReadonlySet<PlayerId>
 ): { approvals: number; needed: number; outcome: UndoVoteOutcome } {
-  const ballots = [...votes.values()];
+  // Only ballots from players still at the table: one who voted and left would otherwise count
+  // against a smaller table — down to none, where a lone stale approval applied a rewind nobody
+  // present had agreed to.
+  const ballots = [...votes].filter(([id]) => connected.has(id)).map(([, approve]) => approve);
+  const connectedCount = connected.size;
   const approvals = ballots.filter(Boolean).length;
   const rejections = ballots.length - approvals;
   const needed = Math.floor(connectedCount / 2) + 1;

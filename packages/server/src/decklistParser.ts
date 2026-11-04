@@ -28,17 +28,20 @@ export function parseDecklist(text: string): ParsedDecklist {
 
     // "Sideboard", "SIDEBOARD:" and "Deck (99)" are all the same header in different exporters'
     // hands — and now that a line without a count is read as a card, an unrecognised header would be one.
-    const headerSection = SECTION_HEADERS[trimmed.toLowerCase().replace(/\s*\(\d+\)$/, '').replace(/:$/, '')];
+    const headerSection = SECTION_HEADERS[trimmed.toLowerCase().replace(/:$/, '').replace(/\s*\(\d+\)$/, '')];
     if (headerSection) {
       section = headerSection;
       continue;
     }
 
-    // Without a count, one copy: dropping the line silently hid it from the unresolved list too,
-    // so a typo or an unfamiliar export form just made cards vanish from the deck.
+    // A line without a count is skipped. Exporters put prose and headers there — Arena's "About" and
+    // "Name …", Archidekt's "Creatures (30)" — which, read as cards, came back as unresolved noise.
     const match = LINE.exec(trimmed);
-    const quantity = match ? Number.parseInt(match[1], 10) : 1;
-    let rest = match ? match[2] : trimmed;
+    if (!match) {
+      continue;
+    }
+    const quantity = Number.parseInt(match[1], 10);
+    let rest = match[2];
 
     while (TRAILING_TAG.test(rest)) {
       rest = rest.replace(TRAILING_TAG, '');
@@ -54,6 +57,8 @@ export function parseDecklist(text: string): ParsedDecklist {
       collectorNumber = setMatch[3];
     }
 
+    // "1 #tag" strips to nothing; there is no card to look up.
+    if (!name) continue;
     lines.push({ quantity, name, set, collectorNumber, section });
   }
 

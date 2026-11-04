@@ -5,6 +5,7 @@ import {
   asNewObject,
   defaultVisibilityFor,
   detachFrom,
+  placeInLibrary,
   err,
   ok,
   objectsInZone,
@@ -78,17 +79,17 @@ export function moveAll(state: TableState, action: Extract<Action, { t: 'MOVE_AL
   for (const obj of toMove) {
     // Same new-object rule as MOVE_OBJECT (CR 400.7): a board wipe shouldn't leave every
     // creature's +1/+1 counters waiting in the graveyard.
+    // Visibility from the new object, which is face up (asNewObject) — not from the card as it was,
+    // which left a revealed morph visible to its controller only.
     const moved = asNewObject(obj);
     next = withObject(
       detachFrom(next, obj.id),
-      {
-        ...moved,
-        zone: action.toZone,
-        position: 0,
-        faceVisibility: defaultVisibilityFor(action.toZone, moved.controllerId, obj.faceDown),
-      },
+      { ...moved, zone: action.toZone, faceVisibility: defaultVisibilityFor(action.toZone, moved.controllerId, moved.faceDown) },
       false
     );
+    // Into a library, each goes under what is there, in order — not all at position 0, tied with
+    // the top card (see placeInLibrary).
+    if (action.toZone.zone === 'library') next = placeInLibrary(next, obj.id, Number.MAX_SAFE_INTEGER);
   }
   return ok({ ...next, revision: next.revision + 1 });
 }
