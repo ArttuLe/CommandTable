@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { joinDevTable } from './api.js';
 import { parseDevRoute } from './devRoute.js';
+import { applyPrefs } from './prefs.js';
 import { loadSession } from './session.js';
 import { useStore } from './store.js';
 import { useUiStore } from './uiStore.js';
@@ -21,6 +22,9 @@ export function App() {
   const status = useStore((s) => s.status);
   const resume = useStore((s) => s.resume);
   const showError = useStore((s) => s.showError);
+  const prefs = useUiStore((s) => s.prefs);
+
+  useEffect(() => applyPrefs(prefs), [prefs]);
 
   // Refresh recovery: this tab owned the stored session, so take the seat back without asking.
   // A session belonging to some other tab is offered on Home instead (see session.ts).

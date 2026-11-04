@@ -26,7 +26,7 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: `http://localhost:${CLIENT_PORT}`,
-    // --card-w steps at viewport breakpoints (styles.css), and the geometry specs measure it.
+    // --card-w steps at viewport breakpoints (tokens.css), and the geometry specs measure it.
     viewport: { width: 1280, height: 800 },
     // Leaves the change pulse in the DOM but drops its 400ms animation (styles.css).
     reducedMotion: 'reduce',

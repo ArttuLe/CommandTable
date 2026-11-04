@@ -67,7 +67,10 @@ can start before everyone has kept, so say so out loud if you are still deciding
 - **The bottom bar** is yours: your life, poison and commander damage, your mana pool, your
   graveyard, exile and library, your hand, and the actions you take every turn.
 - **Chat** is on the left edge and the **Log** on the right. Each opens as a rail; while it is
-  closed, new lines appear briefly as notes.
+  closed, new lines appear briefly as notes. **Hold on** and **Go ahead** above the chat box (or
+  `R` and `K`) tell the table you have a response, or that they can carry on.
+- **Your look:** the gear (top right) picks a theme for each colour of Magic, a playmat and a card
+  back. Only you see them.
 
 ## Playing a turn
 
@@ -147,6 +150,9 @@ lobby for another game. The host can also end a game at any time from the gear m
 | `Z` | Undo |
 | `F` | Fit the whole table on screen |
 | `L` / `C` | Open or close the log / chat |
+| `T` | Tap or untap the permanent under the cursor |
+| `G` / `E` / `H` | Send your card under the cursor to the graveyard, exile, or your hand |
+| `R` / `K` | Say "Hold on — I have a response" / "Go ahead" |
 | `Esc` | Close the open menu, or clear the selection |
 | `Enter` | On a focused card: play it from hand, or tap it |
 | `Shift+F10` | On a focused card: open its menu |

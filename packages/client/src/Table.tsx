@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { PlayerId, ProjectedObject } from '@command-table/common';
 import { useStore } from './store.js';
 import { useUiStore } from './uiStore.js';
-import { CardTile } from './CardTile.js';
+import { CardTile, fireAtCentre } from './CardTile.js';
 import { ContextMenu } from './ContextMenu.js';
 import { Plane } from './Plane.js';
 import { Board } from './Board.js';
@@ -28,6 +28,7 @@ import { manaToRemove } from './manaSources.js';
 import { undoneEntry, undoPromptText, undoTallyText } from './undoPrompt.js';
 import { useSubjectName } from './useCard.js';
 import { fanOverlap } from './handFan.js';
+import { hoverMove, SIGNALS } from './shortcuts.js';
 
 function isOwnZone(obj: ProjectedObject, playerId: PlayerId, zone: string): boolean {
   return 'playerId' in obj.zone && obj.zone.playerId === playerId && obj.zone.zone === zone;
@@ -160,10 +161,37 @@ export function Table() {
       return target instanceof HTMLElement && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
     }
 
+    /** The card under the cursor and its tile, for the keys that act on it. */
+    function hovered(): { tile: HTMLElement; obj: ProjectedObject } | null {
+      const tile = document.querySelector<HTMLElement>('.card-tile[data-object-id]:hover');
+      const obj = tile && useStore.getState().tableState?.objects[tile.dataset.objectId!];
+      return tile && obj ? { tile, obj } : null;
+    }
+
     function onKeyDown(e: KeyboardEvent) {
       // A dialog answers its own keys; the table's shortcuts stay out of the way while one is up.
       if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target) || dialogOpen) return;
-      switch (e.key.toLowerCase()) {
+      const key = e.key.toLowerCase();
+      const signal = SIGNALS.find((s) => s.key === key);
+      if (signal) {
+        act({ t: 'SAY', playerId, text: signal.text });
+        e.preventDefault();
+        return;
+      }
+      const target = hovered();
+      const move = target && hoverMove(key, target.obj, playerId);
+      if (move) {
+        act(move);
+        e.preventDefault();
+        return;
+      }
+      switch (key) {
+        // Exactly a click, so a land still fills the mana pad and a dual still asks which colour.
+        // Only in play: a click on the commander in your rail casts it.
+        case 't':
+          if (target?.obj.zone.zone !== 'battlefield') return;
+          fireAtCentre(target.tile, 'click');
+          break;
         case 'd':
           act({ t: 'DRAW', playerId, count: 1 });
           break;
