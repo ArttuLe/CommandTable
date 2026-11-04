@@ -12,8 +12,8 @@
 //      undo-vote                               minds what the others left behind (undo-vote
 //                                              must resolve its vote before it ends, or the
 //                                              next spec's first action cancels it under them)
-//   4  context-menu, hand-fan, plane-menu   read-only after starting play (plane-menu only moves
-//                                           its own camera), and hand-fan needs all seven cards
+//   4  context-menu, hand-fan, plane-menu,  read-only after starting play (plane-menu only moves
+//      rail-legibility                      its own camera), and hand-fan needs all seven cards
 //
 // Two rules keep that true, and both break quietly if ignored: nothing else may use 2 seats, and
 // nothing that plays a card may join the 4-seat bucket (hand-fan asserts the hand is crowded,

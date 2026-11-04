@@ -828,9 +828,15 @@ input[type='checkbox'] {
    text-align: center;
 }
 
+/* Counter-scaled against the plane's zoom (--plane-scale, set by Plane): at "Fit" a four-seat
+   table is drawn at a fifth of its size, which left a name 3px tall on screen. Each of these
+   grows on the plane just enough to stay about the given size on screen, and stops at a size the
+   210px rail can still hold — so at the lowest zooms it is as big as the rail allows, not 14px. */
 .rail-identity .player-name {
    font-weight: bold;
    overflow-wrap: anywhere;
+   font-size: clamp(1rem, calc(12px / var(--plane-scale, 1)), 3.5rem);
+   line-height: 1.15;
 }
 
 /* Life reads across a zoomed-out plane, so it is the biggest thing on the rail — everything else
@@ -849,7 +855,7 @@ input[type='checkbox'] {
    display: inline-flex;
    align-items: baseline;
    gap: 0.3rem;
-   font-size: 2.1rem;
+   font-size: clamp(2.1rem, calc(14px / var(--plane-scale, 1)), 4.5rem);
    line-height: 1;
    font-weight: 600;
 }
@@ -861,7 +867,7 @@ input[type='checkbox'] {
 /* Quiet beside its number, the way it is in the pad — it labels the total, it is not part of it.
    Opacity rather than a colour, so it survives the lethal tint. */
 .board-life .vital-symbol {
-   font-size: 1.6rem;
+   font-size: 0.76em;
    font-weight: normal;
    opacity: 0.85;
 }
@@ -869,7 +875,7 @@ input[type='checkbox'] {
 /* Disconnected, conceded, eliminated: said out loud next to the name, because the mat going
    half-opaque is not something you can read at a glance from across the table. */
 .player-state {
-   font-size: 0.75rem;
+   font-size: clamp(0.75rem, calc(10px / var(--plane-scale, 1)), 2.25rem);
    color: var(--text-dim);
    white-space: nowrap;
 }
@@ -1015,7 +1021,7 @@ input[type='checkbox'] {
 
 .poison,
 .cmdr-damage {
-   font-size: 0.75rem;
+   font-size: clamp(0.75rem, calc(11px / var(--plane-scale, 1)), 2.5rem);
    color: var(--text-dim);
    white-space: nowrap;
 }

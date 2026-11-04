@@ -230,7 +230,9 @@ export function Plane({
       <div
         className={`plane ${gliding ? 'gliding' : ''}`}
         ref={contentRef}
-        style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }}
+        // The scale is published as well as applied, so the few things that must read from across
+        // the table at any zoom can size themselves against it (the rails' names and life, styles.css).
+        style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`, '--plane-scale': view.scale } as React.CSSProperties}
       >
         {children}
       </div>
