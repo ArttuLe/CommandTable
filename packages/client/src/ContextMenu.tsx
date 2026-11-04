@@ -16,6 +16,7 @@ import { Dialog } from './Dialog.js';
 import { TextDialog } from './TextDialog.js';
 import { LABEL_PRESETS, labelTone } from './labels.js';
 import { useCloseOnEscape } from './useCloseOnEscape.js';
+import { cardMenuShape, isTransformable, type MoveTarget } from './cardMenu.js';
 
 interface ContextMenuProps {
   obj: ProjectedObject;
@@ -34,23 +35,6 @@ type MenuDialog = 'marker' | 'annotation' | null;
  * (see labels.ts).
  */
 const GENERIC_COUNTER = 'counter';
-
-/** The zones a menu item can send an object to, as `MOVE_OBJECT` names them. */
-type MoveZone = 'hand' | 'graveyard' | 'exile' | 'library' | 'battlefield' | 'commandZone';
-
-/**
- * Where an object can be sent. Six full-width "Move to X" rows were a quarter of a menu that had
- * outgrown the screen; as chips they are one row, and the short names are the ones players say
- * out loud anyway.
- */
-const MOVE_TARGETS: { label: string; zone: MoveZone; toPosition?: number }[] = [
-  { label: 'Hand', zone: 'hand' },
-  { label: 'GY', zone: 'graveyard' },
-  { label: 'Exile', zone: 'exile' },
-  { label: 'Play', zone: 'battlefield' },
-  { label: 'Cmd', zone: 'commandZone' },
-  { label: 'Top', zone: 'library', toPosition: 0 },
-];
 
 /** What the menu's header calls this object. A redacted one has no name to give away. */
 function menuTitle(obj: ProjectedObject, card: Card | null): string {
@@ -72,6 +56,15 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
   const blocks = blocksOf(live);
   const targets = live.markers.map(parseTargetMarker).filter((id) => id !== null);
   const duplicate = isRedacted(obj) ? null : duplicateAction(obj, obj.ownerId);
+  // Which items this card gets, by where it is (cardMenu.ts). A redacted card's faces are as
+  // hidden as the rest of it, so it is never offered Transform.
+  const shape = cardMenuShape({
+    zone: obj.zone.zone,
+    creature: isCreature(typeLineOf(obj, card)),
+    transformable: !isRedacted(obj) && isTransformable(card),
+  });
+  // The bottom of a library is past its last card (see libraryMoves.ts).
+  const libraryCount = useStore((s) => s.tableState?.libraryCounts[obj.controllerId] ?? 0);
 
   // Measure, then place: the menu's height depends on which items this object gets, so there's
   // nothing to flip against until it has rendered once. Hidden for that first frame rather than
@@ -94,7 +87,7 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
     onClose();
   }
 
-  const toZone = (zone: MoveZone) => ({
+  const toZone = (zone: MoveTarget['zone']) => ({
     playerId: obj.controllerId,
     zone,
   });
@@ -117,13 +110,15 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
             under the cursor is small enough that a menu of verbs with nothing naming its subject
             is a guess — so the menu says it before it offers anything. */}
         <div className="context-menu-title">{menuTitle(obj, card)}</div>
-        <button onClick={() => run(() => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id }))}>
-          {obj.tapped ? 'Untap' : 'Tap'}
-        </button>
+        {shape.tap && (
+          <button onClick={() => run(() => act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id }))}>
+            {obj.tapped ? 'Untap' : 'Tap'}
+          </button>
+        )}
         {/* Attacking is the one marker the whole table reads at a glance, so it gets its own
             toggle and a red border on the tile instead of living behind "Add marker…". Only
-            creatures can attack, so only creatures are offered it. */}
-        {isCreature(typeLineOf(obj, card)) && (
+            creatures in play can attack, so only they are offered it. */}
+        {shape.combat && (
           <button
             onClick={() =>
               run(() =>
@@ -141,7 +136,7 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
         {/* Blocking needs to say *which* attacker, unlike attacking, so it points at one — the
             same click-the-card gesture as targeting below, rather than a list of the declared
             attackers. The arrows are drawn from what it writes (see combat.ts, ArrowLayer.tsx). */}
-        {isCreature(typeLineOf(obj, card)) && (
+        {shape.combat && (
           <>
             {blocks.length > 0 && (
               <button
@@ -175,27 +170,37 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
         ) : (
           <button onClick={() => run(() => startPointing(obj.id, 'target'))}>Target…</button>
         )}
-        <button onClick={() => run(() => act({ t: 'TRANSFORM', objectId: obj.id }))}>Transform</button>
+        {shape.transform && <button onClick={() => run(() => act({ t: 'TRANSFORM', objectId: obj.id }))}>Transform</button>}
         {/* One toggle where the object tells us which way it is facing. A redacted object doesn't
             carry `faceDown` (§9.2 omits it), so there both directions stay on offer. */}
-        {isRedacted(obj) ? (
-          <>
-            <button onClick={() => run(() => act({ t: 'TURN_FACE_DOWN', objectId: obj.id }))}>Turn face down</button>
-            <button onClick={() => run(() => act({ t: 'TURN_FACE_UP', objectId: obj.id }))}>Turn face up</button>
-          </>
-        ) : (
-          <button onClick={() => run(() => act({ t: obj.faceDown ? 'TURN_FACE_UP' : 'TURN_FACE_DOWN', objectId: obj.id }))}>
-            {obj.faceDown ? 'Turn face up' : 'Turn face down'}
-          </button>
-        )}
+        {shape.faceToggle &&
+          (isRedacted(obj) ? (
+            <>
+              <button onClick={() => run(() => act({ t: 'TURN_FACE_DOWN', objectId: obj.id }))}>Turn face down</button>
+              <button onClick={() => run(() => act({ t: 'TURN_FACE_UP', objectId: obj.id }))}>Turn face up</button>
+            </>
+          ) : (
+            <button onClick={() => run(() => act({ t: obj.faceDown ? 'TURN_FACE_UP' : 'TURN_FACE_DOWN', objectId: obj.id }))}>
+              {obj.faceDown ? 'Turn face up' : 'Turn face down'}
+            </button>
+          ))}
 
         <hr />
         <div className="menu-chips">
-          {MOVE_TARGETS.map(({ label, zone, toPosition }) => (
+          {shape.moves.map(({ label, zone, position }) => (
             <button
-              key={zone}
-              title={`Move to ${label}`}
-              onClick={() => run(() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: toZone(zone), toPosition }))}
+              key={label}
+              title={position ? `Move to the ${position} of the library` : `Move to ${label}`}
+              onClick={() =>
+                run(() =>
+                  act({
+                    t: 'MOVE_OBJECT',
+                    objectId: obj.id,
+                    toZone: toZone(zone),
+                    toPosition: position === 'top' ? 0 : position === 'bottom' ? libraryCount : undefined,
+                  })
+                )
+              }
             >
               {label}
             </button>
@@ -203,16 +208,21 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
         </div>
 
         <hr />
-        {/* Three steppers, always there, none of them behind a dialog: the two counters that come
-            up every turn, and the nameless one that counts whatever this card is standing in for.
-            The server drops a counter that reaches zero, so "−" on the last one clears the badge. */}
-        <CounterStepper counterKey="+1/+1" obj={obj} act={act} />
-        <CounterStepper counterKey="-1/-1" obj={obj} act={act} />
-        <CounterStepper counterKey={GENERIC_COUNTER} label="Counter" obj={obj} act={act} />
+        {/* Three steppers, always there where counters mean something, none of them behind a
+            dialog: the two counters that come up every turn, and the nameless one that counts
+            whatever this card is standing in for. The server drops a counter that reaches zero,
+            so "−" on the last one clears the badge. */}
+        {shape.counters && (
+          <>
+            <CounterStepper counterKey="+1/+1" obj={obj} act={act} />
+            <CounterStepper counterKey="-1/-1" obj={obj} act={act} />
+            <CounterStepper counterKey={GENERIC_COUNTER} label="Counter" obj={obj} act={act} />
+          </>
+        )}
         {/* Anything else the object is still carrying — a named counter from before there was a
-            nameless one — so it can still be taken off where it is read. */}
+            nameless one — so it can still be taken off where it is read, wherever that is. */}
         {Object.keys(live.counters)
-          .filter((key) => key !== '+1/+1' && key !== '-1/-1' && key !== GENERIC_COUNTER)
+          .filter((key) => !shape.counters || (key !== '+1/+1' && key !== '-1/-1' && key !== GENERIC_COUNTER))
           .map((key) => (
             <CounterStepper key={key} counterKey={key} obj={obj} act={act} />
           ))}

@@ -9,11 +9,11 @@
 //   2  opening-hand.spec.ts   exclusively — it is the only spec that needs setupComplete false
 //   3  targeting, change-pulse, board-vitals,  they start play and play a card,
 //      player-rail, hover-preview, hand-play,  move a number or bin a permanent; none of them
-//      undo-vote                               minds what the others left behind (undo-vote
+//      undo-vote, target-size                  minds what the others left behind (undo-vote
 //                                              must resolve its vote before it ends, or the
 //                                              next spec's first action cancels it under them)
 //   4  context-menu, hand-fan, plane-menu,  read-only after starting play (plane-menu only moves
-//      rail-legibility, target-size         its own camera), and hand-fan needs all seven cards
+//      rail-legibility                      its own camera), and hand-fan needs all seven cards
 //
 // Two rules keep that true, and both break quietly if ignored: nothing else may use 2 seats, and
 // nothing that plays a card may join the 4-seat bucket (hand-fan asserts the hand is crowded,
@@ -84,6 +84,14 @@ export async function handIds(page: Page): Promise<(string | undefined)[]> {
  * afterwards.
  */
 export async function playFromHand(page: Page): Promise<string> {
+  // The 3-seat bucket is shared by every spec that plays a card, and seven cards don't go round all
+  // of them. Draw first when the hand is nearly out: one card to play, and one left over for a spec
+  // that goes on to click a card in hand (targeting.spec.ts does).
+  const hand = page.locator('.hand .card-tile');
+  const held = await hand.count();
+  for (let drawn = held; drawn < 2; drawn++) await page.keyboard.press('d');
+  await expect.poll(() => hand.count()).toBeGreaterThanOrEqual(2);
+
   const tile = page.locator('.hand .card-tile').last();
   const id = await tile.getAttribute('data-object-id');
   if (!id) throw new Error('hand tile has no data-object-id');

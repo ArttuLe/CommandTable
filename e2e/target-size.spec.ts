@@ -6,7 +6,7 @@
 // total, and the card menu's steppers and move chips.
 
 import { expect, test, type Locator } from '@playwright/test';
-import { needsCardIndex, openSeat, startPlay } from './seat.js';
+import { needsCardIndex, openSeat, playFromHand, startPlay } from './seat.js';
 
 test.beforeEach(needsCardIndex);
 
@@ -23,9 +23,11 @@ async function expectAtLeastFloor(targets: Locator, what: string) {
 }
 
 test('the smallest controls are at least 24px square', async ({ browser }) => {
-  // Four seats, the read-only bucket (see seat.ts): opens a rail and a menu, changes nothing.
-  const page = await openSeat(browser, 4, 'Alice');
+  // Three seats: plays a card, because the counter steppers are only on a card in play
+  // (cardMenu.ts), and that is the bucket allowed to play one (see seat.ts).
+  const page = await openSeat(browser, 3, 'Alice');
   await startPlay(page);
+  const played = await playFromHand(page);
 
   await expectAtLeastFloor(page.locator('.help-button'), 'help button');
   await expectAtLeastFloor(page.locator('.vitals-pad button.vital-count'), 'life total');
@@ -33,7 +35,8 @@ test('the smallest controls are at least 24px square', async ({ browser }) => {
   await page.keyboard.press('c');
   await expectAtLeastFloor(page.locator('.rail-header .icon-button'), 'rail collapse');
 
-  await page.locator('.hand .card-tile').last().click({ button: 'right' });
+  await page.keyboard.press('c');
+  await page.locator(`.battlefield [data-object-id="${played}"]`).click({ button: 'right' });
   await expectAtLeastFloor(page.locator('.context-menu .menu-stepper button'), 'menu stepper');
   await expectAtLeastFloor(page.locator('.context-menu .menu-chips button'), 'move chip');
 });

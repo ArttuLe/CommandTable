@@ -69,9 +69,15 @@ test('opens inside the window and keeps its last item reachable', async ({ brows
   await test.step('a window too short for it', async () => {
     // Shorter than the menu itself, so neither below the cursor nor above it can work. placeMenu
     // clamps to the margin and the menu scrolls; what must stay true is that it does not hang off
-    // the top, and that the bottom of it can still be got at.
-    await page.setViewportSize({ width: 1280, height: 300 });
-    const menu = await openMenuOnLastHandCard(page);
+    // the top, and that the bottom of it can still be got at. A hand card's menu is short now that
+    // it only offers what a card in hand can do (cardMenu.ts), so the window has to be very short
+    // indeed — too short to show the hand at all, which is why the menu is opened from the
+    // keyboard here: it asks for the menu at the tile however far off screen the tile has gone.
+    await page.setViewportSize({ width: 1280, height: 120 });
+    await page.locator('.hand .card-tile').last().focus();
+    await page.keyboard.press('Shift+F10');
+    const menu = page.locator('.context-menu');
+    await expect(menu).toBeVisible();
     const box = (await menu.boundingBox())!;
 
     expect(box.y).toBe(MARGIN);
