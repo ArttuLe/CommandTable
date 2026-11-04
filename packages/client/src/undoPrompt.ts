@@ -6,6 +6,7 @@
 // itself; that keeps the projection boundary out of it and needs no protocol change.
 
 import type { LogEntry, PlayerId } from '@command-table/common';
+import { namedLogText } from './logText.js';
 
 type Named = { id: PlayerId; displayName: string };
 
@@ -18,14 +19,21 @@ export function undoPromptText(
   request: { requesterId: PlayerId; targetRevision: number; describes: string },
   log: readonly Pick<LogEntry, 'revision' | 'actorId' | 'text'>[],
   players: readonly Named[],
-  myId?: PlayerId
+  myId?: PlayerId,
+  /** The name the undone line's card resolved to, if it has one (see logText.ts). */
+  subjectName: string | null = null
 ): string {
   const name = (id: PlayerId) => players.find((p) => p.id === id)?.displayName ?? id;
-  const entry = log.find((e) => e.revision === request.targetRevision + 1);
-  const what = entry ? `${name(entry.actorId)} ${entry.text}` : request.describes;
+  const entry = undoneEntry(request, log);
+  const what = entry ? `${name(entry.actorId)} ${namedLogText(entry.text, subjectName)}` : request.describes;
   // The requester's own approval is already counted, so there is nothing for them to vote on.
   if (request.requesterId === myId) return `Waiting for the table to approve your undo: ${what}.`;
   return `${name(request.requesterId)} wants to undo: ${what}.`;
+}
+
+/** The log line a vote would undo: a revision is the table *after* an action. */
+export function undoneEntry<E extends Pick<LogEntry, 'revision'>>(request: { targetRevision: number }, log: readonly E[]): E | undefined {
+  return log.find((e) => e.revision === request.targetRevision + 1);
 }
 
 /** How far a vote has got, against the majority the server is waiting for. */

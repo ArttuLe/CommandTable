@@ -43,6 +43,14 @@ describe('undoPromptText', () => {
   });
 });
 
+describe('undoPromptText with a named card', () => {
+  // "Bob wants to undo: Alice tapped a permanent" couldn't be voted on in good conscience.
+  it('names the card the undone line is about', () => {
+    const tapLog = [{ revision: 42, actorId: 'b', text: 'tapped a permanent' }];
+    expect(undoPromptText(request, tapLog, players, 'b', 'Sol Ring')).toBe('Alice wants to undo: Bob tapped Sol Ring.');
+  });
+});
+
 describe('undoTallyText', () => {
   it('counts approvals against the majority the server needs', () => {
     expect(undoTallyText({ approvals: 1, needed: 2 })).toBe('1 of 2 approvals');

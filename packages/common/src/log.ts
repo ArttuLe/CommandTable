@@ -23,4 +23,11 @@ export interface LogEntry {
   visibility: Visibility;
   undoable: boolean;
   kind?: LogKind;
+  /**
+   * The card the line is about, when everyone could see it — so the client can say "moved Sol Ring
+   * to a graveyard" where the text says "a card". The server deliberately keeps card names out of
+   * the action layer (see README), so this is a reference the client resolves, never a name it
+   * was told: a printing, or a token's own typed name. Absent for anything hidden from anyone.
+   */
+  subject?: { scryfallId: string } | { name: string };
 }

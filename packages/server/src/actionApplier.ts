@@ -69,6 +69,7 @@ export function applyAction(
   }
 
   const { text, visibility, kind } = result.log ?? { text: describeAction(action), visibility: undefined, kind: undefined };
+  const subject = subjectOf(state, result.state, action);
   const entry: LogEntry = {
     revision: result.state.revision,
     timestamp: Date.now(),
@@ -77,8 +78,26 @@ export function applyAction(
     visibility: visibility ?? { kind: 'all' },
     undoable: true,
     kind,
+    ...(subject ? { subject } : {}),
   };
   return { ok: true, state: { ...result.state, log: [...result.state.log, entry] } };
+}
+
+/**
+ * What the log line is about, if everyone could see it before or after the action (§15.1: the log
+ * is the referee, and "tapped a permanent" referees nothing). A reference, not a name: the action
+ * layer has no card data by design, so the client resolves it. Anything someone couldn't see —
+ * a card drawn, a morph played face down — stays "a card".
+ */
+function subjectOf(before: TableState, after: TableState, action: Action): LogEntry['subject'] {
+  if (!('objectId' in action)) return undefined;
+  const was = before.objects[action.objectId];
+  const now = after.objects[action.objectId];
+  if (was?.faceVisibility.kind !== 'all' && now?.faceVisibility.kind !== 'all') return undefined;
+  const source = (was ?? now)!.source;
+  if ('scryfallId' in source && source.scryfallId) return { scryfallId: source.scryfallId };
+  if (source.kind === 'token' && source.adhoc) return { name: source.adhoc.name };
+  return undefined;
 }
 
 function dispatch(state: TableState, action: Action, deps: ApplyDeps): ApplyResult {

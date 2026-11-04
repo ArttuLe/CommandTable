@@ -12,6 +12,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { LogEntry, PlayerId, PlayerState } from '@command-table/common';
 import { tableEntries } from './logStreams.js';
+import { namedLogText } from './logText.js';
+import { useSubjectName } from './useCard.js';
 
 const TOAST_MS = 5000;
 const MAX_TOASTS = 3;
@@ -85,9 +87,14 @@ function LogLine({ entry, players, myId }: { entry: LogEntry; players: PlayerSta
   return (
     <p className={`log-line ${entry.kind ? `log-${entry.kind}` : ''} ${entry.actorId === myId ? 'log-mine' : ''}`}>
       <strong style={{ color: `hsl(${playerHue(players, entry.actorId)} 65% 72%)` }}>{name}</strong>{' '}
-      {entry.text}
+      <LogText entry={entry} />
     </p>
   );
+}
+
+/** A line's text with its card named, once the name has been looked up (see logText.ts). */
+function LogText({ entry }: { entry: LogEntry }) {
+  return <>{namedLogText(entry.text, useSubjectName(entry.subject))}</>;
 }
 
 /**
@@ -165,7 +172,7 @@ export function Toasts({
         const name = players.find((p) => p.id === entry.actorId)?.displayName ?? entry.actorId;
         return (
           <div key={id} className={`toast ${entry.kind ? `toast-${entry.kind}` : ''} ${leaving ? 'leaving' : ''}`}>
-            <strong style={{ color: `hsl(${playerHue(players, entry.actorId)} 65% 72%)` }}>{name}</strong> {entry.text}
+            <strong style={{ color: `hsl(${playerHue(players, entry.actorId)} 65% 72%)` }}>{name}</strong> <LogText entry={entry} />
           </div>
         );
       })}

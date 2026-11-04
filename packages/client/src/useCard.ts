@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { isRedacted, type Card, type ObjectId, type ProjectedObject } from '@command-table/common';
+import { isRedacted, type Card, type LogEntry, type ObjectId, type ProjectedObject } from '@command-table/common';
 import { fetchCard } from './api.js';
 import { faceUp } from './cardFace.js';
 
@@ -67,4 +67,22 @@ export function useCards(objects: readonly ProjectedObject[]): Map<ObjectId, Car
   }, [key]);
 
   return cards;
+}
+
+/** The name a log line's subject refers to, once resolved (see logText.ts). */
+export function useSubjectName(subject: LogEntry['subject']): string | null {
+  const scryfallId = subject && 'scryfallId' in subject ? subject.scryfallId : null;
+  const [fetched, setFetched] = useState<string | null>(null);
+  useEffect(() => {
+    if (!scryfallId) return;
+    let cancelled = false;
+    fetchCard(scryfallId).then((card) => {
+      if (!cancelled) setFetched(card?.name ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [scryfallId]);
+  if (subject && 'name' in subject) return subject.name;
+  return scryfallId ? fetched : null;
 }

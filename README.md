@@ -264,14 +264,14 @@ assuming a change compiles.
   `PEEK_TOP` exist — otherwise cards revealed by a search/peek would stay revealed forever after
   the very shuffle that's supposed to scramble them back into secrecy. Not explicitly stated in
   §9/§13, but a direct consequence of combining them.
-- **Log text never names a specific card:** `GameObject` only carries a `scryfallId` — display
-  names live in the DB-backed `CardIndex`, deliberately kept out of the pure, DB-free action-
-  application layer (`actionApplier.ts` and friends), which is what makes that layer trivially
-  unit-testable per §18. So log entries read "moved a card" / "drew 2 cards" rather than naming
-  Sol Ring — a real loss of the doc's own example fidelity ("Alice untapped 6 permanents"), but
-  one that avoids wiring a database dependency through the reducer for the sake of prettier
-  strings. If this ever matters enough, the fix is client-side (join the log's `scryfallId`-
-  bearing object references against the already-fetched card data), not a change to this layer.
+- **The server never writes a card's name into the log; the client does:** `GameObject` only
+  carries a `scryfallId` — display names live in the DB-backed `CardIndex`, deliberately kept out
+  of the pure, DB-free action-application layer (`actionApplier.ts` and friends), which is what
+  makes that layer trivially unit-testable per §18. So the server's text says "moved a card", and
+  attaches a `subject` reference (a printing, or a token's own name) when everyone could see the
+  card. Each client resolves it through its card cache and puts the name in place of the generic
+  subject (`logText.ts`), in the log rail, the toasts and the undo vote. A card someone couldn't
+  see — drawn, played face down — stays "a card".
 - **`undo` carries no `targetRevision`:** §11.1 gives the client message one. A revert holds
   older content under a newer revision number, so where "one step back" lands is only knowable
   from the server's history — a client naming a revision would be guessing, and guessing wrong

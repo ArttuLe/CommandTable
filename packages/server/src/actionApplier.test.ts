@@ -585,3 +585,39 @@ describe('fresh ids when a card goes out of sight', () => {
     expect(objectIds(result.state)[0]).not.toBe('x');
   });
 });
+
+// The log is the dispute mechanism; "Alice tapped a permanent" settles nothing. A line names its card
+// by reference (resolved on the client) — but only a card everyone could see.
+describe('applyAction: what a log line is about', () => {
+  const source = { kind: 'card' as const, scryfallId: 'sol', oracleId: 'o' };
+  const lastEntry = (state: TableState) => state.log.at(-1)!;
+
+  it('refers to a public card by its printing', () => {
+    const state = makeState([card({ id: 'c', source, zone: { playerId: ALICE, zone: 'battlefield' }, faceVisibility: { kind: 'all' } })]);
+    const result = applyAction(state, { t: 'TAP', objectId: 'c' });
+    if (!result.ok) throw new Error(result.reason);
+    expect(lastEntry(result.state).subject).toEqual({ scryfallId: 'sol' });
+  });
+
+  it('names a card played from hand, which everyone sees land', () => {
+    const state = makeState([card({ id: 'c', source, zone: { playerId: ALICE, zone: 'hand' }, faceVisibility: { kind: 'players', ids: [ALICE] } })]);
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'c', toZone: { playerId: ALICE, zone: 'battlefield' } });
+    if (!result.ok) throw new Error(result.reason);
+    expect(lastEntry(result.state).subject).toEqual({ scryfallId: 'sol' });
+  });
+
+  it('says nothing about a card someone could not see', () => {
+    const state = makeState([card({ id: 'c', source, zone: { playerId: ALICE, zone: 'library' }, faceVisibility: { kind: 'none' } })]);
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'c', toZone: { playerId: ALICE, zone: 'hand' } });
+    if (!result.ok) throw new Error(result.reason);
+    expect(lastEntry(result.state).subject).toBeUndefined();
+  });
+
+  it('names a token by its own name', () => {
+    const tokenSource = { kind: 'token' as const, adhoc: { name: 'Zombie', typeLine: 'Token Creature — Zombie' } };
+    const state = makeState([card({ id: 't', source: tokenSource as never, zone: { playerId: ALICE, zone: 'battlefield' }, faceVisibility: { kind: 'all' } })]);
+    const result = applyAction(state, { t: 'TAP', objectId: 't' });
+    if (!result.ok) throw new Error(result.reason);
+    expect(lastEntry(result.state).subject).toEqual({ name: 'Zombie' });
+  });
+});

@@ -24,7 +24,8 @@ import { ConfirmDialog } from './ConfirmDialog.js';
 import { HelpButton } from './HelpDialog.js';
 import { ManaChoice, type ManaChoicePrompt } from './ManaChoice.js';
 import { manaToRemove } from './manaSources.js';
-import { undoPromptText, undoTallyText } from './undoPrompt.js';
+import { undoneEntry, undoPromptText, undoTallyText } from './undoPrompt.js';
+import { useSubjectName } from './useCard.js';
 import { fanOverlap } from './handFan.js';
 
 function isOwnZone(obj: ProjectedObject, playerId: PlayerId, zone: string): boolean {
@@ -118,6 +119,8 @@ export function Table() {
   // Before the host starts the game, whose turn it is doesn't mean anything yet (the pill says
   // "Opening hands"), so nothing may glow at you to end it.
   const isMyTurn = tableState.setupComplete && tableState.turn.activePlayerId === playerId;
+  // The card a pending undo is about, named for the voters (see logText.ts).
+  const undoneName = useSubjectName(pendingUndoRequest ? undoneEntry(pendingUndoRequest, tableState.log)?.subject : undefined);
 
   // PASS_TURN advances the table from whoever is active, so out of turn it ends someone else's
   // turn — one dialog in front of both the button and the shortcut (see turnStatus.ts).
@@ -285,7 +288,7 @@ export function Table() {
 
         {pendingUndoRequest && (
           <div className="undo-request" role="status">
-            <span>{undoPromptText(pendingUndoRequest, tableState.log, tableState.players, playerId)}</span>
+            <span>{undoPromptText(pendingUndoRequest, tableState.log, tableState.players, playerId, undoneName)}</span>
             <span className="undo-tally">{undoTallyText(pendingUndoRequest)}</span>
             {/* The requester's approval is counted already; the vote is everyone else's. */}
             {pendingUndoRequest.requesterId !== playerId && (

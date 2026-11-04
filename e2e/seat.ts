@@ -10,7 +10,7 @@
 //   3  targeting, change-pulse, board-vitals,  they start play and play a card,
 //      player-rail, hover-preview, hand-play,  move a number or bin a permanent; none of them
 //      undo-vote, target-size, context-menu's  minds what the others left behind (undo-vote
-//      stacked-Escape test (searches)
+//      stacked-Escape test (searches), log-names
 //                                              must resolve its vote before it ends, or the
 //                                              next spec's first action cancels it under them)
 //   4  context-menu, hand-fan, plane-menu,  read-only after starting play (plane-menu only moves
