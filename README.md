@@ -279,11 +279,13 @@ assuming a change compiles.
   other three undo messages keep their `targetRevision`, since by then it has been decided.
 - **`undoVote`/`undoResolved` fill a protocol gap:** §11.1/§15.2 specify `undoRequest` (the
   broadcast asking for consent) but never say how players respond or how "majority of connected
-  players" gets tallied. Implemented as: the requester's own vote counts as an implicit yes,
-  each connected player sends one `undoVote`, and it resolves the moment a strict majority of
-  currently-connected seats votes either way (ties, e.g. 2-2 in a 4-player game, never resolve
-  from votes alone under this rule — a disconnect changes the denominator, which is the doc's
-  own get-out clause: "majority of *connected* players").
+  players" gets tallied. Implemented as (`tallyUndoVotes` in `undo.ts`): the requester's own vote
+  counts as an implicit yes, each connected player sends one `undoVote`, and the vote passes on a
+  strict majority of currently-connected seats and fails once that majority is out of reach — so
+  a 2-2 tie in a 4-player game fails. It is tallied when it opens too, so a requester alone at the
+  table is their own majority. `undoRequest` goes to everyone, the requester included, and again
+  after every ballot with `approvals` of `needed`; `undoResolved` carries an `outcome` (`applied`,
+  `rejected`, or `cancelled` when somebody acts first), which every client announces.
 - **Undo's information-leak check is a heuristic, not exhaustive:** it flags a player who could
   see a specific object in the state being discarded but can't see that same object (by id)
   after the revert. It won't catch every conceivable leak (e.g. a player inferring information
