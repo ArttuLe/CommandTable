@@ -116,3 +116,24 @@ describe('CONCEDE', () => {
     expect(passed.turn.activePlayerId).toBe(BOB);
   });
 });
+
+describe('CONCEDE: what the conceding player leaves behind', () => {
+  // Control reverted to the owner, but the permanent stayed on the conceder's battlefield — on a
+  // dead player's mat, and untapped by the owner's untap step from there.
+  it('returns a borrowed permanent to its owner’s battlefield, not just its owner’s control', () => {
+    const state = makeState([card({ id: 'stolen', ownerId: BOB, controllerId: ALICE, zone: { playerId: ALICE, zone: 'battlefield' } })]);
+    const result = applyAction(state, { t: 'CONCEDE', playerId: ALICE });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.state.objects['stolen']).toMatchObject({ controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' } });
+  });
+
+  it('frees anything attached to a card that left the game with its owner', () => {
+    const state = makeState([
+      card({ id: 'mine', ownerId: ALICE, controllerId: ALICE, zone: { playerId: ALICE, zone: 'battlefield' } }),
+      card({ id: 'aura', ownerId: BOB, controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' }, attachedTo: 'mine' }),
+    ]);
+    const result = applyAction(state, { t: 'CONCEDE', playerId: ALICE });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.state.objects['aura'].attachedTo).toBeNull();
+  });
+});
