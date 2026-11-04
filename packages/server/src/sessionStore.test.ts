@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { decode, encode, type PersistedFile } from './sessionStore.js';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { decode, encode, savedHostSecret, type PersistedFile } from './sessionStore.js';
 import { Room } from './roomManager.js';
 import type { TableState } from '@command-table/common';
 
@@ -65,5 +68,15 @@ describe('sessionStore encode/decode', () => {
     const decoded = decode(file, NOW);
 
     expect(Object.keys(decoded!.sessions)).toEqual([fresh.roomId]);
+  });
+});
+
+describe('savedHostSecret', () => {
+  it('reads the passphrase a previous run saved, and nothing when there is no save', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sessions-'));
+    const path = join(dir, 'sessions.json');
+    expect(savedHostSecret(path)).toBeUndefined();
+    writeFileSync(path, JSON.stringify(encode('Y3VTPS', [], Date.now())));
+    expect(savedHostSecret(path)).toBe('Y3VTPS');
   });
 });

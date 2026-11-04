@@ -8,7 +8,9 @@
 import { spawn } from 'node:child_process';
 import { execFileSync } from 'node:child_process';
 import { networkInterfaces } from 'node:os';
+import { resolve } from 'node:path';
 import { resolveHostSecret } from '../packages/server/src/hostSecret.js';
+import { savedHostSecret } from '../packages/server/src/sessionStore.js';
 
 const CLIENT_PORT = process.env.CLIENT_PORT ?? '5173';
 const SERVER_PORT = process.env.PORT ?? '8080';
@@ -35,7 +37,12 @@ function shareableHost(): { host: string; via: string } {
   return { host: 'localhost', via: 'this machine only' };
 }
 
-const secret = resolveHostSecret(process.env);
+// The server's own session path, which it resolves from its package directory. The saved
+// passphrase has to be read here, not just by the server: whatever this prints is handed to the
+// server as HOST_SECRET, which outranks the saved one — so leaving it out minted a new passphrase
+// on every restart, and nobody holding the old one could get back in.
+const sessionPath = resolve('packages/server', process.env.SESSION_PATH ?? './data/sessions.json');
+const secret = resolveHostSecret(process.env, savedHostSecret(sessionPath));
 const { host, via } = shareableHost();
 
 console.log(`

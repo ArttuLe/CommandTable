@@ -63,6 +63,20 @@ export function decode(raw: unknown, now: number): PersistedFile | null {
   return { version: VERSION, hostSecret: file.hostSecret, sessions };
 }
 
+/**
+ * The passphrase a previous run saved at `path`, if there is one. `npm run host` has to read it
+ * before it starts the server: it hands the server its passphrase as HOST_SECRET, which beats the
+ * saved one, so resolving without it minted a new passphrase on every restart and locked out
+ * everyone still holding the old one.
+ */
+export function savedHostSecret(path: string): string | undefined {
+  try {
+    return decode(JSON.parse(readFileSync(path, 'utf8')), Date.now())?.hostSecret;
+  } catch {
+    return undefined;
+  }
+}
+
 export class SessionStore {
   private timer: NodeJS.Timeout | null = null;
 
