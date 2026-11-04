@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { blockMarker, isRedacted, targetMarker, type Card, type GameObject, type ProjectedObject } from '@command-table/common';
 import { useCard } from './useCard.js';
 import { useStore } from './store.js';
@@ -26,6 +27,19 @@ export function CardTile({ obj, selected, onClick, onContextMenu, onRemoveLabel 
   // The revision this tile last changed in, or null if the last action left it alone. The
   // revision is the value rather than a boolean because it is what remounts the overlay below.
   const flashRevision = useStore((s) => (s.changedIds.has(obj.id) ? s.changeRevision : null));
+
+  // A tile that unmounts under the cursor never gets its mouseleave, and playing a card from hand
+  // is exactly that — the preview stayed up over your own life total until you happened to hover
+  // another card. So the tile that put the preview up takes it down on the way out. Tracked per
+  // tile rather than by comparing cards: two Forests share one card, and the one leaving must not
+  // take down the preview of the one you are now pointing at.
+  const showingPreview = useRef(false);
+  useEffect(
+    () => () => {
+      if (showingPreview.current) setHoveredCard(null);
+    },
+    [setHoveredCard]
+  );
 
   // While "Target…" or "Blocking…" is armed, the next click points the arrow instead of doing
   // whatever this tile normally does. Which marker it writes is the only difference between the
@@ -70,8 +84,15 @@ export function CardTile({ obj, selected, onClick, onContextMenu, onRemoveLabel 
       onContextMenu={onContextMenu}
       // Hover-zoom is left alone: if the projection let you have the card, you are allowed to
       // remind yourself what your own morph is without turning it over for everyone.
-      onMouseEnter={() => card && setHoveredCard(card)}
-      onMouseLeave={() => setHoveredCard(null)}
+      onMouseEnter={() => {
+        if (!card) return;
+        setHoveredCard(card);
+        showingPreview.current = true;
+      }}
+      onMouseLeave={() => {
+        setHoveredCard(null);
+        showingPreview.current = false;
+      }}
       title={label ?? undefined}
       // How ArrowLayer finds this tile to measure. Nothing else reads it.
       data-object-id={obj.id}
