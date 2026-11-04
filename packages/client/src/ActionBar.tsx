@@ -280,10 +280,10 @@ export function VitalsPad({
         <button className="vital-count" title="Set your life by any amount" onClick={() => setAdjusting(true)}>
           {player.life}
         </button>
-        <button title="Shortcut: −" onClick={() => onLifeDelta(-1)}>
+        <button title="Lose 1 life (shortcut: −)" aria-label="Lose 1 life" onClick={() => onLifeDelta(-1)}>
           −
         </button>
-        <button title="Shortcut: +" onClick={() => onLifeDelta(1)}>
+        <button title="Gain 1 life (shortcut: +)" aria-label="Gain 1 life" onClick={() => onLifeDelta(1)}>
           +
         </button>
       </span>
@@ -332,10 +332,10 @@ function VitalPill({
       <b className="vital-symbol">{symbol}</b>
       <span className="vital-count">{value}</span>
       {/* The server adds the delta as given (applyCounterUpdate), so the floor is held here. */}
-      <button disabled={value === 0} onClick={() => onDelta(-1)}>
+      <button disabled={value === 0} aria-label={`${title}: one fewer`} onClick={() => onDelta(-1)}>
         −
       </button>
-      <button onClick={() => onDelta(1)}>
+      <button aria-label={`${title}: one more`} onClick={() => onDelta(1)}>
         +
       </button>
     </span>
@@ -421,11 +421,13 @@ function CommanderDamageMenu({
                   <CommanderName commander={commander} />
                 </span>
                 {/* Each click also moves life (see Table) — commander damage *is* life lost. */}
-                <button disabled={damage === 0} onClick={() => onDelta(commander.id, -1)}>
+                <button disabled={damage === 0} aria-label="One less commander damage" onClick={() => onDelta(commander.id, -1)}>
                   −
                 </button>
                 <span className={`damage-value ${isLethalCommanderDamage(damage) ? 'lethal' : ''}`}>{damage}</span>
-                <button onClick={() => onDelta(commander.id, 1)}>+</button>
+                <button aria-label="One more commander damage" onClick={() => onDelta(commander.id, 1)}>
+                  +
+                </button>
               </div>
             );
           })}
@@ -436,6 +438,8 @@ function CommanderDamageMenu({
 }
 
 const MANA_COLORS: ManaColor[] = ['W', 'U', 'B', 'R', 'G', 'C'];
+/** What the steppers are called aloud: a lone "W" and two unlabelled "−"/"+" said nothing. */
+const MANA_NAMES: Record<ManaColor, string> = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green', C: 'colourless' };
 
 // §8.4 client-local mana pad: bumped as lands are tapped, spent as spells are cast, reset at
 // will. Purely client-side (uiStore) — the server has no concept of mana, per the doc.
@@ -449,10 +453,18 @@ export function ManaPad() {
     <div className="mana-pad">
       {MANA_COLORS.map((color) => (
         <span key={color} className={`mana-pip mana-${color} ${manaPad[color] > 0 ? 'has-mana' : ''}`}>
-          <button onClick={() => bumpMana(color, -1)}>−</button>
-          <b className="mana-symbol">{color}</b>
-          <span className="mana-count">{manaPad[color]}</span>
-          <button onClick={() => bumpMana(color, 1)}>+</button>
+          <button aria-label={`Remove one ${MANA_NAMES[color]} mana`} onClick={() => bumpMana(color, -1)}>
+            −
+          </button>
+          <b className="mana-symbol" aria-hidden="true">
+            {color}
+          </b>
+          <span className="mana-count" aria-label={`${manaPad[color]} ${MANA_NAMES[color]}`}>
+            {manaPad[color]}
+          </span>
+          <button aria-label={`Add one ${MANA_NAMES[color]} mana`} onClick={() => bumpMana(color, 1)}>
+            +
+          </button>
         </span>
       ))}
       {/* What you can actually spend, next to the Reset that clears it. Counting six pips in

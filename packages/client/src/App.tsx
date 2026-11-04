@@ -52,7 +52,7 @@ export function App() {
     <>
       {status === 'reconnecting' && <div className="reconnect-banner">Reconnecting…</div>}
       {errorMessage && (
-        <div className="error-toast" onClick={dismissError}>
+        <div className="error-toast" role="alert" onClick={dismissError}>
           {errorMessage}
         </div>
       )}

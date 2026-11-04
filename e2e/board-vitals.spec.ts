@@ -26,7 +26,7 @@ test('a life change shows on its own board, on both screens', async ({ browser }
   const before = Number(await boardOf(alice, 'Alice').locator('.life-count').textContent());
 
   // The one place a player writes their own row: their own HUD, never a neighbour's board.
-  await alice.locator('.vitals-pad .vital').first().getByRole('button', { name: '−' }).click();
+  await alice.locator('.vitals-pad').getByRole('button', { name: 'Lose 1 life' }).click();
 
   await expect(boardOf(alice, 'Alice').locator('.life-count')).toHaveText(String(before - 1));
   await expect(boardOf(bob, 'Alice').locator('.life-count')).toHaveText(String(before - 1));
@@ -43,7 +43,7 @@ test('poison appears on the board only once there is any', async ({ browser }) =
 
   await expect(boardOf(bob, 'Carol').locator('.poison')).toHaveCount(0);
 
-  await alice.locator('.vitals-pad .vital').nth(1).getByRole('button', { name: '+' }).click();
+  await alice.locator('.vitals-pad').getByRole('button', { name: 'Poison counters: one more' }).click();
 
   await expect(boardOf(bob, 'Alice').locator('.poison')).toHaveText('☠ 1');
   await expect(boardOf(bob, 'Carol').locator('.poison')).toHaveCount(0);

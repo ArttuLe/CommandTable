@@ -157,10 +157,10 @@ export function Toasts({
     return () => clearTimeout(timer);
   }, [toasts]);
 
-  if (toasts.length === 0) return null;
-
+  // Rendered even when empty: a screen reader only announces what arrives in a live region that
+  // was already there, so one mounted together with its first toast would say nothing.
   return (
-    <div className={`toasts side-${side}`}>
+    <div className={`toasts side-${side}`} role="log" aria-live="polite">
       {toasts.map(({ id, entry, leaving }) => {
         const name = players.find((p) => p.id === entry.actorId)?.displayName ?? entry.actorId;
         return (

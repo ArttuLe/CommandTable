@@ -269,7 +269,8 @@ export function Table() {
             says which moment the table is in instead. The opening-hand step itself is down in
             the HUD, where you can see the hand it is asking about; the pill keeps its slot here
             either way, so nothing shifts when the game begins. */}
-        <span className={`turn-pill ${isMyTurn ? 'mine' : ''}`}>
+        {/* Announced when it changes: whose turn it is was otherwise only ever a colour. */}
+        <span className={`turn-pill ${isMyTurn ? 'mine' : ''}`} aria-live="polite">
           {tableState.setupComplete ? turnLabel(tableState.turn, tableState.players, playerId) : 'Opening hands'}
         </span>
 
