@@ -1,9 +1,10 @@
 // Generic, action-type-derived log text, per design doc §15.1 ("human-readable, not raw action
-// dumps"). Deliberately never names a specific card: GameObjects only carry a scryfallId, not a
-// display name (that lives in the DB-backed CardIndex), and keeping the pure action-application
-// layer free of that dependency was judged worth slightly less specific log lines — see
-// README.md. Actions whose text depends on the outcome rather than the input (dice, coin flips,
-// chat) supply their own text via ApplyResult.log instead of going through this table.
+// dumps"). Never names a specific card: GameObjects only carry a scryfallId, not a display name
+// (that lives in the DB-backed CardIndex), and the pure action-application layer stays free of
+// that dependency. A line about a card everyone could see carries a reference to it instead
+// (LogEntry.subject), which the client resolves and writes in (client/src/logText.ts). Actions
+// whose text depends on the outcome rather than the input (dice, coin flips, chat) supply their
+// own text via ApplyResult.log instead of going through this table.
 
 import { ATTACKING_MARKER, parseBlockMarker, parseTargetMarker, type Action, type ZoneRef } from '@command-table/common';
 
