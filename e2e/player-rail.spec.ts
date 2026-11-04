@@ -76,7 +76,11 @@ test('a graveyard count lands on its owner rail, on both screens', async ({ brow
   const before = Number(await bobsViewOfAlice.textContent());
 
   const id = await playFromHand(alice);
-  await alice.locator(`.battlefield [data-object-id="${id}"]`).click({ button: 'right' });
+  // From the keyboard rather than a right-click: at Fit the tile is a few dozen pixels across and,
+  // as a basic land, may sit under the next one in its stack — a pointer aimed at it can land on a
+  // neighbour, and the click then waits out the whole test for a hit it never gets.
+  await alice.locator(`.battlefield [data-object-id="${id}"]`).focus();
+  await alice.keyboard.press('Shift+F10');
   await alice.locator('.context-menu').getByRole('button', { name: 'GY', exact: true }).click();
 
   await expect(bobsViewOfAlice).toHaveText(String(before + 1));
