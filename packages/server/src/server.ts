@@ -504,8 +504,28 @@ function devTableFor(playerAmount: number): { roomId: RoomId; rejoinTokensByName
 // 1 MiB: the largest real message is a decklist, and ws's 100 MiB default is parsed before any auth.
 const wss = new WebSocketServer({ server: httpServer, path: '/ws', maxPayload: 1024 * 1024 });
 
+// A socket whose far end died — a laptop that lost power, a network that went away — never errors
+// until a write times out, which on an idle table can be never. Its seat stayed "connected": the
+// host couldn't free it, its player couldn't reclaim it by name, and it counted in undo votes.
+// So every socket is pinged (browsers answer at the protocol level) and one that misses a whole
+// round is cut, which runs the close handler like any other disconnect.
+const HEARTBEAT_MS = 20_000;
+const answeredLastPing = new WeakSet<WebSocket>();
+setInterval(() => {
+  for (const socket of wss.clients) {
+    if (!answeredLastPing.has(socket)) {
+      socket.terminate();
+      continue;
+    }
+    answeredLastPing.delete(socket);
+    socket.ping();
+  }
+}, HEARTBEAT_MS).unref();
+
 wss.on('connection', (socket) => {
   const state: ConnectionState = { roomId: null, playerId: null };
+  answeredLastPing.add(socket);
+  socket.on('pong', () => answeredLastPing.add(socket));
 
   socket.on('message', (data) => {
     const parsed = parseClientMessage(data.toString());
