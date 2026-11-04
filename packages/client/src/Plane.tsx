@@ -163,6 +163,8 @@ export function Plane({
     function onMove(e: MouseEvent) {
       const pan = panRef.current;
       if (!pan) return;
+      // Only a drag that moves takes the camera off the fit; a plain click on the table doesn't.
+      if (e.clientX !== pan.startX || e.clientY !== pan.startY) framed.current = false;
       setView((v) => ({ ...v, x: pan.origin.x + (e.clientX - pan.startX), y: pan.origin.y + (e.clientY - pan.startY) }));
     }
     function onUp() {
@@ -192,7 +194,6 @@ export function Plane({
     // Anything interactive keeps its own click; the background drags the table.
     if ((e.target as HTMLElement).closest('.card-tile, button, input, table')) return;
     panRef.current = { startX: e.clientX, startY: e.clientY, origin: view };
-    framed.current = false;
     setPanning(true);
   }
 
