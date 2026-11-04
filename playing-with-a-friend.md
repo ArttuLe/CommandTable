@@ -31,7 +31,8 @@ Per game, on the hosting machine:
 
 Guests need neither an ingested card index nor a checkout — just the URL, the passphrase, and a
 browser. There is deliberately no `npm run guest`: a guest opens the link, and that is the whole
-guest experience.
+guest experience. Point them at [HOW-TO-PLAY.md](HOW-TO-PLAY.md) for what happens once they are
+in.
 
 To run the two halves separately (debugging one of them, say), the underlying commands are still
 `npm run dev --workspace @command-table/server` and `... @command-table/client`.

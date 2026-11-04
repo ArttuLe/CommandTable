@@ -3,6 +3,9 @@
 Commander-only MTG web client. Freeform digital tabletop (no rules enforcement) — see
 `commander-arena-design-doc-v0.2.md` for the full design.
 
+How to play — joining, the table, every action and shortcut — is in
+[HOW-TO-PLAY.md](HOW-TO-PLAY.md); hosting a game is in [playing-with-a-friend.md](playing-with-a-friend.md).
+
 ## Structure
 
 ```
