@@ -33,3 +33,26 @@ describe('describeAction: MOVE_OBJECT', () => {
     );
   });
 });
+
+describe('describeAction: markers', () => {
+  const set = (marker: string) => describeAction({ t: 'SET_MARKER', objectId: 'o1', marker });
+  const clear = (marker: string) => describeAction({ t: 'CLEAR_MARKER', objectId: 'o1', marker });
+  const ID = '8f6ef480-fa88-4d74-8248-8283d12dfda8';
+
+  // Combat markers carry an object id in the string (markers.ts) — the log is read by people, and
+  // "set the 'block:8f6e…' marker" is the model talking to them.
+  it('says what a combat marker means, and never prints the id inside it', () => {
+    expect(set('attacking')).toBe('declared an attacker');
+    expect(clear('attacking')).toBe('took back an attack');
+    expect(set(`block:${ID}`)).toBe('declared a block');
+    expect(clear(`block:${ID}`)).toBe('took back a block');
+    expect(set(`target:${ID}`)).toBe('pointed a card at a target');
+    expect(clear(`target:${ID}`)).toBe('cleared a target');
+    for (const line of [set(`block:${ID}`), clear(`target:${ID}`)]) expect(line).not.toContain(ID);
+  });
+
+  it('quotes a label, which is the players’ own word', () => {
+    expect(set('flying')).toBe("labelled a card 'flying'");
+    expect(clear('flying')).toBe("took the 'flying' label off a card");
+  });
+});

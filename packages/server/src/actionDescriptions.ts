@@ -5,7 +5,7 @@
 // README.md. Actions whose text depends on the outcome rather than the input (dice, coin flips,
 // chat) supply their own text via ApplyResult.log instead of going through this table.
 
-import type { Action, ZoneRef } from '@command-table/common';
+import { ATTACKING_MARKER, parseBlockMarker, parseTargetMarker, type Action, type ZoneRef } from '@command-table/common';
 
 /**
  * Where a MOVE_OBJECT put the card. The zone is the one part of a move this layer *can* name —
@@ -36,6 +36,18 @@ function moveDestination(toZone: ZoneRef, toPosition?: number): string {
   }
 }
 
+/**
+ * What setting or clearing a marker means, in the table's words. Combat markers carry an object id
+ * in the string (markers.ts), which is for the model and not for the people reading the log, so
+ * they are described by kind; anything else is a label the players typed, and is quoted.
+ */
+function describeMarker(marker: string, set: boolean): string {
+  if (marker === ATTACKING_MARKER) return set ? 'declared an attacker' : 'took back an attack';
+  if (parseBlockMarker(marker)) return set ? 'declared a block' : 'took back a block';
+  if (parseTargetMarker(marker)) return set ? 'pointed a card at a target' : 'cleared a target';
+  return set ? `labelled a card '${marker}'` : `took the '${marker}' label off a card`;
+}
+
 export function describeAction(action: Action): string {
   switch (action.t) {
     case 'MOVE_OBJECT':
@@ -59,9 +71,9 @@ export function describeAction(action: Action): string {
     case 'UNATTACH':
       return 'detached a card';
     case 'SET_MARKER':
-      return `set the '${action.marker}' marker on a card`;
+      return describeMarker(action.marker, true);
     case 'CLEAR_MARKER':
-      return `cleared the '${action.marker}' marker from a card`;
+      return describeMarker(action.marker, false);
     case 'CLEAR_MARKERS_AND_COUNTERS':
       return 'cleared every marker and counter table-wide';
     case 'TRANSFORM':
