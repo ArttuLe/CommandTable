@@ -54,13 +54,22 @@ export function ArrowLayer({ relations, revision }: { relations: Relation[]; rev
     measure();
   }, [measure, revision]);
 
-  // The mats reflow when the window changes, and nothing above would say so.
+  // The mats reflow when the window changes, and nothing above would say so. Nor does a card
+  // changing band when its card data arrives after the first paint (Board groups permanents by
+  // type, which it only learns then) — after a reload, arrows kept pointing at where their cards
+  // were drawn before that. So the mats' children are watched too.
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     const observer = new ResizeObserver(() => measure());
     observer.observe(host);
-    return () => observer.disconnect();
+    const mats = host.parentElement;
+    const moved = new MutationObserver(() => measure());
+    if (mats) moved.observe(mats, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      moved.disconnect();
+    };
   }, [measure]);
 
   return (
