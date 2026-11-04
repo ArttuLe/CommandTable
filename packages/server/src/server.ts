@@ -19,6 +19,7 @@ import { checkSecret, resolveHostSecret } from './hostSecret.js';
 import { SessionStore, type SessionEntry } from './sessionStore.js';
 import { buildDevTable, devSeatName, MAX_DEV_PLAYERS, MIN_DEV_PLAYERS } from './devtest/devTable.js';
 import { parseClientMessage } from './clientMessage.js';
+import { SUPERSEDED } from '@command-table/common';
 
 const PORT = Number(process.env.PORT ?? 8080);
 const DB_PATH = process.env.CARD_DB_PATH ?? './data/cards.sqlite3';
@@ -111,14 +112,21 @@ function registerSocket(roomId: RoomId, playerId: PlayerId, socket: WebSocket): 
     sockets = new Map();
     socketsByRoom.set(roomId, sockets);
   }
+  // One socket per seat. The one being replaced — a laptop's half-open socket from before it
+  // slept, or the same seat open in another tab — is closed with SUPERSEDED rather than left
+  // open: left alone it closed minutes later and marked the live seat disconnected, and the
+  // client treats this code as "stop", so two tabs don't take the seat back and forth.
+  const previous = sockets.get(playerId);
+  if (previous && previous !== socket) previous.close(SUPERSEDED, 'seat opened elsewhere');
   sockets.set(playerId, socket);
 }
 
-function unregisterSocket(roomId: RoomId, playerId: PlayerId, socket: WebSocket): void {
+/** Whether `socket` was the seat's live one. A superseded socket closing says nothing about the seat. */
+function unregisterSocket(roomId: RoomId, playerId: PlayerId, socket: WebSocket): boolean {
   const sockets = socketsByRoom.get(roomId);
-  if (sockets?.get(playerId) === socket) {
-    sockets.delete(playerId);
-  }
+  if (sockets?.get(playerId) !== socket) return false;
+  sockets.delete(playerId);
+  return true;
 }
 
 function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMessage): void {
@@ -149,6 +157,9 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       if (tablesByRoom.has(room.roomId)) {
         send(socket, { t: 'state', state: projectFor(tablesByRoom.get(room.roomId)!, result.playerId) });
       }
+      // A returning player changes the tally, and has to be shown a vote that opened while they
+      // were away — or nobody can vote on it, and the requester can't ask again until someone acts.
+      progressUndo(room);
       return;
     }
 
@@ -515,10 +526,12 @@ wss.on('connection', (socket) => {
   socket.on('close', () => {
     if (state.roomId && state.playerId) {
       const room = roomManager.getRoom(state.roomId);
-      unregisterSocket(state.roomId, state.playerId, socket);
-      if (room) {
+      const wasLive = unregisterSocket(state.roomId, state.playerId, socket);
+      if (room && wasLive) {
         room.setConnected(state.playerId, false);
         broadcastRoomState(room);
+        // Fewer connected players can settle a vote that was waiting on them (§15.2).
+        progressUndo(room);
       }
     }
   });

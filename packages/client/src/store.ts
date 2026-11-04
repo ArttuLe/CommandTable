@@ -12,6 +12,7 @@
 // actually sent, so nothing it may not see can leak through the highlight (see tableChanges.ts).
 
 import { create } from 'zustand';
+import { SUPERSEDED } from '@command-table/common';
 import type {
   Action,
   ClientMessage,
@@ -137,11 +138,17 @@ export const useStore = create<Store>((set, get) => {
       }, HEARTBEAT_MS);
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       // A superseded socket closing is expected and means nothing: it must not reconnect, and it
       // must not report the live connection as down.
       if (!isCurrent()) return;
       stopTimers();
+      // The server gave this seat to another socket — this seat open in another tab, most likely.
+      // Reconnecting would take it back, and that tab would take it back again, forever.
+      if (event.code === SUPERSEDED) {
+        set({ status: 'offline', errorMessage: 'This seat was opened somewhere else, so this tab stopped. Reload to sit here again.' });
+        return;
+      }
       if (deliberate || !credentials) {
         set({ status: 'offline' });
         return;
@@ -157,10 +164,25 @@ export const useStore = create<Store>((set, get) => {
         case 'joined':
           credentials = { ...creds, rejoinToken: msg.rejoinToken };
           saveSession(credentials);
-          set({ roomId: creds.roomId, playerId: msg.playerId, roomState: msg.roomState, displayName: creds.displayName });
+          // A vote is the server's to re-send if it is still open (progressUndo on join); one held
+          // over from before the reconnect may have been settled, or lost with a restart.
+          set({
+            roomId: creds.roomId,
+            playerId: msg.playerId,
+            roomState: msg.roomState,
+            displayName: creds.displayName,
+            pendingUndoRequest: null,
+          });
           break;
         case 'room':
-          set({ roomState: msg.roomState });
+          // A room that isn't started has no table. Someone who was away when the host ended the
+          // game never gets `gameEnded`, and kept rendering the old table, every action rejected.
+          set(msg.roomState.started ? { roomState: msg.roomState } : { roomState: msg.roomState, tableState: null });
+          break;
+        // §11.2: a refused action is surfaced, not dropped — a stale card or a finished game
+        // otherwise looks like a frozen table.
+        case 'rejected':
+          set({ errorMessage: msg.reason });
           break;
         case 'state':
           set({

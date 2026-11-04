@@ -47,3 +47,9 @@ export type ServerMessage =
   // toast without matching on prose. Only set where that distinction matters.
   | { t: 'error'; message: string; code?: 'rejoin-failed' }
   | { t: 'pong' };
+
+/**
+ * The WebSocket close code a socket gets when its seat is opened on another socket. The client
+ * stops on it instead of reconnecting: two tabs on one seat would otherwise take it back and forth.
+ */
+export const SUPERSEDED = 4001;
