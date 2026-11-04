@@ -18,6 +18,7 @@ import { applyUndo, tallyUndoVotes } from './undo.js';
 import { checkSecret, resolveHostSecret } from './hostSecret.js';
 import { SessionStore, type SessionEntry } from './sessionStore.js';
 import { buildDevTable, devSeatName, MAX_DEV_PLAYERS, MIN_DEV_PLAYERS } from './devtest/devTable.js';
+import { parseClientMessage } from './clientMessage.js';
 
 const PORT = Number(process.env.PORT ?? 8080);
 const DB_PATH = process.env.CARD_DB_PATH ?? './data/cards.sqlite3';
@@ -427,7 +428,16 @@ const httpServer = createServer((req, res) => {
 
   const cardMatch = req.method === 'GET' && req.url?.match(/^\/api\/cards\/([^/]+)$/);
   if (cardMatch) {
-    const card = cardIndex.findByScryfallId(decodeURIComponent(cardMatch[1]));
+    let scryfallId: string;
+    try {
+      scryfallId = decodeURIComponent(cardMatch[1]);
+    } catch {
+      // A malformed escape threw out of the request handler and took the server down with it.
+      res.writeHead(400);
+      res.end();
+      return;
+    }
+    const card = cardIndex.findByScryfallId(scryfallId);
     if (!card) {
       res.writeHead(404);
       res.end();
@@ -441,7 +451,15 @@ const httpServer = createServer((req, res) => {
   const devMatch = DEV_MODE && req.method === 'GET' && req.url?.match(/^\/api\/devtest\/(\d+)\/([^/?]+)$/);
   if (devMatch) {
     const playerAmount = Number(devMatch[1]);
-    const seatName = devSeatName(playerAmount, decodeURIComponent(devMatch[2]));
+    let requested: string;
+    try {
+      requested = decodeURIComponent(devMatch[2]);
+    } catch {
+      res.writeHead(400);
+      res.end();
+      return;
+    }
+    const seatName = devSeatName(playerAmount, requested);
     if (playerAmount < MIN_DEV_PLAYERS || playerAmount > MAX_DEV_PLAYERS || !seatName) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ message: `dev tables seat ${MIN_DEV_PLAYERS}-${MAX_DEV_PLAYERS} players, named in order from Alice` }));
@@ -472,20 +490,26 @@ function devTableFor(playerAmount: number): { roomId: RoomId; rejoinTokensByName
   return entry;
 }
 
-const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+// 1 MiB: the largest real message is a decklist, and ws's 100 MiB default is parsed before any auth.
+const wss = new WebSocketServer({ server: httpServer, path: '/ws', maxPayload: 1024 * 1024 });
 
 wss.on('connection', (socket) => {
   const state: ConnectionState = { roomId: null, playerId: null };
 
   socket.on('message', (data) => {
-    let parsed: ClientMessage;
-    try {
-      parsed = JSON.parse(data.toString());
-    } catch {
+    const parsed = parseClientMessage(data.toString());
+    if (!parsed) {
       send(socket, { t: 'error', message: 'malformed message' });
       return;
     }
-    handleMessage(socket, state, parsed);
+    // The last line of defence: whatever a handler still throws on costs this message, not the
+    // process — and with the process, every game this server is hosting.
+    try {
+      handleMessage(socket, state, parsed);
+    } catch (e) {
+      console.error('message handler failed:', e);
+      send(socket, { t: 'error', message: 'The server couldn’t handle that. Try again.' });
+    }
   });
 
   socket.on('close', () => {

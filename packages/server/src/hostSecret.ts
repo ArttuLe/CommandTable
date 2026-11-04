@@ -14,7 +14,7 @@ export function resolveHostSecret(env: { HOST_SECRET?: string }, persisted?: str
 }
 
 export function checkSecret(expected: string, provided: string | undefined): boolean {
-  if (provided === undefined) return false;
+  if (typeof provided !== 'string') return false;
   const a = Buffer.from(expected);
   const b = Buffer.from(provided);
   // timingSafeEqual throws on length mismatch, so the length comparison has to happen first —
