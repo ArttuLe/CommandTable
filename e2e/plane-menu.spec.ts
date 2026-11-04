@@ -29,8 +29,8 @@ test('right-clicking the table zooms and fits, and F fits too', async ({ browser
   await startPlay(alice, [await openSeat(browser, 4, 'Bob')]);
 
   // The top-left corner of the viewport is plane background: the mats are centred by the fit.
-  // Fit first, and take that as the baseline rather than whatever view the plane opened with —
-  // the opening fit is measured before the boards have settled to their final height.
+  // Fit first, and take that as the baseline: the view the plane opened with is checked on its own
+  // below, and this test is about the menu and the key landing on the same view.
   await alice.locator('.plane-viewport').click({ button: 'right', position: { x: 12, y: 12 } });
   await expect(alice.locator('.context-menu-title')).toHaveText('The table');
   await alice.getByRole('button', { name: 'Fit the whole table' }).click();
@@ -88,4 +88,27 @@ test('following can be switched from the table menu, and the gear agrees', async
   await alice.getByRole('button', { name: 'Stop following the active player' }).click();
   await alice.getByRole('button', { name: 'Settings' }).click();
   await expect(gearToggle).not.toBeChecked();
+});
+
+/** How far the plane's scale is from what a fit would give for the sizes on screen right now. */
+function fitScaleGap(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const viewport = document.querySelector<HTMLElement>('.plane-viewport')!;
+    const plane = document.querySelector<HTMLElement>('.plane')!;
+    const scale = Number(/scale\(([\d.]+)\)/.exec(plane.style.transform)![1]);
+    // fitView's own sum, with Plane's FIT_PADDING of 24 on each side, clamped to planeView's
+    // MIN_SCALE and MAX_SCALE as fitView clamps it — a short window can ask for less than 0.15.
+    const fit = Math.min((viewport.clientWidth - 48) / plane.offsetWidth, (viewport.clientHeight - 48) / plane.offsetHeight);
+    return Math.abs(scale - Math.min(2.5, Math.max(0.15, fit)));
+  });
+}
+
+// The first fit used to be measured before the hand had fanned and the HUD had settled, so a table
+// opened well short of its real fit — tiny, in the top middle — and stayed that way until F.
+test('the table opens framed, and stays framed while the window changes', async ({ browser }) => {
+  const alice = await openSeat(browser, 4, 'Alice');
+  await expect.poll(() => fitScaleGap(alice)).toBeLessThan(0.001);
+
+  await alice.setViewportSize({ width: 1024, height: 700 });
+  await expect.poll(() => fitScaleGap(alice)).toBeLessThan(0.001);
 });

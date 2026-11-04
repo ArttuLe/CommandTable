@@ -61,10 +61,16 @@ export function Plane({
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
   const panRef = useRef<{ startX: number; startY: number; origin: View } | null>(null);
 
+  // Whether the view is still the one a fit chose, rather than one the user has panned, zoomed or
+  // glided to. While it is, a change of size refits it (below); the moment they move the camera,
+  // where it points is theirs and nothing re-aims it behind their back.
+  const framed = useRef(true);
+
   const fit = useCallback(() => {
     const viewport = viewportRef.current;
     const content = contentRef.current;
     if (!viewport || !content) return;
+    framed.current = true;
     setView(
       fitView(
         { width: content.offsetWidth, height: content.offsetHeight },
@@ -80,6 +86,22 @@ export function Plane({
     fit();
   }, [fit, fitKey]);
 
+  // The first fit is measured before the HUD below has settled — the hand fans and the opening-hand
+  // band comes and goes after it — so on its own it framed the table for a viewport that was about
+  // to change, and stayed that way until F. Watching both sizes lets a fit follow them, and
+  // following the window too comes for free, for as long as the view is still the fit's own.
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const content = contentRef.current;
+    if (!viewport || !content) return;
+    const observer = new ResizeObserver(() => {
+      if (framed.current) fit();
+    });
+    observer.observe(viewport);
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [fit]);
+
   // Glide to whichever board `focus` names, whenever it changes — once per turn while following
   // is on, or once per middle-click. The easing is the CSS transition; this only sets the
   // destination.
@@ -92,6 +114,7 @@ export function Plane({
     const target = content?.querySelector<HTMLElement>(`[data-focus="${CSS.escape(focusKey)}"]`);
     if (!viewport || !content || !target) return;
 
+    framed.current = false;
     setView((v) => {
       // Measured rects are in screen pixels; dividing by the live scale puts them back into
       // plane coordinates, which is the space focusView works in.
@@ -126,6 +149,7 @@ export function Plane({
       e.preventDefault();
       const rect = viewport!.getBoundingClientRect();
       const cursor = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      framed.current = false;
       setView((v) => zoomAt(v, cursor, Math.exp(-e.deltaY * ZOOM_SENSITIVITY)));
     }
 
@@ -168,6 +192,7 @@ export function Plane({
     // Anything interactive keeps its own click; the background drags the table.
     if ((e.target as HTMLElement).closest('.card-tile, button, input, table')) return;
     panRef.current = { startX: e.clientX, startY: e.clientY, origin: view };
+    framed.current = false;
     setPanning(true);
   }
 
@@ -180,6 +205,7 @@ export function Plane({
     const point = at
       ? { x: at.x - rect.left, y: at.y - rect.top }
       : { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
+    framed.current = false;
     setView((v) => zoomAt(v, point, factor));
   }
 
