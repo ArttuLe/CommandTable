@@ -1,6 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { isRedacted, type Card, type ObjectId, type ProjectedObject } from '@command-table/common';
 import { fetchCard } from './api.js';
+import { faceUp } from './cardFace.js';
+
+/** Which face is up; a redacted object doesn't say, and shows its back anyway. */
+function faceOf(obj: ProjectedObject | undefined): number {
+  return obj && !isRedacted(obj) ? obj.currentFace : 0;
+}
 
 function scryfallIdOf(obj: ProjectedObject | undefined): string | null {
   return (obj && !isRedacted(obj) && 'scryfallId' in obj.source ? obj.source.scryfallId : null) ?? null;
@@ -24,7 +30,8 @@ export function useCard(obj: ProjectedObject | undefined): Card | null {
     };
   }, [scryfallId]);
 
-  return card;
+  const currentFace = faceOf(obj);
+  return useMemo(() => card && faceUp(card, currentFace), [card, currentFace]);
 }
 
 /**
@@ -40,14 +47,15 @@ export function useCards(objects: readonly ProjectedObject[]): Map<ObjectId, Car
 
   // Keyed on the ids rather than the array itself: the projection is a fresh array on every
   // server revision, and depending on it would refetch the whole battlefield each time.
-  const key = objects.map((obj) => `${obj.id}=${scryfallIdOf(obj) ?? ''}`).join(',');
+  const key = objects.map((obj) => `${obj.id}=${scryfallIdOf(obj) ?? ''}@${faceOf(obj)}`).join(',');
 
   useEffect(() => {
     let cancelled = false;
     Promise.all(
       objects.map(async (obj) => {
         const scryfallId = scryfallIdOf(obj);
-        return [obj.id, scryfallId ? await fetchCard(scryfallId) : null] as const;
+        const card = scryfallId ? await fetchCard(scryfallId) : null;
+        return [obj.id, card && faceUp(card, faceOf(obj))] as const;
       })
     ).then((entries) => {
       if (!cancelled) setCards(new Map(entries));
