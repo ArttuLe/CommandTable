@@ -100,6 +100,20 @@ example: `planeView.ts` (pan and zoom), `seating.ts`, `battlefieldZones.ts`, `ca
 `projection.ts`, `undo.ts` and `decklistParser.ts` on the server. Components measure the DOM and
 paint; the pure modules decide.
 
+### Styling
+
+All styling is plain CSS custom properties.
+
+- `packages/client/src/tokens.css` defines:
+  - colours, and the shades derived from them with `color-mix()`
+  - the type scale (`--fs-*`), radii, shadows, z-index layers (`--z-*`), motion and card size
+  - the fixed game palettes for mana and labels
+- `styles.css` holds the rules and takes every value from those tokens. `styles.test.ts` fails on
+  a colour literal or a raw `rem` font size in it. A new colour therefore becomes a token first.
+
+Future work: move styles next to the components that use them (e.g. a `PlayerRail.css` imported by
+`PlayerRail.tsx`), so that `styles.css` shrinks to the shared baseline.
+
 ## Testing
 
 ```
