@@ -17,8 +17,8 @@ export function Home() {
     try {
       const roomId = await createRoom(secret);
       join(roomId, displayName.trim(), secret);
-    } catch {
-      showError('That passphrase isn’t this table’s. Ask whoever is hosting for it.');
+    } catch (e) {
+      showError((e as Error).message);
       setBusy(false);
     }
   }

@@ -15,11 +15,16 @@ const HTTP_BASE = `http://${SERVER_HOST}`;
 export const WS_URL = `ws://${SERVER_HOST}/ws`;
 
 export async function createRoom(secret: string): Promise<string> {
+  // Only a 403 is a wrong passphrase. Every failure used to say so — a server that wasn't running,
+  // or a link to the wrong address, sent the player to retype a passphrase that was fine.
   const res = await fetch(`${HTTP_BASE}/api/rooms`, {
     method: 'POST',
     headers: { 'X-Host-Secret': secret },
+  }).catch(() => {
+    throw new Error(`Can’t reach the table at ${SERVER_HOST}. Check the link with whoever is hosting.`);
   });
-  if (!res.ok) throw new Error('That passphrase isn’t this table’s. Ask whoever is hosting for it.');
+  if (res.status === 403) throw new Error('That passphrase isn’t this table’s. Ask whoever is hosting for it.');
+  if (!res.ok) throw new Error(`The table’s server couldn’t make a room (${res.status}). Try again.`);
   const body = (await res.json()) as { roomId: string };
   return body.roomId;
 }
