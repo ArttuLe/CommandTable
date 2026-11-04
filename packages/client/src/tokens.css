@@ -46,13 +46,6 @@
    --hover-wash: rgba(255, 255, 255, 0.09);
    --scrim: rgba(0, 0, 0, 0.55);
 
-   /* A drawn card back (see .card-tile.face-down). */
-   --back-1: #6b539b;
-   --back-2: #4a3872;
-   --back-3: #2e2350;
-   --back-frame: rgba(160, 138, 214, 0.5);
-   --back-mark: rgba(214, 200, 255, 0.45);
-
    /* Type. Sizes on the plane scale with the zoom and keep their own clamps in styles.css. */
    --fs-2xs: 0.65rem;
    --fs-xs: 0.75rem;
@@ -67,9 +60,6 @@
    --radius: 6px;
    --radius-lg: 10px;
    --radius-pill: 999px;
-
-   /* The table under the mats. A theme lights it with its accent (see .plane-viewport). */
-   --playmat: var(--surface-sunken);
 
    /* A hairline of light along a panel's top edge, so a raised surface reads as raised. */
    --edge-light: inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -170,6 +160,61 @@
    --border-strong: #3d5041;
    --border-hover: #546a58;
    --accent: #62c68d;
+}
+
+/* Playmats and card backs, also picked in the gear. Each is a data attribute on <html>, and on the
+   gear's own swatch for it, which is why the defaults name themselves too: a swatch for the
+   default must not inherit whichever one <html> has. */
+:root,
+[data-playmat='slate'] {
+   /* The table under the mats, lit by the theme's accent (see .plane-viewport). */
+   --playmat: var(--surface-sunken);
+}
+
+[data-playmat='felt'] {
+   --playmat: #0f2218;
+}
+
+[data-playmat='wine'] {
+   --playmat: #220f18;
+}
+
+[data-playmat='navy'] {
+   --playmat: #0d1526;
+}
+
+/* A drawn card back (see .card-tile.face-down). */
+:root,
+[data-card-back='violet'] {
+   --back-1: #6b539b;
+   --back-2: #4a3872;
+   --back-3: #2e2350;
+   --back-frame: rgba(160, 138, 214, 0.5);
+   --back-mark: rgba(214, 200, 255, 0.45);
+}
+
+[data-card-back='crimson'] {
+   --back-1: #a14848;
+   --back-2: #6e2626;
+   --back-3: #3d1313;
+   --back-frame: rgba(232, 156, 146, 0.5);
+   --back-mark: rgba(255, 214, 206, 0.45);
+}
+
+[data-card-back='emerald'] {
+   --back-1: #3f8f62;
+   --back-2: #255c3e;
+   --back-3: #123222;
+   --back-frame: rgba(146, 214, 174, 0.5);
+   --back-mark: rgba(206, 255, 224, 0.45);
+}
+
+[data-card-back='onyx'] {
+   --back-1: #3b3a37;
+   --back-2: #22211f;
+   --back-3: #0e0e0d;
+   --back-frame: rgba(201, 162, 39, 0.6);
+   --back-mark: rgba(232, 200, 110, 0.5);
 }
 
 /* Narrow windows. The fixed chrome — vitals, mana, zones, hand — is what runs out of room first,

@@ -623,17 +623,74 @@ input[type='checkbox'] {
    color: var(--text-dim);
 }
 
+.swatches {
+   display: flex;
+   flex-wrap: wrap;
+   align-items: center;
+   gap: 0.3rem;
+   padding: 0.3rem 0.7rem;
+}
+
+.swatches small {
+   flex-basis: 100%;
+}
+
+.swatch {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 1.9rem;
+   height: 1.9rem;
+   padding: 0.2rem;
+   background: none;
+   border: 2px solid transparent;
+   border-radius: var(--radius);
+   cursor: pointer;
+   transition: border-color var(--dur-fast) var(--ease);
+}
+
+.swatch:hover {
+   border-color: var(--border-hover);
+}
+
+.swatch.picked {
+   border-color: var(--accent);
+}
+
+.swatch .mana-symbol {
+   width: 100%;
+   height: 100%;
+}
+
+.swatch-mat {
+   width: 100%;
+   height: 100%;
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius-sm);
+}
+
+.swatch-back {
+   width: 70%;
+   height: 100%;
+   border-radius: var(--radius-sm);
+   box-shadow: inset 0 0 0 1px var(--back-frame);
+}
+
 .plane-viewport {
    position: relative;
    flex: 1;
    min-width: 0;
    overflow: hidden;
-   /* Lit from above like a table under a lamp, in the theme's accent. It stays put while the mats
-      pan across it, which a pattern could not. */
-   background: radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--accent) 7%, var(--playmat)), var(--playmat) 70%);
    border: 1px solid var(--border);
    border-radius: var(--radius-lg);
    cursor: grab;
+}
+
+/* Lit from above like a table under a lamp, in the theme's accent. It stays put while the mats
+   pan across it, which a pattern could not. */
+.plane-viewport,
+.swatch-mat {
+   background: radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--accent) 7%, var(--playmat)), var(--playmat) 70%);
 }
 
 .plane-viewport.panning {
@@ -1442,7 +1499,8 @@ input[type='checkbox'] {
 
 /* A card back, drawn rather than fetched: Scryfall ships no back in `image_uris`, and a single
    shared asset would be one more request per hidden card for a flat colour and a border. */
-.card-tile.face-down {
+.card-tile.face-down,
+.swatch-back {
    background:
       radial-gradient(ellipse at 50% 45%, var(--back-1) 0%, var(--back-2) 45%, var(--back-3) 100%);
 }

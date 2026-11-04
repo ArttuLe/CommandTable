@@ -108,6 +108,9 @@ All styling is plain CSS custom properties.
   - colours, and the shades derived from them with `color-mix()`
   - the type scale (`--fs-*`), radii, shadows, z-index layers (`--z-*`), motion and card size
   - the fixed game palettes for mana and labels
+- Themes, playmats and card backs are `data-*` attributes on `<html>`, and tokens.css answers them
+  by overriding tokens. The attributes are set from your choices in the gear (`prefs.ts`, kept in
+  localStorage). `themes.test.ts` keeps each theme's text at WCAG AA contrast.
 - `styles.css` holds the rules and takes every value from those tokens. `styles.test.ts` fails on
   a colour literal or a raw `rem` font size in it. A new colour therefore becomes a token first.
 

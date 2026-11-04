@@ -2,11 +2,13 @@
 // the hover-zoom preview (§16.1: "non-negotiable... players need to read cards constantly"), the
 // mana pad (§8.4: "client-local... resets at will and never leaves their browser"), and
 // multi-select (§16.2: "tap five lands" or "sacrifice all my tokens" as one gesture), plus
-// whether the log rail is docked open.
+// whether the log rail is docked open. The one thing here that outlives the tab is your look at
+// the table (prefs), which saves itself to localStorage.
 
 import { create } from 'zustand';
 import type { Card, ObjectId } from '@command-table/common';
 import type { ReplaceableZone } from './commanderPrompt.js';
+import { loadPrefs, savePrefs, type Prefs } from './prefs.js';
 
 export type ManaColor = 'W' | 'U' | 'B' | 'R' | 'G' | 'C';
 
@@ -59,6 +61,9 @@ interface UiStore {
   pointing: { fromId: ObjectId; kind: PointingKind } | null;
   startPointing: (objectId: ObjectId, kind: PointingKind) => void;
   cancelPointing: () => void;
+  /** Theme, playmat and card back: yours alone, kept in this browser (prefs.ts). */
+  prefs: Prefs;
+  setPrefs: (change: Partial<Prefs>) => void;
 }
 
 /** What the next card click means while a pointing mode is armed. */
@@ -109,4 +114,11 @@ export const useUiStore = create<UiStore>((set) => ({
       pointing: s.pointing?.fromId === objectId && s.pointing.kind === kind ? null : { fromId: objectId, kind },
     })),
   cancelPointing: () => set({ pointing: null }),
+  prefs: loadPrefs(),
+  setPrefs: (change) =>
+    set((s) => {
+      const prefs = { ...s.prefs, ...change };
+      savePrefs(prefs);
+      return { prefs };
+    }),
 }));
