@@ -8,11 +8,17 @@
 // needs somewhere to go, and "bottom of the library" is not something the generic right-click
 // zone list can express.
 
+import { useEffect, useState } from 'react';
 import { isRedacted, type GameObject, type ProjectedObject } from '@command-table/common';
 import { CardTile } from './CardTile.js';
 import { useUiStore } from './uiStore.js';
 import { LIBRARY_MOVES, type LibraryMove } from './libraryMoves.js';
 import { useCloseOnEscape } from './useCloseOnEscape.js';
+import { useCards } from './useCard.js';
+import { matchesCardQuery } from './cardSearch.js';
+
+/** Past this many revealed cards, the popover offers a box to type into. */
+const FILTER_FROM = 9;
 
 export interface DockZone {
   key: string;
@@ -42,6 +48,11 @@ export function ZoneDock({
   const visible = (open?.objects ?? [])
     .filter((o): o is GameObject => !isRedacted(o))
     .sort((a, b) => a.position - b.position);
+  const cards = useCards(visible);
+  const [query, setQuery] = useState('');
+  // A new zone, or the same one opened again, starts unfiltered.
+  useEffect(() => setQuery(''), [openKey]);
+  const shown = visible.filter((obj) => matchesCardQuery(cards.get(obj.id) ?? null, query));
 
   // Every way out of a popover — backdrop, ×, or clicking another zone's tile — goes through
   // here, since `onClose` is what settles the library's post-search shuffle.
@@ -91,8 +102,20 @@ export function ZoneDock({
             ) : (
               open.note && <p className="popover-note">{open.note}</p>
             )}
+            {visible.length >= FILTER_FROM && (
+              <input
+                className="zone-filter"
+                type="search"
+                aria-label={`Find a card in ${open.label.toLowerCase()}`}
+                placeholder="Find a card by name or type"
+                value={query}
+                autoFocus
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            )}
+            {shown.length === 0 && query && <p className="popover-note">Nothing here matches “{query}”.</p>}
             <div className="zone-grid">
-              {visible.map((obj) => (
+              {shown.map((obj) => (
                 <div key={obj.id} className="zone-entry">
                   <CardTile obj={obj} onContextMenu={onObjectContextMenu(obj)} />
                   {open.onMove && (

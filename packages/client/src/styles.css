@@ -154,6 +154,7 @@ button {
 /* Text fields get the same treatment as buttons, and for the same reason: left at the browser
    default they were white boxes on a dark table, which made the lobby read as a web form. */
 input[type='text'],
+input[type='search'],
 input[type='password'],
 input:not([type]),
 textarea {
@@ -1367,6 +1368,12 @@ input[type='checkbox'] {
    position: fixed;
    inset: 0;
    z-index: 20;
+}
+
+/* The library search's filter: the popover's full width, under its header, above the grid. */
+.zone-filter {
+   width: 100%;
+   margin-bottom: 0.5rem;
 }
 
 .zone-popover {
