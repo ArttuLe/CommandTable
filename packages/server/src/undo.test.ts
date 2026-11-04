@@ -100,6 +100,14 @@ describe('applyUndo', () => {
   });
 });
 
+describe('applyUndo: objects the revert simply removes', () => {
+  it('does not report a leak for a token that did not exist at the target', () => {
+    const before = makeState([], 1);
+    const after = makeState([card({ id: 'tok', zone: { playerId: ALICE, zone: 'battlefield' }, faceVisibility: { kind: 'all' } })], 2);
+    expect(applyUndo(after, before, ALICE).leakedTo).toEqual([]);
+  });
+});
+
 describe('tallyUndoVotes', () => {
   const votes = (...ballots: boolean[]) => new Map(ballots.map((approve, i) => [`p${i}`, approve]));
 

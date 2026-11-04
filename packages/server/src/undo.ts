@@ -43,8 +43,12 @@ function computeLeakedViewers(current: TableState, target: TableState): PlayerId
   const leaked = new Set<PlayerId>();
 
   for (const obj of Object.values(current.objects)) {
-    const viewersNow = viewersOf(obj.faceVisibility, allPlayerIds);
     const afterRevert = target.objects[obj.id];
+    // Something everyone could see that didn't exist yet at the target — a token, a copy — reveals
+    // nothing by disappearing. Counting it put a false "may still be known" note on every undone
+    // token. A hidden one that vanishes is still a leak: someone saw what nobody else did.
+    if (!afterRevert && obj.faceVisibility.kind === 'all') continue;
+    const viewersNow = viewersOf(obj.faceVisibility, allPlayerIds);
     const viewersAfter = afterRevert ? viewersOf(afterRevert.faceVisibility, allPlayerIds) : new Set<PlayerId>();
     for (const viewer of viewersNow) {
       if (!viewersAfter.has(viewer)) {
