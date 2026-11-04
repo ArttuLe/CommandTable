@@ -1,7 +1,9 @@
 // An armed arrow owns the next click.
 //
 // "Target…" puts the table into a mode, and the click that follows has to mean "point at this"
-// wherever it lands — including on a card in hand, which normally plays it. That guard lives at
+// wherever it lands — including on a card in hand, which a double-click normally plays. The
+// double-click is the hard case: its first click points and stands the mode down, so the second
+// arrives with no mode armed and must still not play the card. That guard lives at
 // the one chokepoint every tile goes through (CardTile.tsx); before it, arming an arrow and then
 // picking a target in hand cast the card as well.
 
@@ -27,7 +29,7 @@ test('pointing at a card in hand does not also play it', async ({ browser }) => 
   const handBefore = await handIds(page);
   const onBattlefield = await page.locator('.battlefield .card-tile').count();
 
-  await page.locator('.hand .card-tile').last().click();
+  await page.locator('.hand .card-tile').last().dblclick();
   await expect(page.locator('.targeting-hint')).toBeHidden();
 
   // Wait for the one thing this click is allowed to do to come back from the server before

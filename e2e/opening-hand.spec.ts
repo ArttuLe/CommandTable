@@ -17,11 +17,21 @@ test('mulligan, keep, and the host starting the game', async ({ browser }) => {
   await expect(alice.locator('.setup-waiting')).toHaveText(/Alice/);
   await expect(alice.locator('.setup-waiting')).toHaveText(/Bob/);
 
+  // Nobody's turn has started, so nothing should be urging anyone to end it.
+  await expect(alice.getByRole('button', { name: 'Pass turn' })).not.toHaveClass(/urgent/);
+  await expect(alice.locator('.hud')).not.toHaveClass(/my-turn/);
+
+  // The hand is for judging, not playing, until the game starts: a double-click that would play a
+  // card in a game does nothing here. The mulligan below is the round trip that proves it — had
+  // the double-click sent a move, the server would have applied it first.
+  await alice.locator('.hand .card-tile').last().dblclick();
+
   // A mulligan here is not a London one: it shuffles back and redraws seven (playerActions.ts).
   const before = await handIds(alice);
   await alice.getByRole('button', { name: 'Mulligan', exact: true }).click();
   await expect(alice.locator('.hand .card-tile')).toHaveCount(OPENING_HAND);
   await expect.poll(() => handIds(alice)).not.toEqual(before);
+  await expect(alice.locator('.battlefield .card-tile')).toHaveCount(0);
 
   // Keeping is reported to the other seat, not just this one.
   await alice.getByRole('button', { name: 'Keep', exact: true }).click();

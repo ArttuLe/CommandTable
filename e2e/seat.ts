@@ -8,7 +8,7 @@
 //
 //   2  opening-hand.spec.ts   exclusively — it is the only spec that needs setupComplete false
 //   3  targeting, change-pulse, board-vitals,  they start play and play a card,
-//      player-rail, hover-preview              move a number or bin a permanent; none of them
+//      player-rail, hover-preview, hand-play   move a number or bin a permanent; none of them
 //                                              minds what the others left behind
 //   4  context-menu, hand-fan, plane-menu   read-only after starting play (plane-menu only moves
 //                                           its own camera), and hand-fan needs all seven cards
@@ -75,8 +75,9 @@ export async function handIds(page: Page): Promise<(string | undefined)[]> {
 /**
  * Plays a card out of hand onto the battlefield and returns its object id.
  *
- * The last card by default: a crowded hand overlaps its cards (styles.css), so the ones to its
- * left are partly covered and a click on them can be reported as intercepted. The id is read
+ * A double-click, as §16.2 has it: a single click on a hand card only looks at it. The last card
+ * by default: a crowded hand overlaps its cards (styles.css), so the ones to its left are partly
+ * covered and a click on them can be reported as intercepted. The id is read
  * before the click because it survives the move, which is what lets a caller name the tile
  * afterwards.
  */
@@ -84,7 +85,7 @@ export async function playFromHand(page: Page): Promise<string> {
   const tile = page.locator('.hand .card-tile').last();
   const id = await tile.getAttribute('data-object-id');
   if (!id) throw new Error('hand tile has no data-object-id');
-  await tile.click();
+  await tile.dblclick();
   await expect(page.locator(`.battlefield [data-object-id="${id}"]`)).toBeVisible();
   return id;
 }

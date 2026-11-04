@@ -112,7 +112,9 @@ export function Table() {
     setMenu({ obj, x: e.clientX, y: e.clientY });
   };
 
-  const isMyTurn = tableState.turn.activePlayerId === playerId;
+  // Before the host starts the game, whose turn it is doesn't mean anything yet (the pill says
+  // "Opening hands"), so nothing may glow at you to end it.
+  const isMyTurn = tableState.setupComplete && tableState.turn.activePlayerId === playerId;
 
   // PASS_TURN advances the table from whoever is active, so out of turn it ends someone else's
   // turn — one dialog in front of both the button and the shortcut (see turnStatus.ts).
@@ -267,7 +269,7 @@ export function Table() {
             says which moment the table is in instead. The opening-hand step itself is down in
             the HUD, where you can see the hand it is asking about; the pill keeps its slot here
             either way, so nothing shifts when the game begins. */}
-        <span className={`turn-pill ${tableState.setupComplete && isMyTurn ? 'mine' : ''}`}>
+        <span className={`turn-pill ${isMyTurn ? 'mine' : ''}`}>
           {tableState.setupComplete ? turnLabel(tableState.turn, tableState.players, playerId) : 'Opening hands'}
         </span>
 
@@ -472,7 +474,14 @@ export function Table() {
               <CardTile
                 key={obj.id}
                 obj={obj}
-                onClick={() => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: { playerId, zone: 'battlefield' } })}
+                // A double-click, per §16.2: playing reveals the card to everyone and can't be taken
+                // back, and a single click is how people look at one. Not at all during opening
+                // hands — the hand is there to be judged, and a card played then is a misclick.
+                onDoubleClick={
+                  tableState.setupComplete
+                    ? () => act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: { playerId, zone: 'battlefield' } })
+                    : undefined
+                }
                 onContextMenu={openMenu(obj)}
               />
             ))}

@@ -23,7 +23,7 @@ export const KEY_SHORTCUTS: Shortcut[] = [
 ];
 
 export const MOUSE_SHORTCUTS: Shortcut[] = [
-  { keys: 'Click a card in hand', what: 'Play it to your battlefield' },
+  { keys: 'Double-click a card in hand', what: 'Play it to your battlefield' },
   { keys: 'Click a permanent', what: 'Tap or untap it — your mana pad follows either way' },
   { keys: 'Right-click any card', what: 'Every action for that object' },
   { keys: 'Shift-click', what: 'Add a permanent to the selection for a bulk action' },

@@ -12,12 +12,14 @@ interface CardTileProps {
   obj: ProjectedObject;
   selected?: boolean;
   onClick?: (e: React.MouseEvent) => void;
+  /** The hand's gesture for playing a card (§16.2); a single click there only looks at it. */
+  onDoubleClick?: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
   /** Omitted where a tile is a picture rather than a control — the zone popovers, mainly. */
   onRemoveLabel?: (marker: string) => void;
 }
 
-export function CardTile({ obj, selected, onClick, onContextMenu, onRemoveLabel }: CardTileProps) {
+export function CardTile({ obj, selected, onClick, onDoubleClick, onContextMenu, onRemoveLabel }: CardTileProps) {
   const card = useCard(obj);
   const setHoveredCard = useUiStore((s) => s.setHoveredCard);
   const pointing = useUiStore((s) => s.pointing);
@@ -47,11 +49,17 @@ export function CardTile({ obj, selected, onClick, onContextMenu, onRemoveLabel 
   // in a mode the mode owns the click: the crosshair cursor is on the hand, the command zone and
   // the zone popovers too, and those used to go on playing and casting out from under an armed
   // arrow — two unintended actions from one click.
+  //
+  // A double-click is two clicks first, and the first of them is the one that points — which
+  // stands the mode down, so the double-click arrives with nothing armed. Whether this gesture
+  // started out pointing is remembered from its first press, so it can't go on to play the card.
+  const pointedThisGesture = useRef(false);
   function handleClick(e: React.MouseEvent) {
     if (!pointing) {
       onClick?.(e);
       return;
     }
+    pointedThisGesture.current = true;
     // Pointing at yourself is the gesture for "never mind", and avoids an arrow with no length.
     if (pointing.fromId !== obj.id) {
       const marker = pointing.kind === 'block' ? blockMarker(obj.id) : targetMarker(obj.id);
@@ -80,7 +88,13 @@ export function CardTile({ obj, selected, onClick, onContextMenu, onRemoveLabel 
   return (
     <div
       className={`card-tile ${obj.tapped ? 'tapped' : ''} ${showsBack ? 'face-down' : ''} ${selected ? 'selected' : ''} ${isAttacking(obj) ? 'attacking' : ''}`}
+      onMouseDown={(e) => {
+        if (e.detail === 1) pointedThisGesture.current = false;
+      }}
       onClick={handleClick}
+      onDoubleClick={() => {
+        if (!pointedThisGesture.current) onDoubleClick?.();
+      }}
       onContextMenu={onContextMenu}
       // Hover-zoom is left alone: if the projection let you have the card, you are allowed to
       // remind yourself what your own morph is without turning it over for everyone.
