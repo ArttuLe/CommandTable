@@ -10,9 +10,11 @@ const SECTION_HEADERS: Record<string, DeckSection> = {
   maybeboard: 'maybeboard',
 };
 
-const TRAILING_TAG = /\s*(\[[^\]]*\]|\{[^}]*\}|#\S+)\s*$/;
+// Bracketed tags, {tags}, #hashtags, and foil/etched markers like *F* and *E*.
+const TRAILING_TAG = /\s*(\[[^\]]*\]|\{[^}]*\}|#\S+|\*[A-Za-z]+\*)\s*$/;
 const SET_HINT = /^(.*\S)\s+\(([A-Za-z0-9]+)\)\s+(\S+)$/;
-const LINE = /^(\d+)\s+(.+)$/;
+// "1 Sol Ring" or "1x Sol Ring"; a line with no count at all is read as one copy (below).
+const LINE = /^(\d+)x?\s+(.+)$/i;
 
 export function parseDecklist(text: string): ParsedDecklist {
   const lines: DeckLine[] = [];
@@ -24,18 +26,19 @@ export function parseDecklist(text: string): ParsedDecklist {
       continue;
     }
 
-    const headerSection = SECTION_HEADERS[trimmed.toLowerCase()];
+    // "Sideboard", "SIDEBOARD:" and "Deck (99)" are all the same header in different exporters'
+    // hands — and now that a line without a count is read as a card, an unrecognised header would be one.
+    const headerSection = SECTION_HEADERS[trimmed.toLowerCase().replace(/\s*\(\d+\)$/, '').replace(/:$/, '')];
     if (headerSection) {
       section = headerSection;
       continue;
     }
 
+    // Without a count, one copy: dropping the line silently hid it from the unresolved list too,
+    // so a typo or an unfamiliar export form just made cards vanish from the deck.
     const match = LINE.exec(trimmed);
-    if (!match) {
-      continue;
-    }
-    const quantity = Number.parseInt(match[1], 10);
-    let rest = match[2];
+    const quantity = match ? Number.parseInt(match[1], 10) : 1;
+    let rest = match ? match[2] : trimmed;
 
     while (TRAILING_TAG.test(rest)) {
       rest = rest.replace(TRAILING_TAG, '');
