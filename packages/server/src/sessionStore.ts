@@ -17,17 +17,23 @@ import type { RoomId, TableState } from '@command-table/common';
 import { Room, type RoomSnapshot } from './roomManager.js';
 
 const VERSION = 1;
-const TTL_MS = 24 * 60 * 60 * 1000;
+/** How long a room may sit idle — no message from anyone in it — before it is forgotten. */
+export const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const DEBOUNCE_MS = 1000;
 
 export interface SessionEntry {
   room: Room;
   table: TableState | null;
+  /** When anyone in the room last did anything. Saved as the room's age, not the file's. */
+  lastActivityAt: number;
 }
 
 interface PersistedSession {
   room: RoomSnapshot;
   table: TableState | null;
+  // The room's last activity, despite the name (kept for files already on disk). It used to be the
+  // time of the write, and every write re-stamped every room — so while any room was in use, an
+  // abandoned one and its rejoin tokens were saved and restored forever.
   savedAt: number;
 }
 
@@ -39,8 +45,10 @@ export interface PersistedFile {
 
 export function encode(hostSecret: string, entries: SessionEntry[], now: number): PersistedFile {
   const sessions: Record<RoomId, PersistedSession> = {};
-  for (const { room, table } of entries) {
-    sessions[room.roomId] = { room: room.toSnapshot(), table, savedAt: now };
+  for (const { room, table, lastActivityAt } of entries) {
+    // An idle room is written only until it expires, so the file stops carrying it too.
+    if (now - lastActivityAt > SESSION_TTL_MS) continue;
+    sessions[room.roomId] = { room: room.toSnapshot(), table, savedAt: lastActivityAt };
   }
   return { version: VERSION, hostSecret, sessions };
 }
@@ -57,7 +65,7 @@ export function decode(raw: unknown, now: number): PersistedFile | null {
   const sessions: Record<RoomId, PersistedSession> = {};
   for (const [roomId, session] of Object.entries(file.sessions)) {
     if (typeof session?.savedAt !== 'number' || typeof session.room?.roomId !== 'string') continue;
-    if (now - session.savedAt > TTL_MS) continue;
+    if (now - session.savedAt > SESSION_TTL_MS) continue;
     sessions[roomId] = session;
   }
   return { version: VERSION, hostSecret: file.hostSecret, sessions };

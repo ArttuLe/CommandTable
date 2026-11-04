@@ -301,6 +301,10 @@ export class RoomManager {
     }
   }
 
+  removeRoom(roomId: RoomId): void {
+    this.rooms.delete(roomId);
+  }
+
   getRoom(roomId: RoomId): Room | undefined {
     return this.rooms.get(roomId);
   }

@@ -26,7 +26,7 @@ function fileWith(sessions: PersistedFile['sessions']): PersistedFile {
 describe('sessionStore encode/decode', () => {
   it('round-trips a room and its table through JSON', () => {
     const room = seatedRoom();
-    const encoded = encode('forest3', [{ room, table: table(room.roomId) }], NOW);
+    const encoded = encode('forest3', [{ room, table: table(room.roomId), lastActivityAt: NOW }], NOW);
 
     const decoded = decode(JSON.parse(JSON.stringify(encoded)), NOW);
 
@@ -37,7 +37,7 @@ describe('sessionStore encode/decode', () => {
 
   it('keeps a room whose game has ended, with a null table', () => {
     const room = seatedRoom();
-    const encoded = encode('forest3', [{ room, table: null }], NOW);
+    const encoded = encode('forest3', [{ room, table: null, lastActivityAt: NOW }], NOW);
 
     const decoded = decode(JSON.parse(JSON.stringify(encoded)), NOW);
 
@@ -68,6 +68,18 @@ describe('sessionStore encode/decode', () => {
     const decoded = decode(file, NOW);
 
     expect(Object.keys(decoded!.sessions)).toEqual([fresh.roomId]);
+  });
+});
+
+describe('session expiry', () => {
+  // Every write used to stamp every room "saved now", so an abandoned room never aged while any
+  // other room was busy. Its age is its last activity, however recently the file was written.
+  it('drops a room idle for longer than the TTL, even from a file written just now', () => {
+    const room = seatedRoom();
+    const stale = NOW - 25 * 60 * 60 * 1000;
+    expect(encode('forest3', [{ room, table: null, lastActivityAt: stale }], NOW).sessions[room.roomId]).toBeUndefined();
+    const written = encode('forest3', [{ room, table: null, lastActivityAt: NOW - 60_000 }], NOW);
+    expect(decode(JSON.parse(JSON.stringify(written)), NOW + 24 * 60 * 60 * 1000)?.sessions[room.roomId]).toBeUndefined();
   });
 });
 

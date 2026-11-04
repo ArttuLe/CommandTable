@@ -16,7 +16,7 @@ import { projectFor } from './projection.js';
 import { TableHistory } from './tableHistory.js';
 import { applyUndo, tallyUndoVotes } from './undo.js';
 import { checkSecret, resolveHostSecret } from './hostSecret.js';
-import { SessionStore, type SessionEntry } from './sessionStore.js';
+import { SESSION_TTL_MS, SessionStore, type SessionEntry } from './sessionStore.js';
 import { buildDevTable, devSeatName, MAX_DEV_PLAYERS, MIN_DEV_PLAYERS } from './devtest/devTable.js';
 import { parseClientMessage } from './clientMessage.js';
 import { SUPERSEDED } from '@command-table/common';
@@ -33,6 +33,9 @@ const roomManager = new RoomManager();
 const socketsByRoom = new Map<RoomId, Map<PlayerId, WebSocket>>();
 const tablesByRoom = new Map<RoomId, TableState>();
 const historiesByRoom = new Map<RoomId, TableHistory>();
+// When anyone in each room last did anything: what a saved room's age is measured by, and what
+// the sweep below forgets idle rooms by.
+const lastActivityByRoom = new Map<RoomId, number>();
 
 // Saved games (§14.5). The callback is what gets written on every markDirty — the whole file is
 // rewritten from live state each time, so there is nothing to keep in sync by hand.
@@ -41,6 +44,7 @@ const sessions = new SessionStore(SESSION_PATH, () => ({
   entries: [...roomManager.allRooms()].map((room): SessionEntry => ({
     room,
     table: tablesByRoom.get(room.roomId) ?? null,
+    lastActivityAt: lastActivityByRoom.get(room.roomId) ?? Date.now(),
   })),
 }));
 
@@ -52,6 +56,7 @@ const HOST_SECRET = resolveHostSecret(process.env, restored?.hostSecret);
 
 if (restored) {
   roomManager.restore(Object.values(restored.sessions).map((s) => s.room));
+  for (const saved of Object.values(restored.sessions)) lastActivityByRoom.set(saved.room.roomId, saved.savedAt);
   for (const saved of Object.values(restored.sessions)) {
     if (!saved.table) continue;
     tablesByRoom.set(saved.room.roomId, saved.table);
@@ -70,6 +75,20 @@ interface PendingUndo {
   votes: Map<PlayerId, boolean>;
 }
 const pendingUndosByRoom = new Map<RoomId, PendingUndo>();
+
+// Rooms nobody has touched for a day, with nobody connected, are forgotten: from memory as well as
+// from the save file, which only skips them (sessionStore.ts). Rooms used to live for as long as
+// the process did.
+setInterval(() => {
+  const now = Date.now();
+  for (const room of [...roomManager.allRooms()]) {
+    const idle = now - (lastActivityByRoom.get(room.roomId) ?? now) > SESSION_TTL_MS;
+    if (!idle || (socketsByRoom.get(room.roomId)?.size ?? 0) > 0) continue;
+    roomManager.removeRoom(room.roomId);
+    for (const byRoom of [tablesByRoom, historiesByRoom, pendingUndosByRoom, socketsByRoom, lastActivityByRoom]) byRoom.delete(room.roomId);
+    sessions.markDirty();
+  }
+}, 60 * 60 * 1000).unref();
 
 // One shared dev table per player count, so a second tab at /devtest/4/Bob sits down with the
 // /devtest/4/Alice already open rather than at a table of its own.
@@ -150,6 +169,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       }
       state.roomId = room.roomId;
       state.playerId = result.playerId;
+      lastActivityByRoom.set(room.roomId, Date.now());
       registerSocket(room.roomId, result.playerId, socket);
       send(socket, { t: 'joined', playerId: result.playerId, roomState: room.toState(), rejoinToken: result.rejoinToken });
       broadcastRoomState(room);
@@ -440,6 +460,9 @@ const httpServer = createServer((req, res) => {
       return;
     }
     const room = roomManager.createRoom();
+    lastActivityByRoom.set(room.roomId, Date.now());
+    // Saved straight away, so a room made just before a restart is still there after it.
+    sessions.markDirty();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ roomId: room.roomId }));
     return;
@@ -541,6 +564,7 @@ wss.on('connection', (socket) => {
       send(socket, { t: 'error', message: 'malformed message' });
       return;
     }
+    if (state.roomId && parsed.t !== 'ping') lastActivityByRoom.set(state.roomId, Date.now());
     // The last line of defence: whatever a handler still throws on costs this message, not the
     // process — and with the process, every game this server is hosting.
     try {
