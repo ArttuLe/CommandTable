@@ -58,6 +58,13 @@ export function applyAction(
   if (!result.ok) {
     return result;
   }
+  // An action that changed nothing (a marker the card already has, a bulk move into the zone the
+  // cards are already in) hands back the table it was given, unlogged. Logged, it reused the
+  // current revision, and the history then held two snapshots under one number — enough for an
+  // undo after a revert to bring back what had just been undone. server.ts records nothing for it.
+  if (result.state.revision === state.revision && !result.log) {
+    return { ok: true, state };
+  }
 
   const { text, visibility, kind } = result.log ?? { text: describeAction(action), visibility: undefined, kind: undefined };
   const entry: LogEntry = {

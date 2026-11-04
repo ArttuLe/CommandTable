@@ -219,6 +219,8 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
         send(socket, { t: 'rejected', clientSeq: raw.clientSeq, reason: result.reason });
         return;
       }
+      // Nothing changed, so there is nothing to record, broadcast or save (see applyAction).
+      if (result.state === table) return;
       tablesByRoom.set(room.roomId, result.state);
       history.record(state.playerId, result.state);
       // A pending rewind was aimed at a revision older than this action; letting it resolve later

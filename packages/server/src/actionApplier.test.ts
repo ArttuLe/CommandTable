@@ -526,3 +526,14 @@ describe('applyAction: MOVE_OBJECT and face-down cards', () => {
     expect(result.state.objects['m'].faceVisibility).toEqual({ kind: 'players', ids: [ALICE] });
   });
 });
+
+describe('applyAction: an action that changes nothing', () => {
+  // Logged and recorded, a no-op reused the current revision: two history entries under one number,
+  // which let an undo after a revert restore the very snapshot that had just been undone.
+  it('hands back the same table, with nothing logged', () => {
+    const state = makeState([card({ id: 'c1', zone: { playerId: ALICE, zone: 'battlefield' }, markers: ['flying'] })]);
+    const result = applyAction(state, { t: 'SET_MARKER', objectId: 'c1', marker: 'flying' });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.state).toBe(state);
+  });
+});
