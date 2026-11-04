@@ -23,3 +23,23 @@ test('a single click on a card in hand does not play it', async ({ browser }) =>
   await expect(page.locator(`.hand [data-object-id="${clickedId}"]`)).toBeVisible();
   await expect(page.locator(`.battlefield [data-object-id="${clickedId}"]`)).toHaveCount(0);
 });
+
+// Cards were divs with click handlers and nothing else, so playing, tapping and the card menu
+// were mouse-only. A focused card answers Enter the way it answers its click, and the context
+// menu key (Shift+F10) the way it answers a right-click.
+test('a card can be played and opened from the keyboard', async ({ browser }) => {
+  // Three seats: plays a card, like the rest of that bucket (see seat.ts).
+  const page = await openSeat(browser, 3, 'Alice');
+  await startPlay(page);
+
+  const tile = page.locator('.hand .card-tile').last();
+  const id = await tile.getAttribute('data-object-id');
+  await tile.focus();
+  await page.keyboard.press('Shift+F10');
+  await expect(page.locator('.context-menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await tile.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator(`.battlefield [data-object-id="${id}"]`)).toBeVisible();
+});

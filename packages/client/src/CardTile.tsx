@@ -68,6 +68,38 @@ export function CardTile({ obj, selected, onClick, onDoubleClick, onContextMenu,
     cancelPointing();
   }
 
+  // The keyboard's way into the same handlers the mouse uses: Enter is the tile's own click (or
+  // double-click, in the hand), and the context-menu key is its right-click. Dispatched as real
+  // mouse events at the tile's centre rather than calling the props, because the handlers read
+  // where the click landed — a dual land asks which colour at that point — and because a click
+  // in a mode has to go through handleClick like any other.
+  const tileRef = useRef<HTMLDivElement>(null);
+  const interactive = Boolean(onClick || onDoubleClick || onContextMenu);
+  function fire(type: 'click' | 'dblclick' | 'contextmenu') {
+    const el = tileRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.dispatchEvent(
+      new MouseEvent(type, { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 })
+    );
+  }
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.target !== e.currentTarget) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!pointing && onDoubleClick) {
+        // No mouse-down came first to reset it, and Enter is never the end of a pointing gesture.
+        pointedThisGesture.current = false;
+        fire('dblclick');
+      } else {
+        fire('click');
+      }
+    } else if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+      e.preventDefault();
+      fire('contextmenu');
+    }
+  }
+
   const label = isRedacted(obj) ? null : cardLabel(obj, card);
   // Two ways to be looking at a back: the projection withheld the card from you (§9.2), or the
   // card is face down and you happen to be the one allowed to see it anyway. The second used to
@@ -87,7 +119,12 @@ export function CardTile({ obj, selected, onClick, onDoubleClick, onContextMenu,
 
   return (
     <div
+      ref={tileRef}
       className={`card-tile ${obj.tapped ? 'tapped' : ''} ${showsBack ? 'face-down' : ''} ${selected ? 'selected' : ''} ${isAttacking(obj) ? 'attacking' : ''}`}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      aria-label={`${label ?? (showsBack ? 'Face-down card' : 'Card')}${obj.tapped ? ', tapped' : ''}`}
+      onKeyDown={interactive ? handleKeyDown : undefined}
       onMouseDown={(e) => {
         if (e.detail === 1) pointedThisGesture.current = false;
       }}
