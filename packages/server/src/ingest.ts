@@ -2,6 +2,8 @@
 // and thereafter as a weekly job. Stream-parses the gzip'd JSONL bulk file line by line so the
 // process never holds the whole file in memory (§5.2's "do not JSON.parse the whole file").
 
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { createGunzip } from 'node:zlib';
 import { createInterface } from 'node:readline';
 import { Readable } from 'node:stream';
@@ -47,6 +49,8 @@ async function ingest(): Promise<void> {
     throw new Error(`Failed to download bulk file: ${res.status} ${res.statusText}`);
   }
 
+  // `data/` is gitignored, so on a fresh checkout it doesn't exist yet — and SQLite won't make it.
+  mkdirSync(dirname(DB_PATH), { recursive: true });
   const db = new Database(DB_PATH);
   const index = new CardIndex(db);
   const insertMany = db.transaction((cards: unknown[]) => {
