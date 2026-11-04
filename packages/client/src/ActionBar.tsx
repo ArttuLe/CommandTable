@@ -10,6 +10,7 @@ import type { Action, PlayerId, PlayerState } from '@command-table/common';
 import { useStore } from './store.js';
 import { useUiStore, type ManaColor } from './uiStore.js';
 import { libraryDirtiedBy, type LibraryLook } from './libraryMoves.js';
+import { useCloseOnEscape } from './useCloseOnEscape.js';
 import { NumberDialog } from './NumberDialog.js';
 import { CommanderName, type CommanderRef } from './commanders.js';
 import { isLethalCommanderDamage, isLethalLife, isLethalPoison, worstDamageTaken } from './vitals.js';
@@ -187,6 +188,7 @@ function MoreMenu({
   const { groups, dialogs } = usePlayerActions(playerId, act);
 
   useCloseOnOutsideClick(open, ref, () => setOpen(false));
+  useCloseOnEscape(open, () => setOpen(false));
 
   // Every item closes the menu; the dialogs some of them open are modal anyway, so closing first
   // keeps the menu from hanging open behind one.
@@ -367,6 +369,7 @@ function CommanderDamageMenu({
   const worst = worstDamageTaken(player);
 
   useCloseOnOutsideClick(open, ref, () => setOpen(false));
+  useCloseOnEscape(open, () => setOpen(false));
 
   return (
     <div className="damage-menu" ref={ref}>

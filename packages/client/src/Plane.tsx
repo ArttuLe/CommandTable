@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { placeMenu } from './menuPlacement.js';
+import { useCloseOnEscape } from './useCloseOnEscape.js';
 import { MAX_SCALE, MIN_SCALE, fitView, focusView, zoomAt, type View } from './planeView.js';
 
 const FIT_PADDING = 24;
@@ -263,6 +264,7 @@ function PlaneMenu({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  useCloseOnEscape(true, onClose);
 
   useLayoutEffect(() => {
     const el = ref.current;

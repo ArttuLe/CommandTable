@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { useStore } from './store.js';
 import { useUiStore } from './uiStore.js';
+import { useCloseOnEscape } from './useCloseOnEscape.js';
 
 type Pending = 'leave' | 'endGame' | null;
 
@@ -20,6 +21,7 @@ export function SettingsMenu() {
   const leave = useStore((s) => s.leave);
   const endGame = useStore((s) => s.endGame);
   const isHost = useStore((s) => s.roomState?.hostId !== null && s.roomState?.hostId === s.playerId);
+  useCloseOnEscape(open, () => setOpen(false));
 
   useEffect(() => {
     if (!open) return;

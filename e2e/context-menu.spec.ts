@@ -87,3 +87,32 @@ test('opens inside the window and keeps its last item reachable', async ({ brows
     await expectOnScreen(page, last);
   });
 });
+
+// The help dialog promises Esc closes "whatever is open". Each of these popovers dismisses itself
+// its own way, so each is checked on its own: a menu that only closes on a click is the bug.
+test('Escape puts away whichever menu is open', async ({ browser }) => {
+  // Four seats, read-only: opens things and closes them again.
+  const page = await openSeat(browser, 4, 'Alice');
+  await startPlay(page);
+
+  const menus: { name: string; open: () => Promise<unknown>; popover: string }[] = [
+    { name: 'card menu', open: () => openMenuOnLastHandCard(page), popover: '.context-menu' },
+    {
+      name: 'table menu',
+      open: () => page.locator('.plane-viewport').click({ button: 'right', position: { x: 12, y: 12 } }),
+      popover: '.context-menu',
+    },
+    { name: 'More', open: () => page.getByRole('button', { name: /^More/ }).click(), popover: '.more-popover' },
+    { name: 'settings', open: () => page.getByRole('button', { name: 'Settings' }).click(), popover: '.settings-popover' },
+    { name: 'library', open: () => page.locator('.zone-tile', { hasText: 'Library' }).click(), popover: '.zone-popover' },
+  ];
+
+  for (const { name, open, popover } of menus) {
+    await test.step(name, async () => {
+      await open();
+      await expect(page.locator(popover)).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.locator(popover)).toHaveCount(0);
+    });
+  }
+});

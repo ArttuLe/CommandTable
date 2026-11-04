@@ -15,6 +15,7 @@ import { duplicateAction } from './duplicate.js';
 import { Dialog } from './Dialog.js';
 import { TextDialog } from './TextDialog.js';
 import { LABEL_PRESETS, labelTone } from './labels.js';
+import { useCloseOnEscape } from './useCloseOnEscape.js';
 
 interface ContextMenuProps {
   obj: ProjectedObject;
@@ -80,6 +81,7 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
   // Which of this menu's dialogs is up, if any. The menu hides itself while one is open but
   // stays mounted — unmounting it (via onClose) would take the dialog down with it.
   const [dialog, setDialog] = useState<MenuDialog>(null);
+  useCloseOnEscape(true, onClose);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;

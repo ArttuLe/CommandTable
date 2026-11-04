@@ -12,6 +12,7 @@ import { isRedacted, type GameObject, type ProjectedObject } from '@command-tabl
 import { CardTile } from './CardTile.js';
 import { useUiStore } from './uiStore.js';
 import { LIBRARY_MOVES, type LibraryMove } from './libraryMoves.js';
+import { useCloseOnEscape } from './useCloseOnEscape.js';
 
 export interface DockZone {
   key: string;
@@ -48,6 +49,7 @@ export function ZoneDock({
     open?.onClose?.();
     closeZone();
   };
+  useCloseOnEscape(Boolean(open), close);
 
   return (
     <div className="zone-dock">
