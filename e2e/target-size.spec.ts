@@ -36,7 +36,10 @@ test('the smallest controls are at least 24px square', async ({ browser }) => {
   await expectAtLeastFloor(page.locator('.rail-header .icon-button'), 'rail collapse');
 
   await page.keyboard.press('c');
-  await page.locator(`.battlefield [data-object-id="${played}"]`).click({ button: 'right' });
+  // From the keyboard: at Fit the played card is a few dozen pixels across and may sit under the
+  // next card in a land stack, where a pointer aimed at it can land on a neighbour (player-rail.spec.ts).
+  await page.locator(`.battlefield [data-object-id="${played}"]`).focus();
+  await page.keyboard.press('Shift+F10');
   await expectAtLeastFloor(page.locator('.context-menu .menu-stepper button'), 'menu stepper');
   await expectAtLeastFloor(page.locator('.context-menu .menu-chips button'), 'move chip');
 });
