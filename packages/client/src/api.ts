@@ -19,7 +19,7 @@ export async function createRoom(secret: string): Promise<string> {
     method: 'POST',
     headers: { 'X-Host-Secret': secret },
   });
-  if (!res.ok) throw new Error('wrong passphrase');
+  if (!res.ok) throw new Error('That passphrase isn’t this table’s. Ask whoever is hosting for it.');
   const body = (await res.json()) as { roomId: string };
   return body.roomId;
 }

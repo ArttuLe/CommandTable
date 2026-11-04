@@ -124,14 +124,14 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
   switch (raw.t) {
     case 'join': {
       if (!authorized(raw.secret)) {
-        send(socket, { t: 'error', message: 'wrong passphrase' });
+        send(socket, { t: 'error', message: 'That passphrase isn’t this table’s. Ask whoever is hosting for it.' });
         return;
       }
       const room = roomManager.getRoom(raw.roomId);
       if (!room) {
         // Tagged only when they were trying to resume: a client holding a stale token needs to
         // clear it and start over, where someone mistyping a room code just needs the toast.
-        send(socket, { t: 'error', message: 'room not found', code: raw.rejoinToken ? 'rejoin-failed' : undefined });
+        send(socket, { t: 'error', message: 'No room has that code. Check it with whoever is hosting.', code: raw.rejoinToken ? 'rejoin-failed' : undefined });
         return;
       }
       const result = room.join({ displayName: raw.displayName, seat: raw.seat, rejoinToken: raw.rejoinToken });
@@ -176,11 +176,11 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       const room = requireRoom(socket, state);
       if (!room || !state.playerId) return;
       if (!room.isHost(state.playerId)) {
-        send(socket, { t: 'error', message: 'only the host can start the game' });
+        send(socket, { t: 'error', message: 'Only the host can start the game.' });
         return;
       }
       if (!room.canStart()) {
-        send(socket, { t: 'error', message: 'need at least 2 seated players to start' });
+        send(socket, { t: 'error', message: 'Two players need to be seated before the game can start.' });
         return;
       }
       const table = createTableState({ roomId: room.roomId, seats: room.buildSeatSetups() });
@@ -223,14 +223,14 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       const table = tablesByRoom.get(room.roomId);
       const history = historiesByRoom.get(room.roomId);
       if (!table || !history) {
-        send(socket, { t: 'error', message: 'game has not started' });
+        send(socket, { t: 'error', message: 'The game hasn’t started yet.' });
         return;
       }
       // One question at a time: a second rewind would either overwrite the pending one — leaving
       // the other players voting on a prompt whose votes no longer count — or have to be computed
       // against a target the pending vote is about to move. Saying no is the honest answer.
       if (pendingUndosByRoom.has(room.roomId)) {
-        send(socket, { t: 'error', message: 'an undo vote is already in progress' });
+        send(socket, { t: 'error', message: 'An undo vote is already under way. Wait for the table to settle it first.' });
         return;
       }
 
@@ -238,12 +238,12 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       // older content under a newer revision number (see tableHistory.ts).
       const targetRevision = history.undoTarget();
       if (targetRevision < history.initialRevision()) {
-        send(socket, { t: 'error', message: 'there is nothing left to undo' });
+        send(socket, { t: 'error', message: 'There’s nothing left to undo.' });
         return;
       }
       const target = history.snapshotAt(targetRevision);
       if (!target) {
-        send(socket, { t: 'error', message: 'that revision is no longer in history' });
+        send(socket, { t: 'error', message: 'That’s further back than undo can reach.' });
         return;
       }
 
@@ -279,7 +279,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       const room = requireRoom(socket, state);
       if (!room || !state.playerId) return;
       if (!room.isHost(state.playerId)) {
-        send(socket, { t: 'error', message: 'only the host can end the game' });
+        send(socket, { t: 'error', message: 'Only the host can end the game.' });
         return;
       }
       room.endGame();
@@ -298,15 +298,15 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       const room = requireRoom(socket, state);
       if (!room || !state.playerId) return;
       if (!room.isHost(state.playerId)) {
-        send(socket, { t: 'error', message: 'only the host can free a seat' });
+        send(socket, { t: 'error', message: 'Only the host can free a seat.' });
         return;
       }
       if (room.toState().started) {
-        send(socket, { t: 'error', message: 'cannot free a seat once the game has started' });
+        send(socket, { t: 'error', message: 'Seats can’t be freed once the game has started.' });
         return;
       }
       if (!room.freeSeat(raw.seat)) {
-        send(socket, { t: 'error', message: 'that seat is not free to clear' });
+        send(socket, { t: 'error', message: 'Only a disconnected player’s seat can be freed.' });
         return;
       }
       broadcastRoomState(room);
@@ -387,12 +387,12 @@ function broadcastToRoom(roomId: RoomId, message: ServerMessage): void {
 
 function requireRoom(socket: WebSocket, state: ConnectionState): Room | undefined {
   if (!state.roomId) {
-    send(socket, { t: 'error', message: 'not in a room' });
+    send(socket, { t: 'error', message: 'You’re not in a room. Join one from the start screen.' });
     return undefined;
   }
   const room = roomManager.getRoom(state.roomId);
   if (!room) {
-    send(socket, { t: 'error', message: 'room not found' });
+    send(socket, { t: 'error', message: 'This room has closed. Join again from the start screen.' });
     return undefined;
   }
   return room;

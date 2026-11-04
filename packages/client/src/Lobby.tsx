@@ -67,7 +67,7 @@ export function Lobby() {
         </span>
         {isHost && (
           <button className="btn btn-lg btn-primary" onClick={() => send({ t: 'start' })}>
-            Start game
+            Start the game
           </button>
         )}
         <button className="btn btn-ghost" onClick={() => setConfirmLeave(true)}>

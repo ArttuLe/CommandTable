@@ -18,7 +18,7 @@ export function Home() {
       const roomId = await createRoom(secret);
       join(roomId, displayName.trim(), secret);
     } catch {
-      showError('wrong passphrase');
+      showError('That passphrase isn’t this table’s. Ask whoever is hosting for it.');
       setBusy(false);
     }
   }

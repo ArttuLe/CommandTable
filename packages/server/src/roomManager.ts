@@ -71,10 +71,10 @@ export class Room {
 
     const seatIndex = params.seat !== undefined ? params.seat : this.firstOpenSeat();
     if (seatIndex === undefined || seatIndex < 0 || seatIndex >= MAX_SEATS) {
-      return { ok: false, reason: 'invalid seat' };
+      return { ok: false, reason: 'That seat doesn’t exist.' };
     }
     if (this.seats[seatIndex].playerId !== null) {
-      return { ok: false, reason: 'seat taken' };
+      return { ok: false, reason: 'That seat is taken. Pick another.' };
     }
 
     const playerId = randomUUID();
@@ -98,11 +98,11 @@ export class Room {
   private rejoin(rejoinToken: string, displayName: string): JoinResult {
     const playerId = this.playerIdByRejoinToken.get(rejoinToken);
     if (!playerId) {
-      return { ok: false, reason: 'your saved seat is no longer held — join again with the same name' };
+      return { ok: false, reason: 'Your saved seat is no longer held. Join again with the same name.' };
     }
     const seatIndex = this.seatIndexByPlayer.get(playerId);
     if (seatIndex === undefined) {
-      return { ok: false, reason: 'your saved seat is no longer held — join again with the same name' };
+      return { ok: false, reason: 'Your saved seat is no longer held. Join again with the same name.' };
     }
     this.seats[seatIndex].connected = true;
     this.seats[seatIndex].displayName = displayName;
