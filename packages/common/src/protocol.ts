@@ -37,8 +37,11 @@ export type ServerMessage =
   | { t: 'deckResult'; warnings: DeckWarningKind[]; unresolved: UnresolvedLine[] }
   | { t: 'state'; state: ClientTableState }
   | { t: 'rejected'; clientSeq: number; reason: string }
-  | { t: 'undoRequest'; requesterId: PlayerId; targetRevision: number; describes: string }
-  | { t: 'undoResolved'; targetRevision: number; applied: boolean }
+  // Sent to everyone, the requester included, and again after every ballot: `approvals` of
+  // `needed` is the tally a vote is waiting on.
+  | { t: 'undoRequest'; requesterId: PlayerId; targetRevision: number; describes: string; approvals: number; needed: number }
+  // `cancelled`: somebody acted before the vote finished, which moves the table out from under it.
+  | { t: 'undoResolved'; targetRevision: number; outcome: 'applied' | 'rejected' | 'cancelled' }
   | { t: 'gameEnded' }
   // `code` exists so the client can tell "your saved seat is gone, start over" from an ordinary
   // toast without matching on prose. Only set where that distinction matters.

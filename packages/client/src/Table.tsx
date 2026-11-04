@@ -24,7 +24,7 @@ import { ConfirmDialog } from './ConfirmDialog.js';
 import { HelpButton } from './HelpDialog.js';
 import { ManaChoice, type ManaChoicePrompt } from './ManaChoice.js';
 import { manaToRemove } from './manaSources.js';
-import { undoPromptText } from './undoPrompt.js';
+import { undoPromptText, undoTallyText } from './undoPrompt.js';
 import { fanOverlap } from './handFan.js';
 
 function isOwnZone(obj: ProjectedObject, playerId: PlayerId, zone: string): boolean {
@@ -274,14 +274,20 @@ export function Table() {
         </span>
 
         {pendingUndoRequest && (
-          <div className="undo-request">
-            <span>{undoPromptText(pendingUndoRequest, tableState.log, tableState.players)}</span>
-            <button className="btn" onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: true })}>
-              Approve
-            </button>
-            <button className="btn btn-ghost" onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: false })}>
-              Reject
-            </button>
+          <div className="undo-request" role="status">
+            <span>{undoPromptText(pendingUndoRequest, tableState.log, tableState.players, playerId)}</span>
+            <span className="undo-tally">{undoTallyText(pendingUndoRequest)}</span>
+            {/* The requester's approval is counted already; the vote is everyone else's. */}
+            {pendingUndoRequest.requesterId !== playerId && (
+              <>
+                <button className="btn" onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: true })}>
+                  Approve
+                </button>
+                <button className="btn btn-ghost" onClick={() => send({ t: 'undoVote', targetRevision: pendingUndoRequest.targetRevision, approve: false })}>
+                  Reject
+                </button>
+              </>
+            )}
           </div>
         )}
 

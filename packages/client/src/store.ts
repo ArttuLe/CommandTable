@@ -26,6 +26,7 @@ import { WS_URL } from './api.js';
 import { changedObjectIds } from './tableChanges.js';
 import { nextDelay } from './backoff.js';
 import { clearSession, loadSession, saveSession, type StoredSession } from './session.js';
+import { undoOutcomeText } from './undoPrompt.js';
 
 export { storedSecret } from './session.js';
 
@@ -41,6 +42,8 @@ interface UndoRequest {
   requesterId: PlayerId;
   targetRevision: number;
   describes: string;
+  approvals: number;
+  needed: number;
 }
 
 export type ConnectionStatus = 'offline' | 'connecting' | 'live' | 'reconnecting';
@@ -55,6 +58,8 @@ interface Store {
   tableState: ClientTableState | null;
   deckResult: DeckResult | null;
   errorMessage: string | null;
+  /** Something the table should hear about that isn't an error — how an undo vote ended. */
+  notice: string | null;
   pendingUndoRequest: UndoRequest | null;
   /** What the last action touched, and the revision it touched it in — the pulse's remount key. */
   changedIds: Set<ObjectId>;
@@ -68,6 +73,7 @@ interface Store {
   act(action: Action): void;
   showError(message: string): void;
   dismissError(): void;
+  dismissNotice(): void;
 }
 
 let nextClientSeq = 1;
@@ -167,11 +173,27 @@ export const useStore = create<Store>((set, get) => {
           set({ deckResult: { warnings: msg.warnings, unresolved: msg.unresolved } });
           break;
         case 'undoRequest':
-          set({ pendingUndoRequest: { requesterId: msg.requesterId, targetRevision: msg.targetRevision, describes: msg.describes } });
+          set({
+            pendingUndoRequest: {
+              requesterId: msg.requesterId,
+              targetRevision: msg.targetRevision,
+              describes: msg.describes,
+              approvals: msg.approvals,
+              needed: msg.needed,
+            },
+          });
           break;
-        case 'undoResolved':
-          set({ pendingUndoRequest: null });
+        case 'undoResolved': {
+          // Only a vote gets an announcement: an instant self-undo had no prompt, and its revert is
+          // on the table for everyone to see.
+          const request = get().pendingUndoRequest;
+          const players = get().tableState?.players ?? [];
+          set({
+            pendingUndoRequest: null,
+            ...(request ? { notice: undoOutcomeText(msg.outcome, request, players, get().playerId) } : {}),
+          });
           break;
+        }
         // The game ended but the room didn't: App's routing renders the lobby as soon as
         // tableState clears, and the `room` broadcast just before this refreshed the seats.
         //
@@ -208,6 +230,7 @@ export const useStore = create<Store>((set, get) => {
     tableState: null,
     deckResult: null,
     errorMessage: null,
+    notice: null,
     pendingUndoRequest: null,
     changedIds: new Set(),
     changeRevision: 0,
@@ -265,6 +288,10 @@ export const useStore = create<Store>((set, get) => {
 
     dismissError() {
       set({ errorMessage: null });
+    },
+
+    dismissNotice() {
+      set({ notice: null });
     },
   };
 });

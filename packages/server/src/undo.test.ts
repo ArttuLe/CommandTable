@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyUndo } from './undo.js';
+import { applyUndo, tallyUndoVotes } from './undo.js';
 import type { GameObject, TableState } from '@command-table/common';
 
 const ALICE = 'alice';
@@ -97,5 +97,27 @@ describe('applyUndo', () => {
     const outcome = applyUndo(current, target, ALICE);
 
     expect(outcome.leakedTo).toEqual([]);
+  });
+});
+
+describe('tallyUndoVotes', () => {
+  const votes = (...ballots: boolean[]) => new Map(ballots.map((approve, i) => [`p${i}`, approve]));
+
+  it('passes on a strict majority of the connected players', () => {
+    expect(tallyUndoVotes(votes(true, true), 3)).toEqual({ approvals: 2, needed: 2, outcome: 'applied' });
+  });
+
+  it('waits while neither side has it', () => {
+    expect(tallyUndoVotes(votes(true), 3)).toEqual({ approvals: 1, needed: 2, outcome: 'pending' });
+  });
+
+  it('fails as soon as a majority is out of reach', () => {
+    expect(tallyUndoVotes(votes(true, false, false), 4).outcome).toBe('rejected');
+  });
+
+  // The requester's own approval counts. Alone at the table it already is the majority, but the
+  // vote used to be opened anyway — with nobody connected to cast another ballot, it never closed.
+  it('passes at once when the requester is the only one connected', () => {
+    expect(tallyUndoVotes(votes(true), 1).outcome).toBe('applied');
   });
 });

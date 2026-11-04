@@ -509,6 +509,13 @@ input[type='checkbox'] {
    border-radius: var(--radius);
 }
 
+/* The tally sits with the question it counts, quieter than it: the question is what you answer. */
+.undo-tally {
+   color: var(--text-dim);
+   font-variant-numeric: tabular-nums;
+   white-space: nowrap;
+}
+
 /* Same shape as the undo request beside it — both are the status bar asking you something —
    but tinted toward the command zone rather than the warning yellow of an undo vote. */
 .commander-prompt {
@@ -2388,6 +2395,23 @@ button.vital:hover {
    transform: translateX(-50%);
    background: var(--danger);
    color: #fff;
+   padding: 0.5rem 1rem;
+   border-radius: var(--radius);
+   cursor: pointer;
+   z-index: 42;
+}
+
+/* The error toast's place and shape, in the table's own colours: what it reports isn't a failure,
+   it's the end of a vote everyone was watching. */
+.notice-toast {
+   position: fixed;
+   top: 3rem;
+   left: 50%;
+   transform: translateX(-50%);
+   background: var(--surface-raised);
+   color: var(--text);
+   border: 1px solid var(--border-strong);
+   box-shadow: var(--shadow);
    padding: 0.5rem 1rem;
    border-radius: var(--radius);
    cursor: pointer;

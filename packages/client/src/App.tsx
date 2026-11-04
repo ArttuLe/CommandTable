@@ -8,11 +8,15 @@ import { Home } from './Home.js';
 import { Lobby } from './Lobby.js';
 import { Table } from './Table.js';
 
+const NOTICE_MS = 6000;
+
 export function App() {
   const roomState = useStore((s) => s.roomState);
   const tableState = useStore((s) => s.tableState);
   const errorMessage = useStore((s) => s.errorMessage);
   const dismissError = useStore((s) => s.dismissError);
+  const notice = useStore((s) => s.notice);
+  const dismissNotice = useStore((s) => s.dismissNotice);
   const hoveredCard = useUiStore((s) => s.hoveredCard);
   const status = useStore((s) => s.status);
   const resume = useStore((s) => s.resume);
@@ -36,12 +40,25 @@ export function App() {
     if (stored?.sameTab) resume(stored.session);
   }, [resume, showError]);
 
+  // A notice reports something that already happened, so it goes by itself — the same lifetime
+  // as a log toast, and long enough to be read by someone who looked away.
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(dismissNotice, NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice, dismissNotice]);
+
   return (
     <>
       {status === 'reconnecting' && <div className="reconnect-banner">Reconnecting…</div>}
       {errorMessage && (
         <div className="error-toast" onClick={dismissError}>
           {errorMessage}
+        </div>
+      )}
+      {notice && (
+        <div className="notice-toast" role="status" onClick={dismissNotice}>
+          {notice}
         </div>
       )}
       {!roomState ? <Home /> : tableState ? <Table /> : <Lobby />}

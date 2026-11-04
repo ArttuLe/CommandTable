@@ -66,3 +66,22 @@ function viewersOf(visibility: Visibility, allPlayerIds: PlayerId[]): Set<Player
       return new Set(visibility.ids);
   }
 }
+
+export type UndoVoteOutcome = 'applied' | 'rejected' | 'pending';
+
+/**
+ * Where a rewind vote stands (§15.2: "majority consent of connected players"). It passes once more
+ * than half approve, and fails once enough have refused that more than half no longer can. The
+ * requester's own approval is one of the ballots — alone at the table, it is already the majority.
+ */
+export function tallyUndoVotes(
+  votes: ReadonlyMap<PlayerId, boolean>,
+  connectedCount: number
+): { approvals: number; needed: number; outcome: UndoVoteOutcome } {
+  const ballots = [...votes.values()];
+  const approvals = ballots.filter(Boolean).length;
+  const rejections = ballots.length - approvals;
+  const needed = Math.floor(connectedCount / 2) + 1;
+  const outcome = approvals >= needed ? 'applied' : rejections * 2 >= connectedCount ? 'rejected' : 'pending';
+  return { approvals, needed, outcome };
+}

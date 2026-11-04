@@ -8,8 +8,10 @@
 //
 //   2  opening-hand.spec.ts   exclusively — it is the only spec that needs setupComplete false
 //   3  targeting, change-pulse, board-vitals,  they start play and play a card,
-//      player-rail, hover-preview, hand-play   move a number or bin a permanent; none of them
-//                                              minds what the others left behind
+//      player-rail, hover-preview, hand-play,  move a number or bin a permanent; none of them
+//      undo-vote                               minds what the others left behind (undo-vote
+//                                              must resolve its vote before it ends, or the
+//                                              next spec's first action cancels it under them)
 //   4  context-menu, hand-fan, plane-menu   read-only after starting play (plane-menu only moves
 //                                           its own camera), and hand-fan needs all seven cards
 //

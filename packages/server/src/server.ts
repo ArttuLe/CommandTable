@@ -14,7 +14,7 @@ import { createTableState } from './tableFactory.js';
 import { applyAction } from './actionApplier.js';
 import { projectFor } from './projection.js';
 import { TableHistory } from './tableHistory.js';
-import { applyUndo } from './undo.js';
+import { applyUndo, tallyUndoVotes } from './undo.js';
 import { checkSecret, resolveHostSecret } from './hostSecret.js';
 import { SessionStore, type SessionEntry } from './sessionStore.js';
 import { buildDevTable, devSeatName, MAX_DEV_PLAYERS, MIN_DEV_PLAYERS } from './devtest/devTable.js';
@@ -257,19 +257,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
         requesterId: state.playerId,
         votes: new Map([[state.playerId, true]]),
       });
-      const sockets = socketsByRoom.get(room.roomId);
-      if (sockets) {
-        for (const [playerId, otherSocket] of sockets) {
-          if (playerId !== state.playerId) {
-            send(otherSocket, {
-              t: 'undoRequest',
-              requesterId: state.playerId,
-              targetRevision,
-              describes: `revert the table to revision ${targetRevision}`,
-            });
-          }
-        }
-      }
+      progressUndo(room);
       return;
     }
 
@@ -280,22 +268,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       if (!pending || pending.targetRevision !== raw.targetRevision) return;
 
       pending.votes.set(state.playerId, raw.approve);
-      const connectedCount = room.toState().seats.filter((s) => s.connected && s.playerId).length;
-      const approvals = [...pending.votes.values()].filter(Boolean).length;
-      const rejections = [...pending.votes.values()].filter((v) => !v).length;
-
-      if (approvals * 2 > connectedCount) {
-        const table = tablesByRoom.get(room.roomId);
-        const history = historiesByRoom.get(room.roomId);
-        const target = history?.snapshotAt(pending.targetRevision);
-        pendingUndosByRoom.delete(room.roomId);
-        if (table && history && target) {
-          performUndo(room, table, target, pending.requesterId);
-        }
-      } else if (rejections * 2 >= connectedCount) {
-        pendingUndosByRoom.delete(room.roomId);
-        broadcastToRoom(room.roomId, { t: 'undoResolved', targetRevision: pending.targetRevision, applied: false });
-      }
+      progressUndo(room);
       return;
     }
 
@@ -353,8 +326,46 @@ function performUndo(room: Room, current: TableState, target: TableState, actorI
   tablesByRoom.set(room.roomId, outcome.state);
   historiesByRoom.get(room.roomId)?.recordRevert(actorId, outcome.state, target.revision);
   broadcastTableState(room.roomId);
-  broadcastToRoom(room.roomId, { t: 'undoResolved', targetRevision: target.revision, applied: true });
+  broadcastToRoom(room.roomId, { t: 'undoResolved', targetRevision: target.revision, outcome: 'applied' });
   sessions.markDirty();
+}
+
+/**
+ * Settles a pending rewind if its ballots now decide it, and otherwise tells the whole table where
+ * it stands — the requester too, who used to be sent nothing and could only guess. Run when the
+ * vote opens as well as on every ballot: the requester's own approval can already be a majority.
+ */
+function progressUndo(room: Room): void {
+  const pending = pendingUndosByRoom.get(room.roomId);
+  if (!pending) return;
+  const connectedCount = room.toState().seats.filter((s) => s.connected && s.playerId).length;
+  const { approvals, needed, outcome } = tallyUndoVotes(pending.votes, connectedCount);
+
+  if (outcome === 'pending') {
+    broadcastToRoom(room.roomId, {
+      t: 'undoRequest',
+      requesterId: pending.requesterId,
+      targetRevision: pending.targetRevision,
+      describes: `revert the table to revision ${pending.targetRevision}`,
+      approvals,
+      needed,
+    });
+    return;
+  }
+
+  pendingUndosByRoom.delete(room.roomId);
+  const table = tablesByRoom.get(room.roomId);
+  const target = historiesByRoom.get(room.roomId)?.snapshotAt(pending.targetRevision);
+  if (outcome === 'applied' && table && target) {
+    performUndo(room, table, target, pending.requesterId);
+    return;
+  }
+  // A target that fell out of history can't be applied; saying so beats leaving the prompt up.
+  broadcastToRoom(room.roomId, {
+    t: 'undoResolved',
+    targetRevision: pending.targetRevision,
+    outcome: outcome === 'rejected' ? 'rejected' : 'cancelled',
+  });
 }
 
 // Clients drop their prompt on `undoResolved` (store.ts), so an unapplied resolution is how a
@@ -363,7 +374,7 @@ function cancelPendingUndo(roomId: RoomId): void {
   const pending = pendingUndosByRoom.get(roomId);
   if (!pending) return;
   pendingUndosByRoom.delete(roomId);
-  broadcastToRoom(roomId, { t: 'undoResolved', targetRevision: pending.targetRevision, applied: false });
+  broadcastToRoom(roomId, { t: 'undoResolved', targetRevision: pending.targetRevision, outcome: 'cancelled' });
 }
 
 function broadcastToRoom(roomId: RoomId, message: ServerMessage): void {
