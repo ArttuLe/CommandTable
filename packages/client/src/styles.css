@@ -118,7 +118,26 @@ button {
    background: #a07d1a;
 }
 
+/* One focus ring for the whole app, in the accent. Left to the browser it was Chrome's own blue,
+   which belonged to no part of this table — and keyboard focus is how cards are now played too. */
+:focus-visible {
+   outline: 2px solid var(--accent);
+   outline-offset: 2px;
+}
+
+::selection {
+   background: rgba(90, 169, 230, 0.35);
+   color: var(--text);
+}
+
+/* 24px at the least, the WCAG 2.5.8 floor: the help button and the rails' collapse arrows came
+   out at 17–20px, the smallest targets in the app. */
 .icon-button {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   min-width: 1.5rem;
+   min-height: 1.5rem;
    background: none;
    border: none;
    color: var(--text-dim);
@@ -147,9 +166,11 @@ textarea {
    padding: 0.4rem 0.55rem;
 }
 
+/* 5.9:1 on the sunken field (4.5:1 is the floor). It was 3.9:1, and the room-code field has no
+   label but its placeholder. */
 input::placeholder,
 textarea::placeholder {
-   color: #6b7381;
+   color: #8a92a0;
 }
 
 input:focus-visible,
@@ -983,8 +1004,8 @@ input[type='checkbox'] {
    font-size: 0.7rem;
    text-transform: uppercase;
    letter-spacing: 0.1em;
-   color: var(--text-dim);
-   opacity: 0.4;
+   /* Faint, but a colour rather than opacity: 4.8:1 on the board, where opacity .4 gave 2.1. */
+   color: #878e9b;
 }
 
 /* Identical basics fan out of one slot (landStacks.ts) instead of wrapping the band onto a
@@ -1109,6 +1130,13 @@ input[type='checkbox'] {
    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.55);
 }
 
+/* The lift still says which card the preview is showing; it just arrives without travelling. */
+@media (prefers-reduced-motion: reduce) {
+   .hud-row .hand .card-tile {
+      transition: none;
+   }
+}
+
 /* Your vitals on the left, mana in the middle, your zones on the right, sharing one strip above
    the hand. Equal flanks like `.hud-row` below it, so the mana pad sits at the true centre of
    the window — directly over the hand — instead of wherever the flanks leave room. This one
@@ -1216,7 +1244,7 @@ input[type='checkbox'] {
 
 .popover-group {
    margin: 0.35rem 0.7rem 0.15rem;
-   font-size: 0.65rem;
+   font-size: 0.75rem;
    text-transform: uppercase;
    letter-spacing: 0.08em;
    color: var(--text-dim);
@@ -1366,7 +1394,7 @@ input[type='checkbox'] {
    note has to match the buttons and rows beside it rather than sit flush against the edge. */
 .popover-note {
    margin: 0;
-   font-size: 0.7rem;
+   font-size: 0.75rem;
    color: var(--text-dim);
 }
 
@@ -1814,14 +1842,19 @@ input[type='checkbox'] {
    border: 1px solid var(--border);
 }
 
+/* An empty pip is told from a lit one by shape rather than by fading the whole pip: opacity took
+   the count, the letter and the steppers' focus ring below 4.5:1 with it. Empty, the symbol is an
+   outline in its own colour, so red is still found by looking; lit, it fills. */
 .mana-pip {
-   opacity: 0.5;
-   transition: opacity 0.12s, border-color 0.12s;
+   transition: border-color 0.12s;
 }
 
 .mana-pip.has-mana {
-   opacity: 1;
    border-color: var(--border-strong);
+}
+
+.mana-pip:not(.has-mana) .mana-count {
+   color: var(--text-dim);
 }
 
 /* Bare glyphs inside the pip: a boxed button within a pill drew a second border around a
@@ -1880,6 +1913,7 @@ input[type='checkbox'] {
 button.vital-count {
    width: auto;
    height: auto;
+   min-height: 1.5rem;
    padding: 0 0.15rem;
    border-radius: var(--radius);
    color: inherit;
@@ -1958,6 +1992,13 @@ button.vital:hover {
    border-radius: 50%;
    font-size: 0.85rem;
    color: #14161a;
+   background: var(--mana);
+}
+
+.mana-pip:not(.has-mana):not(.mana-total) .mana-symbol {
+   background: none;
+   color: var(--mana);
+   box-shadow: inset 0 0 0 1.5px var(--mana);
 }
 
 .mana-count {
@@ -1966,28 +2007,28 @@ button.vital:hover {
    font-weight: 600;
 }
 
-.mana-W .mana-symbol {
-   background: #fffbd5;
+.mana-W {
+   --mana: #fffbd5;
 }
 
-.mana-U .mana-symbol {
-   background: #aae0fa;
+.mana-U {
+   --mana: #aae0fa;
 }
 
-.mana-B .mana-symbol {
-   background: #cbc2bf;
+.mana-B {
+   --mana: #cbc2bf;
 }
 
-.mana-R .mana-symbol {
-   background: #f9aa8f;
+.mana-R {
+   --mana: #f9aa8f;
 }
 
-.mana-G .mana-symbol {
-   background: #9bd3ae;
+.mana-G {
+   --mana: #9bd3ae;
 }
 
-.mana-C .mana-symbol {
-   background: #cac5c0;
+.mana-C {
+   --mana: #cac5c0;
 }
 
 /* The running total wears the pip shape so it reads as part of the pool, but it is a readout,
@@ -2545,6 +2586,7 @@ button.vital:hover {
 
 .context-menu .menu-chips button {
    flex: none;
+   min-height: 1.5rem;
    padding: 0.2rem 0.5rem;
    text-align: center;
    border-radius: var(--radius);
@@ -2582,14 +2624,14 @@ button.vital:hover {
 
 .context-menu .menu-stepper button {
    flex: none;
-   width: 1.4rem;
+   width: 1.5rem;
    padding: 0;
    text-align: center;
    border-radius: var(--radius);
    background: var(--surface);
    border: 1px solid var(--border-strong);
    font-size: 0.85rem;
-   line-height: 1.3rem;
+   line-height: calc(1.5rem - 2px);
 }
 
 .context-menu .menu-stepper button:disabled {
