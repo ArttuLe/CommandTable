@@ -249,3 +249,30 @@ describe('CREATE_TOKEN / CREATE_COPY / DELETE_OBJECT', () => {
     expect(result.ok).toBe(false);
   });
 });
+
+describe('DELETE_OBJECT', () => {
+  // Deleting a token that wore equipment left the equipment attached to an object that no longer
+  // existed — the same thing a zone move already cleaned up (detachFrom).
+  it('frees whatever was attached to the deleted object', () => {
+    const state = makeState([
+      card({ id: 'tok', zone: { playerId: ALICE, zone: 'battlefield' } }),
+      card({ id: 'eq', zone: { playerId: ALICE, zone: 'battlefield' }, attachedTo: 'tok' }),
+    ]);
+    const result = applyAction(state, { t: 'DELETE_OBJECT', objectId: 'tok' });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.state.objects['eq'].attachedTo).toBeNull();
+  });
+});
+
+describe('CHANGE_CONTROLLER', () => {
+  // Who may see a face-down permanent follows its controller (§9): the old one kept seeing it and
+  // the new one, who now controls a morph, couldn't look at their own card.
+  it('hands the right to see a face-down permanent to its new controller', () => {
+    const state = makeState([
+      card({ id: 'm', zone: { playerId: ALICE, zone: 'battlefield' }, faceDown: true, faceVisibility: { kind: 'players', ids: [ALICE] } }),
+    ]);
+    const result = applyAction(state, { t: 'CHANGE_CONTROLLER', objectId: 'm', newControllerId: BOB });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.state.objects['m'].faceVisibility).toEqual({ kind: 'players', ids: [BOB] });
+  });
+});

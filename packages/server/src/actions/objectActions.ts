@@ -13,6 +13,7 @@ import {
 import {
   applyCounterUpdate,
   defaultVisibilityFor,
+  detachFrom,
   markersOnArrival,
   err,
   ok,
@@ -195,7 +196,9 @@ export function changeController(state: TableState, action: Extract<Action, { t:
     'playerId' in existing.zone && existing.zone.zone === 'battlefield'
       ? { playerId: action.newControllerId, zone: 'battlefield' as const }
       : existing.zone;
-  return ok(withObject(state, { ...existing, controllerId: action.newControllerId, zone }));
+  // A face-down permanent is seen by whoever controls it (§9), so the right to look goes with it.
+  const faceVisibility = existing.faceDown ? defaultVisibilityFor(zone, action.newControllerId, true) : existing.faceVisibility;
+  return ok(withObject(state, { ...existing, controllerId: action.newControllerId, zone, faceVisibility }));
 }
 
 export function createToken(state: TableState, action: Extract<Action, { t: 'CREATE_TOKEN' }>): ApplyResult {
@@ -256,5 +259,6 @@ export function createCopy(state: TableState, action: Extract<Action, { t: 'CREA
 
 export function deleteObject(state: TableState, action: Extract<Action, { t: 'DELETE_OBJECT' }>): ApplyResult {
   if (!requireObject(state, action.objectId)) return err(`no such object: ${action.objectId}`);
-  return ok({ ...withoutObject(state, action.objectId), revision: state.revision + 1 });
+  // Whatever it wore comes off with it, as on any zone change — not left attached to nothing.
+  return ok({ ...withoutObject(detachFrom(state, action.objectId), action.objectId), revision: state.revision + 1 });
 }
