@@ -2845,3 +2845,36 @@ button.vital:hover {
    font-size: 0.8rem;
    white-space: nowrap;
 }
+
+/* The compact pad (ManaPad): only the colours held, each a button that spends one. */
+button.mana-pip {
+   cursor: pointer;
+   font: inherit;
+   min-height: 1.75rem;
+}
+
+button.mana-pip:hover {
+   border-color: var(--accent);
+}
+
+.mana-empty {
+   color: var(--text-dim);
+   font-size: 0.85rem;
+}
+
+.mana-add {
+   position: relative;
+}
+
+/* Opens upward: the pad sits at the top of the HUD, with the table above it. */
+.mana-add-popover {
+   bottom: calc(100% + 0.35rem);
+   left: 0;
+   display: grid;
+   gap: 0.3rem;
+   padding-bottom: 0.5rem;
+}
+
+.mana-add-popover .mana-pip {
+   margin: 0 0.6rem;
+}

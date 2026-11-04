@@ -448,34 +448,83 @@ export function ManaPad() {
   const bumpMana = useUiStore((s) => s.bumpMana);
   const resetMana = useUiStore((s) => s.resetMana);
   const total = MANA_COLORS.reduce((sum, color) => sum + manaPad[color], 0);
+  const held = MANA_COLORS.filter((color) => manaPad[color] > 0);
 
+  // Only what you hold. All six colours with a − and + each were thirteen controls that wrapped
+  // onto a second and third row at narrower windows, taking the height from the hand — and
+  // tapping a land fills the pad on its own, so most of them were never touched. Spending is the
+  // common manual act, so a lit pip spends one on a click; adding by hand is behind "Add".
   return (
     <div className="mana-pad">
-      {MANA_COLORS.map((color) => (
-        <span key={color} className={`mana-pip mana-${color} ${manaPad[color] > 0 ? 'has-mana' : ''}`}>
-          <button aria-label={`Remove one ${MANA_NAMES[color]} mana`} onClick={() => bumpMana(color, -1)}>
-            −
+      {held.length === 0 ? (
+        <span className="mana-empty">No mana — tap a land</span>
+      ) : (
+        held.map((color) => (
+          <button
+            key={color}
+            className={`mana-pip mana-${color} has-mana`}
+            title={`Spend one ${MANA_NAMES[color]}`}
+            aria-label={`Spend one ${MANA_NAMES[color]} mana (${manaPad[color]} in your pool)`}
+            onClick={() => bumpMana(color, -1)}
+          >
+            <b className="mana-symbol" aria-hidden="true">
+              {color}
+            </b>
+            <span className="mana-count">{manaPad[color]}</span>
           </button>
-          <b className="mana-symbol" aria-hidden="true">
-            {color}
-          </b>
-          <span className="mana-count" aria-label={`${manaPad[color]} ${MANA_NAMES[color]}`}>
-            {manaPad[color]}
-          </span>
-          <button aria-label={`Add one ${MANA_NAMES[color]} mana`} onClick={() => bumpMana(color, 1)}>
-            +
-          </button>
+        ))
+      )}
+      {/* What you can actually spend, next to the Reset that clears it. Counting pips in your head
+          is the one sum the pad was meant to save you. */}
+      {held.length > 1 && (
+        <span className="mana-pip mana-total has-mana" title="Total mana in your pool">
+          <b className="mana-symbol">Σ</b>
+          <span className="mana-count">{total}</span>
         </span>
-      ))}
-      {/* What you can actually spend, next to the Reset that clears it. Counting six pips in
-          your head is the one sum the pad was meant to save you. */}
-      <span className={`mana-pip mana-total ${total > 0 ? 'has-mana' : ''}`} title="Total mana in your pool">
-        <b className="mana-symbol">Σ</b>
-        <span className="mana-count">{total}</span>
-      </span>
+      )}
+      <AddMana />
       <button className="btn btn-ghost" disabled={total === 0} onClick={resetMana}>
         Reset
       </button>
+    </div>
+  );
+}
+
+/** The whole pad, for the rare mana that no land made: a ritual, a treasure, a mana rock. */
+function AddMana() {
+  const manaPad = useUiStore((s) => s.manaPad);
+  const bumpMana = useUiStore((s) => s.bumpMana);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useCloseOnOutsideClick(open, ref, () => setOpen(false));
+  useCloseOnEscape(open, () => setOpen(false));
+
+  return (
+    <div className="mana-add" ref={ref}>
+      <button className="btn btn-ghost" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        Add…
+      </button>
+      {open && (
+        <div className="more-popover mana-add-popover">
+          <p className="popover-group">Add mana by hand</p>
+          {MANA_COLORS.map((color) => (
+            <div key={color} className={`mana-pip mana-${color} ${manaPad[color] > 0 ? 'has-mana' : ''}`}>
+              <button aria-label={`Remove one ${MANA_NAMES[color]} mana`} disabled={manaPad[color] === 0} onClick={() => bumpMana(color, -1)}>
+                −
+              </button>
+              <b className="mana-symbol" aria-hidden="true">
+                {color}
+              </b>
+              <span className="mana-count" aria-label={`${manaPad[color]} ${MANA_NAMES[color]}`}>
+                {manaPad[color]}
+              </span>
+              <button aria-label={`Add one ${MANA_NAMES[color]} mana`} onClick={() => bumpMana(color, 1)}>
+                +
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
