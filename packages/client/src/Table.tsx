@@ -99,6 +99,9 @@ export function Table() {
   // rather than read live, so that with following switched off the view stays where it was put
   // instead of chasing the next turn. The nonce lets the same player be asked for twice running.
   const [focusRequest, setFocusRequest] = useState<{ key: PlayerId; nonce: number } | null>(null);
+  // Switching following off must not fall back to an old middle-click: its key would look new to
+  // Plane, and the view would glide to whoever was active back then, unasked.
+  useEffect(() => setFocusRequest(null), [followActivePlayer]);
 
   // Bumped by the F shortcut. Plane already refits whenever its fitKey changes, so asking for a
   // fit is a change to that key — no second channel into the component, and the keyboard guards
