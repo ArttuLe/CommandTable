@@ -30,7 +30,7 @@ button {
    padding: 0.3rem 0.65rem;
    font-size: var(--fs-sm);
    cursor: pointer;
-   transition: background 0.12s, border-color 0.12s;
+   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 
 .btn:hover:not(:disabled) {
@@ -628,7 +628,9 @@ input[type='checkbox'] {
    flex: 1;
    min-width: 0;
    overflow: hidden;
-   background: var(--surface-sunken);
+   /* Lit from above like a table under a lamp, in the theme's accent. It stays put while the mats
+      pan across it, which a pattern could not. */
+   background: radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--accent) 7%, var(--playmat)), var(--playmat) 70%);
    border: 1px solid var(--border);
    border-radius: var(--radius-lg);
    cursor: grab;
@@ -748,7 +750,7 @@ input[type='checkbox'] {
    border-radius: var(--radius-lg);
    padding: 0.6rem;
    background: var(--surface);
-   transition: border-color 0.2s, box-shadow 0.2s;
+   transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
 /* The rail's column: the rail itself, packed against the mat's outer edge, and the turn pill on
@@ -784,7 +786,7 @@ input[type='checkbox'] {
    border-radius: var(--radius-lg);
    padding: 0.6rem;
    background: var(--surface);
-   transition: border-color 0.2s, box-shadow 0.2s;
+   transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
 /* Whose turn it is. A glow, not just a hairline: at "Fit" zoom a 2px border is barely a pixel,
@@ -1047,6 +1049,7 @@ input[type='checkbox'] {
    border-top-width: 3px;
    border-radius: var(--radius-lg);
    padding: 0.5rem;
+   box-shadow: var(--edge-light);
 }
 
 .hud.my-turn {
@@ -1087,7 +1090,7 @@ input[type='checkbox'] {
    "this one" while the zoom preview catches up. It leaves the row rather than pushing its
    neighbours: a hand that reflowed on hover would move the card out from under the cursor. */
 .hud-row .hand .card-tile {
-   transition: transform 0.14s ease-out, box-shadow 0.14s ease-out;
+   transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 
 .hud-row .hand .card-tile:hover {
@@ -1783,7 +1786,7 @@ input[type='checkbox'] {
    the count, the letter and the steppers' focus ring below 4.5:1 with it. Empty, the symbol is an
    outline in its own colour, so red is still found by looking; lit, it fills. */
 .mana-pip {
-   transition: border-color 0.12s;
+   transition: border-color var(--dur-fast) var(--ease);
 }
 
 .mana-pip.has-mana {
@@ -2108,6 +2111,7 @@ button.vital:hover {
    border: 1px solid var(--border);
    border-radius: var(--radius-lg);
    padding: 0.5rem;
+   box-shadow: var(--edge-light);
 }
 
 .rail-header {
@@ -2170,6 +2174,7 @@ button.vital:hover {
    border: 1px solid var(--border);
    border-radius: var(--radius-lg);
    padding: 0.5rem;
+   box-shadow: var(--edge-light);
 }
 
 .chat-rail .rail-header {

@@ -68,8 +68,13 @@
    --radius-lg: 10px;
    --radius-pill: 999px;
 
+   /* The table under the mats. A theme lights it with its accent (see .plane-viewport). */
+   --playmat: var(--surface-sunken);
+
+   /* A hairline of light along a panel's top edge, so a raised surface reads as raised. */
+   --edge-light: inset 0 1px 0 rgba(255, 255, 255, 0.06);
    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.7);
-   --shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+   --shadow: 0 6px 20px rgba(0, 0, 0, 0.55), var(--edge-light);
    --shadow-lift: 0 10px 20px rgba(0, 0, 0, 0.55);
 
    /* Layers over the table, lowest first. Stacking inside a card or a board stays local. */
@@ -99,6 +104,72 @@
       length — `calc(var(--card-w) / var(--card-h))` is invalid and takes its whole declaration
       down with it. Every breakpoint below is the same 63:88 card, so one value covers all three. */
    --card-ratio: 0.715;
+}
+
+/* Themes, one per colour of Magic, picked in the settings gear (no attribute is colourless, the
+   default above). A theme moves only the surfaces and your accent: gold for whoever's turn it is,
+   red for danger and the mana colours mean the same thing at every table. */
+:root[data-theme='W'] {
+   --bg: #1b1a17;
+   --surface: #25231f;
+   --surface-raised: #2e2b26;
+   --surface-hover: #3a3630;
+   --surface-sunken: #14130f;
+   --border: #403b33;
+   --border-strong: #564f44;
+   --border-hover: #6e6556;
+   --accent: #e3dcc6;
+   /* A pale accent darkened as far as the others would still be too light for white text. */
+   --accent-strong: color-mix(in srgb, var(--accent) 40%, black);
+   --accent-strong-hover: color-mix(in srgb, var(--accent) 48%, black);
+}
+
+:root[data-theme='U'] {
+   --bg: #11161e;
+   --surface: #18202b;
+   --surface-raised: #1f2937;
+   --surface-hover: #2a3647;
+   --surface-sunken: #0b1017;
+   --border: #2b3748;
+   --border-strong: #3d4c62;
+   --border-hover: #55677f;
+   --accent: #4fb6f5;
+}
+
+:root[data-theme='B'] {
+   --bg: #110f16;
+   --surface: #19161f;
+   --surface-raised: #211d29;
+   --surface-hover: #2c2736;
+   --surface-sunken: #0b0910;
+   --border: #302b3b;
+   --border-strong: #443d53;
+   --border-hover: #5b526d;
+   --accent: #a987e6;
+}
+
+:root[data-theme='R'] {
+   --bg: #1a1313;
+   --surface: #241a19;
+   --surface-raised: #2d2120;
+   --surface-hover: #3a2b2a;
+   --surface-sunken: #130d0d;
+   --border: #3f2e2c;
+   --border-strong: #57413e;
+   --border-hover: #725653;
+   --accent: #f0915f;
+}
+
+:root[data-theme='G'] {
+   --bg: #111712;
+   --surface: #18201a;
+   --surface-raised: #1f2921;
+   --surface-hover: #29362c;
+   --surface-sunken: #0b110c;
+   --border: #2b392e;
+   --border-strong: #3d5041;
+   --border-hover: #546a58;
+   --accent: #62c68d;
 }
 
 /* Narrow windows. The fixed chrome — vitals, mana, zones, hand — is what runs out of room first,
