@@ -10,6 +10,7 @@ import type { Action, PlayerId, PlayerState } from '@command-table/common';
 import { useStore } from './store.js';
 import { useUiStore, type ManaColor } from './uiStore.js';
 import { libraryDirtiedBy, type LibraryLook } from './libraryMoves.js';
+import { clearSweepMessage } from './clearSweep.js';
 import { useCloseOnEscape } from './useCloseOnEscape.js';
 import { NumberDialog } from './NumberDialog.js';
 import { CommanderName, type CommanderRef } from './commanders.js';
@@ -83,6 +84,7 @@ function usePlayerActions(playerId: PlayerId, act: (action: Action) => void) {
   const [dialog, setDialog] = useState<PlayerDialog | null>(null);
   const openZone = useUiStore((s) => s.openZone);
   const setLibraryDirty = useUiStore((s) => s.setLibraryDirty);
+  const objects = useStore((s) => s.tableState?.objects);
 
   // Both of the library looks open it for you; only a search leaves it owing a shuffle, which is
   // paid when the popover closes (libraryDirtiedBy, and Table's dockZones).
@@ -150,6 +152,32 @@ function usePlayerActions(playerId: PlayerId, act: (action: Action) => void) {
           onConfirm={() => {
             close();
             act({ t: 'CONCEDE', playerId });
+          }}
+          onCancel={close}
+        />
+      )}
+
+      {dialog === 'mulligan' && (
+        <ConfirmDialog
+          title="Mulligan"
+          message="Your hand is shuffled back into your library and you draw a new seven, in the middle of the game."
+          confirmLabel="Mulligan"
+          onConfirm={() => {
+            close();
+            act({ t: 'MULLIGAN', playerId });
+          }}
+          onCancel={close}
+        />
+      )}
+
+      {dialog === 'clear' && (
+        <ConfirmDialog
+          title="Clear markers & counters"
+          message={clearSweepMessage(Object.values(objects ?? {}))}
+          confirmLabel="Clear"
+          onConfirm={() => {
+            close();
+            act({ t: 'CLEAR_MARKERS_AND_COUNTERS' });
           }}
           onCancel={close}
         />

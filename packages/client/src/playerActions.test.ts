@@ -15,8 +15,8 @@ describe('playerActionGroups', () => {
   it('offers every action the More ⋯ menu did, in the same order', () => {
     const { groups } = build();
     expect(groups.map((g) => [g.title, g.items.map((i) => i.label)])).toEqual([
-      ['Library', ['Shuffle', 'Search library', 'Peek / Scry…', 'Mill…', 'Mulligan']],
-      ['Table', ['Clear markers & counters', 'Create token…']],
+      ['Library', ['Shuffle', 'Search library', 'Peek / Scry…', 'Mill…', 'Mulligan…']],
+      ['Table', ['Clear markers & counters…', 'Create token…']],
       ['Random', ['Roll dice…', 'Flip coin']],
       [null, ['Concede']],
     ]);
@@ -39,6 +39,15 @@ describe('playerActionGroups', () => {
     const { item, openDialog, act } = build();
     item('Mill…').run();
     expect(openDialog).toHaveBeenCalledWith('mill');
+    expect(act).not.toHaveBeenCalled();
+  });
+
+  // Both undo something nobody can easily put back: a whole hand, or every counter on the table.
+  it('asks before a mulligan or a table-wide clear', () => {
+    const { item, openDialog, act } = build();
+    item('Mulligan…').run();
+    item('Clear markers & counters…').run();
+    expect(openDialog.mock.calls).toEqual([['mulligan'], ['clear']]);
     expect(act).not.toHaveBeenCalled();
   });
 

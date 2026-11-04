@@ -11,7 +11,7 @@ import type { Action, PlayerId } from '@command-table/common';
 import type { LibraryLook } from './libraryMoves.js';
 
 /** The actions that ask a question before they act; each names a dialog in ActionBar. */
-export type PlayerDialog = 'peek' | 'mill' | 'token' | 'dice' | 'concede';
+export type PlayerDialog = 'peek' | 'mill' | 'token' | 'dice' | 'concede' | 'mulligan' | 'clear';
 
 export interface PlayerActionItem {
   label: string;
@@ -59,13 +59,16 @@ export function playerActionGroups({
         // `MILL` is aimed at its controller far more often than not, and a card is always
         // movable by hand, so this one is your own library like the rest of the group.
         { label: 'Mill…', run: () => openDialog('mill') },
-        { label: 'Mulligan', run: () => act({ t: 'MULLIGAN', playerId }) },
+        // Mid-game, this one is almost always a misclick — the opening-hand step has its own
+        // button for the deliberate kind — and it costs a whole hand, so it asks first.
+        { label: 'Mulligan…', run: () => openDialog('mulligan') },
       ],
     },
     {
       title: 'Table',
       items: [
-        { label: 'Clear markers & counters', run: () => act({ t: 'CLEAR_MARKERS_AND_COUNTERS' }) },
+        // Table-wide, other players' counters included, so it says how much before it goes.
+        { label: 'Clear markers & counters…', run: () => openDialog('clear') },
         { label: 'Create token…', run: () => openDialog('token') },
       ],
     },
