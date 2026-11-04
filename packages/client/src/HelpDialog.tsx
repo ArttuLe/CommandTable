@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from './Dialog.js';
-import { KEY_SHORTCUTS, MOUSE_SHORTCUTS, type Shortcut } from './shortcuts.js';
+import { HOW_TOS, KEY_SHORTCUTS, MOUSE_SHORTCUTS, type Shortcut } from './shortcuts.js';
 
 export function HelpButton() {
   const [open, setOpen] = useState(false);
@@ -19,8 +19,8 @@ export function HelpButton() {
       <button
         ref={ref}
         className={`icon-button help-button ${open ? 'open' : ''}`}
-        title="Quick actions and shortcuts"
-        aria-label="Quick actions and shortcuts"
+        title="Help: how to play, and shortcuts"
+        aria-label="Help"
         onClick={() => setOpen((o) => !o)}
       >
         ?
@@ -32,13 +32,36 @@ export function HelpButton() {
 
 function HelpDialog({ onClose, buttonRef }: { onClose: () => void; buttonRef: React.RefObject<HTMLButtonElement> }) {
   useEffect(() => () => buttonRef.current?.focus(), [buttonRef]);
+  const [tab, setTab] = useState<'tasks' | 'shortcuts'>('tasks');
 
   return (
-    <Dialog title="Quick actions" onCancel={onClose}>
-      <div className="help-body">
-        <ShortcutList title="Keyboard" shortcuts={KEY_SHORTCUTS} />
-        <ShortcutList title="Mouse" shortcuts={MOUSE_SHORTCUTS} />
-        <p className="popover-note">Keys are ignored while you are typing, or while a dialog is up.</p>
+    <Dialog title="Help" onCancel={onClose}>
+      {/* Tasks first: a first game starts from "how do I…", and the gestures are the answer to
+          that rather than a list to learn up front. */}
+      <div className="help-tabs" role="tablist">
+        {(['tasks', 'shortcuts'] as const).map((t) => (
+          <button key={t} role="tab" aria-selected={tab === t} className={`help-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
+            {t === 'tasks' ? 'How do I…' : 'Shortcuts'}
+          </button>
+        ))}
+      </div>
+      <div className="help-body" role="tabpanel">
+        {tab === 'tasks' ? (
+          <dl className="howto-list">
+            {HOW_TOS.map(({ task, how }) => (
+              <div key={task} className="howto-row">
+                <dt>{task}</dt>
+                <dd>{how}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <>
+            <ShortcutList title="Keyboard" shortcuts={KEY_SHORTCUTS} />
+            <ShortcutList title="Mouse" shortcuts={MOUSE_SHORTCUTS} />
+            <p className="popover-note">Keys are ignored while you are typing, or while a dialog is up.</p>
+          </>
+        )}
       </div>
       <div className="dialog-actions">
         {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the only control in a read-only dialog. */}
@@ -57,7 +80,9 @@ function ShortcutList({ title, shortcuts }: { title: string; shortcuts: Shortcut
       <dl className="shortcut-list">
         {shortcuts.map((shortcut) => (
           <div key={shortcut.keys} className="shortcut-row">
-            <dt>{shortcut.keys}</dt>
+            <dt>
+              <kbd>{shortcut.keys}</kbd>
+            </dt>
             <dd>{shortcut.what}</dd>
           </div>
         ))}

@@ -2790,3 +2790,58 @@ button.vital:hover {
    color: var(--text-dim);
    font-variant-numeric: tabular-nums;
 }
+
+/* The help dialog's two tabs (HelpDialog.tsx): "How do I…" first, shortcuts second. */
+.help-tabs {
+   display: flex;
+   gap: 0.25rem;
+   margin-bottom: 0.6rem;
+}
+
+.help-tab {
+   min-height: 1.75rem;
+   padding: 0.25rem 0.7rem;
+   border-radius: var(--radius);
+   border: 1px solid var(--border);
+   background: none;
+   color: var(--text-dim);
+   cursor: pointer;
+}
+
+.help-tab.active {
+   color: var(--text);
+   border-color: var(--accent);
+   background: var(--surface-raised);
+}
+
+.howto-list {
+   margin: 0;
+   display: grid;
+   gap: 0.7rem;
+   max-height: 60vh;
+   overflow-y: auto;
+}
+
+.howto-row dt {
+   font-weight: 600;
+}
+
+.howto-row dd {
+   margin: 0.1rem 0 0;
+   color: var(--text-dim);
+   line-height: 1.45;
+}
+
+/* Keys as keycaps rather than blue text, so "D" reads as something you press. */
+.shortcut-list kbd {
+   display: inline-block;
+   padding: 0.05rem 0.4rem;
+   border: 1px solid var(--border-strong);
+   border-bottom-width: 2px;
+   border-radius: 4px;
+   background: var(--surface-sunken);
+   color: var(--text);
+   font: inherit;
+   font-size: 0.8rem;
+   white-space: nowrap;
+}
