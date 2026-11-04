@@ -28,6 +28,8 @@ test('a picked look applies to the table and outlasts a reload', async ({ browse
     expect(await token(alice, '--accent')).toBe('#a987e6');
     expect(await token(alice, '--playmat')).toBe('#0f2218');
     expect(await token(alice, '--back-1')).toBe('#3b3a37');
+    // The token alone proved nothing: the boards painted over it, so check what they paint.
+    await expect(alice.locator('.board').first()).toHaveCSS('background-color', 'rgb(15, 34, 24)');
   };
   await picked();
   // The slate swatch shows slate, not the felt <html> now carries.

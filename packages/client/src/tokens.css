@@ -167,8 +167,8 @@
    default must not inherit whichever one <html> has. */
 :root,
 [data-playmat='slate'] {
-   /* The table under the mats, lit by the theme's accent (see .plane-viewport). */
-   --playmat: var(--surface-sunken);
+   /* What each board is painted with (see .board). */
+   --playmat: var(--surface);
 }
 
 [data-playmat='felt'] {

@@ -667,6 +667,7 @@ input[type='checkbox'] {
    height: 100%;
    border: 1px solid var(--border-strong);
    border-radius: var(--radius-sm);
+   background: var(--playmat);
 }
 
 .swatch-back {
@@ -688,9 +689,8 @@ input[type='checkbox'] {
 
 /* Lit from above like a table under a lamp, in the theme's accent. It stays put while the mats
    pan across it, which a pattern could not. */
-.plane-viewport,
-.swatch-mat {
-   background: radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--accent) 7%, var(--playmat)), var(--playmat) 70%);
+.plane-viewport {
+   background: radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--accent) 7%, var(--surface-sunken)), var(--surface-sunken) 70%);
 }
 
 .plane-viewport.panning {
@@ -806,7 +806,7 @@ input[type='checkbox'] {
    border: 2px solid var(--border);
    border-radius: var(--radius-lg);
    padding: 0.6rem;
-   background: var(--surface);
+   background: var(--playmat);
    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
