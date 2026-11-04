@@ -161,11 +161,12 @@ function moveObject(state: TableState, action: Extract<Action, { t: 'MOVE_OBJECT
     return err(`no such object: ${action.objectId}`);
   }
 
-  const faceDown = action.faceDown ?? existing.faceDown;
   // A change of zone makes this a new object (CR 400.7, see asNewObject); staying put — a
   // library reorder — does not. Visibility is decided by the destination either way.
   const changedZone = !zonesEqual(existing.zone, action.toZone);
   const base = changedZone ? asNewObject(existing) : existing;
+  // Read off the new object, which is face up: only a move that asks keeps a card face down.
+  const faceDown = action.faceDown ?? base.faceDown;
   const updated: GameObject = {
     ...base,
     zone: action.toZone,

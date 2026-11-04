@@ -496,3 +496,33 @@ describe('applyAction: MOVE_OBJECT into a library', () => {
     expect(Object.values(next.objects).map((o) => o.position).sort()).toEqual([0, 1, 2]);
   });
 });
+
+// CR 708.9 / 400.7: a face-down card that changes zones is a new object, and face up unless the
+// move itself says otherwise. faceDown used to follow a card everywhere: a foretold card played
+// out of exile entered face down, and a dead morph showed everyone its back in the graveyard.
+describe('applyAction: MOVE_OBJECT and face-down cards', () => {
+  const moveTo = (state: TableState, zone: 'battlefield' | 'graveyard', faceDown?: boolean) => {
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'm', toZone: { playerId: ALICE, zone }, faceDown });
+    if (!result.ok) throw new Error(result.reason);
+    return result.state.objects['m'];
+  };
+  const faceDownIn = (zone: 'battlefield' | 'exile') =>
+    makeState([card({ id: 'm', zone: { playerId: ALICE, zone }, faceDown: true, faceVisibility: { kind: 'players', ids: [ALICE] } })]);
+
+  it('turns a card face up when it changes zones', () => {
+    expect(moveTo(faceDownIn('exile'), 'battlefield')).toMatchObject({ faceDown: false, faceVisibility: { kind: 'all' } });
+    expect(moveTo(faceDownIn('battlefield'), 'graveyard')).toMatchObject({ faceDown: false, faceVisibility: { kind: 'all' } });
+  });
+
+  it('still plays a card face down when the move asks for it', () => {
+    expect(moveTo(faceDownIn('exile'), 'battlefield', true)).toMatchObject({ faceDown: true, faceVisibility: { kind: 'players', ids: [ALICE] } });
+  });
+
+  // The stack is public, but a face-down spell (a morph being cast) is not.
+  it('keeps a face-down spell on the stack hidden from everyone but its controller', () => {
+    const state = makeState([card({ id: 'm', zone: { playerId: ALICE, zone: 'hand' } })]);
+    const result = applyAction(state, { t: 'MOVE_OBJECT', objectId: 'm', toZone: { zone: 'stack' }, faceDown: true });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.state.objects['m'].faceVisibility).toEqual({ kind: 'players', ids: [ALICE] });
+  });
+});

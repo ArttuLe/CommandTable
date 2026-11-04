@@ -62,8 +62,10 @@ export function applyCounterUpdate(current: number, update: CounterUpdate): numb
 
 export function defaultVisibilityFor(zone: ZoneRef, controllerId: PlayerId, faceDown: boolean): Visibility {
   if (!('playerId' in zone)) {
-    // stack: shared and public. limbo: transitional, defaults to hidden as the safest choice.
-    return zone.zone === 'stack' ? { kind: 'all' } : { kind: 'none' };
+    // stack: shared and public — unless face down (a morph being cast), which only its controller
+    // sees, as on the battlefield. limbo: transitional, defaults to hidden as the safest choice.
+    if (zone.zone === 'limbo') return { kind: 'none' };
+    return faceDown ? { kind: 'players', ids: [controllerId] } : { kind: 'all' };
   }
   switch (zone.zone) {
     case 'library':
@@ -95,6 +97,9 @@ export function asNewObject(obj: GameObject): GameObject {
     controllerId: obj.ownerId,
     tapped: false,
     flipped: false,
+    // Face up unless the move says otherwise (CR 708.9): a dead morph is revealed, and a foretold
+    // card cast out of exile is cast face up.
+    faceDown: false,
     currentFace: 0,
     counters: {},
     markers: [],
