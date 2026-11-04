@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ProjectedObject, ZoneRef } from '@command-table/common';
-import { commanderPrompts } from './commanderPrompt.js';
+import { commanderPrompts, spentDismissals } from './commanderPrompt.js';
 
 function at(zone: ZoneRef): ProjectedObject {
   return {
@@ -54,5 +54,14 @@ describe('commanderPrompts', () => {
       b: { ...at({ playerId: 'alice', zone: 'exile' }), id: 'b' },
     };
     expect(commanderPrompts(both, ['a', 'b'], {})).toHaveLength(2);
+  });
+});
+
+// "Leave it" is for this time. Kept after the commander moved on, it silenced the offer for good.
+describe('spentDismissals', () => {
+  it('spends a dismissal once the commander has left the zone it was left in', () => {
+    expect(spentDismissals(objects({ playerId: 'alice', zone: 'graveyard' }), { cmd: 'graveyard' })).toEqual([]);
+    expect(spentDismissals(objects({ playerId: 'alice', zone: 'battlefield' }), { cmd: 'graveyard' })).toEqual(['cmd']);
+    expect(spentDismissals(objects({ playerId: 'alice', zone: 'exile' }), { cmd: 'graveyard' })).toEqual(['cmd']);
   });
 });

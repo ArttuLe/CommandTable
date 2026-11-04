@@ -45,6 +45,7 @@ interface UiStore {
   /** Commander replacement offers waved away, keyed by the zone they were waved away in. */
   dismissedCommanders: Record<ObjectId, ReplaceableZone>;
   dismissCommander: (objectId: ObjectId, zone: ReplaceableZone) => void;
+  forgetDismissals: (objectIds: ObjectId[]) => void;
   /**
    * The object waiting to be pointed at something, while "Target…" or "Blocking…" is armed, and
    * which of the two it is. The next card clicked becomes the target or the blocked attacker;
@@ -97,6 +98,10 @@ export const useUiStore = create<UiStore>((set) => ({
   dismissedCommanders: {},
   dismissCommander: (objectId, zone) =>
     set((s) => ({ dismissedCommanders: { ...s.dismissedCommanders, [objectId]: zone } })),
+  forgetDismissals: (objectIds) =>
+    set((s) => ({
+      dismissedCommanders: Object.fromEntries(Object.entries(s.dismissedCommanders).filter(([id]) => !objectIds.includes(id))),
+    })),
   pointing: null,
   // Arming the same thing twice stands it down, so the menu item is its own escape hatch.
   startPointing: (objectId, kind) =>

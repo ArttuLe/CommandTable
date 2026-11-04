@@ -32,6 +32,18 @@ export function commanderPrompts(
   return prompts;
 }
 
+/**
+ * The dismissals that no longer describe where their commander is. A dismissal means "leave it
+ * where it is this time"; once the commander has left that zone it is spent. Kept, it silenced
+ * the offer for good: a commander left in the graveyard, reanimated and killed again never asked.
+ */
+export function spentDismissals(
+  objects: Record<ObjectId, ProjectedObject>,
+  dismissed: Record<ObjectId, ReplaceableZone>
+): ObjectId[] {
+  return Object.keys(dismissed).filter((id) => replaceableZoneOf(objects[id]) !== dismissed[id]);
+}
+
 function replaceableZoneOf(obj: ProjectedObject | undefined): ReplaceableZone | null {
   if (!obj || !('playerId' in obj.zone)) return null;
   return obj.zone.zone === 'graveyard' || obj.zone.zone === 'exile' ? obj.zone.zone : null;

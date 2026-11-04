@@ -18,7 +18,7 @@ import { ZoneDock, type DockZone } from './ZoneDock.js';
 import { seating } from './seating.js';
 import { PASS_TURN_WARNING, turnHighlight, turnLabel } from './turnStatus.js';
 import { libraryMoveAction } from './libraryMoves.js';
-import { commanderPrompts } from './commanderPrompt.js';
+import { commanderPrompts, spentDismissals } from './commanderPrompt.js';
 import { SettingsMenu } from './SettingsMenu.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { HelpButton } from './HelpDialog.js';
@@ -234,6 +234,12 @@ export function Table() {
   // §12: your own commanders only — whether one goes to the command zone instead of staying dead
   // is its owner's call, and nobody else's to be nagged about.
   const prompts = commanderPrompts(tableState.objects, me.commanderIds, dismissedCommanders);
+  // A "Leave it" lasts as long as the commander stays where it was left (see spentDismissals).
+  const forgetDismissals = useUiStore((s) => s.forgetDismissals);
+  useEffect(() => {
+    const spent = spentDismissals(tableState.objects, dismissedCommanders);
+    if (spent.length > 0) forgetDismissals(spent);
+  }, [tableState.objects, dismissedCommanders, forgetDismissals]);
 
   const dockZones: DockZone[] = [
     { key: 'graveyard', label: 'Graveyard', count: inZone(playerId, 'graveyard').length, objects: inZone(playerId, 'graveyard') },
