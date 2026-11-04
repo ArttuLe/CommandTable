@@ -364,7 +364,8 @@ export function Table() {
                   key={player.id}
                   player={player}
                   seat={seat}
-                  turn={turnHighlight(player.id, tableState.turn, playerId)}
+                  // No turn has started during opening hands, so no mat is lit for one either.
+                  turn={tableState.setupComplete ? turnHighlight(player.id, tableState.turn, playerId) : null}
                   // Hand and library are counted by the server (§9.2); graveyard and exile are
                   // public zones and counted off the projection, the same way the dock does it.
                   counts={{

@@ -20,6 +20,7 @@ test('mulligan, keep, and the host starting the game', async ({ browser }) => {
   // Nobody's turn has started, so nothing should be urging anyone to end it.
   await expect(alice.getByRole('button', { name: 'Pass turn' })).not.toHaveClass(/urgent/);
   await expect(alice.locator('.hud')).not.toHaveClass(/my-turn/);
+  await expect(alice.locator('.turn-badge')).toHaveCount(0);
 
   // The hand is for judging, not playing, until the game starts: a double-click that would play a
   // card in a game does nothing here. The mulligan below is the round trip that proves it — had
