@@ -125,6 +125,19 @@ describe('RoomManager', () => {
     expect(room.canStart()).toBe(false);
   });
 
+  // A started game is closed to new seats (§14.1). An open seat used to take anyone with the
+  // passphrase, who was then counted in — and could decide — the table's undo votes.
+  it('refuses a new seat once the game has started, but still lets a seated player back in', () => {
+    const room = new RoomManager().createRoom();
+    const alice = room.join({ displayName: 'Alice' });
+    room.join({ displayName: 'Bob' });
+    room.start();
+
+    expect(room.join({ displayName: 'Mallory' })).toMatchObject({ ok: false });
+    if (!alice.ok) throw new Error('unreachable');
+    expect(room.join({ displayName: 'Alice', rejoinToken: alice.rejoinToken })).toMatchObject({ ok: true });
+  });
+
   it('setReady toggles a seat readiness', () => {
     const manager = new RoomManager();
     const room = manager.createRoom();
@@ -358,11 +371,10 @@ describe('reclaiming a seat by name', () => {
     const { room } = lobbyWithDisconnectedBob();
     room.start();
 
+    // Refused outright: a started game takes no new seats, and a name never reclaims one.
     const result = room.join({ displayName: 'Bob' });
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error('unreachable');
-    expect(result.seat).toBe(2);
+    expect(result.ok).toBe(false);
   });
 
   it('still prefers an explicitly requested seat over a name match', () => {

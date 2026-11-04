@@ -69,6 +69,12 @@ export class Room {
       return this.reseat(reclaimable, params.displayName);
     }
 
+    // A game in progress is closed to new seats (§14.1): a newcomer would sit at a table they have
+    // no cards on, and still count in — and could decide — its undo votes.
+    if (this.started) {
+      return { ok: false, reason: 'This game has already started. Only the players seated in it can rejoin.' };
+    }
+
     const seatIndex = params.seat !== undefined ? params.seat : this.firstOpenSeat();
     if (seatIndex === undefined || seatIndex < 0 || seatIndex >= MAX_SEATS) {
       return { ok: false, reason: 'That seat doesn’t exist.' };
