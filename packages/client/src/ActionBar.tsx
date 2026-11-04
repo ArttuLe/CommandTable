@@ -490,21 +490,23 @@ export function SelectionBar() {
   const act = useStore((s) => s.act);
   const objects = useStore((s) => s.tableState?.objects ?? {});
 
-  if (selectedIds.size === 0) return null;
+  // Only what is still in play. A selected card that left — sent to hand from its own menu, undone,
+  // or moved by someone else — stayed in the count, and "To graveyard" then binned it from your hand.
+  const live = [...selectedIds].filter((id) => objects[id]?.zone.zone === 'battlefield');
+  if (live.length === 0) return null;
 
   // Clears afterwards like the graveyard button below: the selection was made for this one
   // gesture, and leaving it up means the next shift-click extends a selection you'd forgotten.
   function setTappedAll(tapped: boolean) {
-    selectedIds.forEach((id) => act({ t: tapped ? 'TAP' : 'UNTAP', objectId: id }));
+    live.forEach((id) => act({ t: tapped ? 'TAP' : 'UNTAP', objectId: id }));
     clearSelection();
   }
 
   // Each object keeps its own controller for the graveyard move, matching the single-object
   // context menu (§10: freeform play has no restriction on whose object an action targets).
   function graveyardAll() {
-    selectedIds.forEach((id) => {
+    live.forEach((id) => {
       const obj = objects[id];
-      if (!obj) return;
       act({ t: 'MOVE_OBJECT', objectId: id, toZone: { playerId: obj.controllerId, zone: 'graveyard' } });
     });
     clearSelection();
@@ -512,7 +514,7 @@ export function SelectionBar() {
 
   return (
     <div className="selection-bar">
-      <span className="selection-count">{selectedIds.size} selected</span>
+      <span className="selection-count">{live.length} selected</span>
       <button className="btn" onClick={() => setTappedAll(true)}>
         Tap
       </button>
