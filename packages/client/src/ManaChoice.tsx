@@ -6,7 +6,8 @@
 
 import { useLayoutEffect, useRef, useState } from 'react';
 import { placeMenu } from './menuPlacement.js';
-import type { ManaColor } from './uiStore.js';
+import { ManaEmblem } from './icons.js';
+import { MANA_NAMES, type ManaColor } from './uiStore.js';
 
 export interface ManaChoicePrompt {
   colors: ManaColor[];
@@ -52,13 +53,16 @@ export function ManaChoice({
           <button
             key={color}
             className={`mana-${color}`}
-            title={`Add ${color}`}
+            title={`Add ${MANA_NAMES[color]}`}
+            aria-label={`Add one ${MANA_NAMES[color]} mana`}
             onClick={() => {
               onChoose(color);
               onClose();
             }}
           >
-            <b className="mana-symbol">{color}</b>
+            <b className="mana-symbol" aria-hidden="true">
+              <ManaEmblem color={color} />
+            </b>
           </button>
         ))}
       </div>

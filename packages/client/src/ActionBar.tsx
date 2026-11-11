@@ -8,7 +8,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import type { Action, PlayerId, PlayerState } from '@command-table/common';
 import { useStore } from './store.js';
-import { useUiStore, type ManaColor } from './uiStore.js';
+import { MANA_NAMES, useUiStore, type ManaColor } from './uiStore.js';
 import { libraryDirtiedBy, type LibraryLook } from './libraryMoves.js';
 import { clearSweepMessage } from './clearSweep.js';
 import { useCloseOnEscape } from './useCloseOnEscape.js';
@@ -407,6 +407,7 @@ function CommanderDamageMenu({
       <button
         className={`vital ${isLethalCommanderDamage(worst) ? 'lethal' : ''}`}
         title="Commander damage taken"
+        aria-label={`Commander damage, ${worst} taken`}
         onClick={() => setOpen((o) => !o)}
       >
         <b className="vital-symbol">
@@ -443,8 +444,6 @@ function CommanderDamageMenu({
 }
 
 const MANA_COLORS: ManaColor[] = ['W', 'U', 'B', 'R', 'G', 'C'];
-/** What the steppers are called aloud: a lone "W" and two unlabelled "−"/"+" said nothing. */
-const MANA_NAMES: Record<ManaColor, string> = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green', C: 'colourless' };
 
 // Client-local mana pad: bumped as lands are tapped, spent as spells are cast, reset at
 // will. Purely client-side (uiStore) — the server has no concept of mana.
