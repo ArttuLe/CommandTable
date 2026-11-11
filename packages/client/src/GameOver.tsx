@@ -27,6 +27,7 @@ export function GameOver({ table, playerId, isHost }: { table: ClientTableState;
           </li>
         ))}
       </ul>
+      {!isHost && <p className="game-over-summary">Waiting for the host to take everyone back to the lobby.</p>}
       <div className="dialog-actions">
         <button className="btn btn-ghost" onClick={() => setDismissed(true)}>
           Look at the table
