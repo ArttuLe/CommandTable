@@ -19,6 +19,9 @@ export const KEY_SHORTCUTS: Shortcut[] = [
   { keys: 'C', what: 'Open or close the chat rail' },
   { keys: 'Z', what: 'Undo the last action (instant if it was yours, otherwise confirms, then the table votes)' },
   { keys: 'F', what: 'Fit the whole table on screen' },
+  { keys: '?', what: 'Open this help' },
+  { keys: 'Enter / Space on a card', what: 'Play it from your hand; anywhere else, the same as clicking it' },
+  { keys: 'Shift+F10 / Menu on a card', what: 'Open its right-click menu' },
   { keys: 'Esc', what: 'Clear the selection, or close whatever is open' },
 ];
 
@@ -62,15 +65,15 @@ export const HOW_TOS: HowTo[] = [
   },
   {
     task: 'Put counters on a permanent',
-    how: 'Right-click it and use the +1/+1, −1/−1 or Counter steppers. Labels (flying, haste, anything) are under Add label….',
+    how: 'Right-click it and use the +1/+1, −1/−1 or Counter steppers. Add label… covers labels such as flying, haste, or anything else.',
   },
   {
     task: 'Search your library, or scry',
-    how: 'More ⋯ → Search library, or Peek / Scry…. Every revealed card offers Hand, Play, Top and Bottom, and a search shuffles your library when you close it.',
+    how: 'More ⋯ → Search library, or More ⋯ → Peek / Scry… for the top of it. Every revealed card offers Hand, Play, Top and Bottom, and a search shuffles your library when you close it.',
   },
   {
     task: 'Make tokens',
-    how: 'More ⋯ → Create token…. To make more of one already in play, right-click it and choose Duplicate.',
+    how: 'Choose Create token… under More ⋯. To make more of one already in play, right-click it and choose Duplicate.',
   },
   {
     task: 'Change life, poison or commander damage',

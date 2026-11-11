@@ -16,7 +16,7 @@
 //                                              cancels it under them)
 //   4  context-menu, hand-fan, plane-menu,  read-only after starting play (plane-menu only moves
 //      rail-legibility, one-seat-one-tab,   its own camera; turn-order passes the turn round
-//      turn-order                           to where it started), and hand-fan needs all seven
+//      turn-order, help-dialog              to where it started), and hand-fan needs all seven
 //
 // Two rules keep that true, and both break quietly if ignored: nothing else may use 2 seats, and
 // nothing that plays a card may join the 4-seat bucket (hand-fan asserts the hand is crowded,

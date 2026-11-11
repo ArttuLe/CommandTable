@@ -207,6 +207,9 @@ export function Table() {
         case 'f':
           setFitNonce((n) => n + 1);
           break;
+        case '?':
+          useUiStore.getState().toggleHelp();
+          break;
         case 'escape':
           useUiStore.getState().clearSelection();
           // Escape is already "stop what you were about to do"; an armed arrow is that.
