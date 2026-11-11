@@ -2334,7 +2334,7 @@ button.vital:hover {
 .unread-badge {
    background: var(--accent);
    color: #0c1116;
-   font-size: 0.65rem;
+   font-size: 0.7rem;
    font-weight: 700;
    border-radius: 999px;
    padding: 0.05rem 0.3rem;
