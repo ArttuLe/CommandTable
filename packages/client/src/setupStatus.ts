@@ -3,7 +3,8 @@
 //
 // A mulligan here shuffles the hand back and deals seven again (MULLIGAN in the server's
 // playerActions.ts); putting cards on the bottom is left to the player, through the hand card's
-// Bottom menu item (cardMenu.ts). So after N mulligans the step says how many to bottom and how.
+// Bottom menu item (cardMenu.ts). The first mulligan is free, as it is in multiplayer Commander,
+// so after N mulligans the step says to bottom N − 1 cards, and how.
 
 export interface SetupStatus {
   /** The line beside "Opening hands": what to do with the hand in front of you. */
@@ -28,10 +29,13 @@ export function setupStatus({
   /** Display names of the players who have not kept yet. */
   deciding: string[];
 }): SetupStatus {
+  const toBottom = mulligans - 1;
   const note =
     mulligans === 0
       ? `Mulligan until you like your ${handCount === 1 ? 'card' : `${handCount} cards`}, then keep.`
-      : `Mulligan ${mulligans}: put ${mulligans === 1 ? '1 card' : `${mulligans} cards`} on the bottom — right-click ${mulligans === 1 ? 'it' : 'each'} and choose Bottom.`;
+      : mulligans === 1
+        ? 'Mulligan 1 is free: keep all 7, or mulligan again.'
+        : `Mulligan ${mulligans}: put ${toBottom === 1 ? '1 card' : `${toBottom} cards`} on the bottom — right-click ${toBottom === 1 ? 'it' : 'each'} and choose Bottom.`;
 
   return {
     note,

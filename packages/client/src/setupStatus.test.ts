@@ -8,15 +8,19 @@ describe('setupStatus', () => {
     expect(setupStatus(base).note).toBe('Mulligan until you like your 7 cards, then keep.');
   });
 
-  it('after one mulligan, says to bottom one card and how', () => {
-    expect(setupStatus({ ...base, mulligans: 1 }).note).toBe(
-      'Mulligan 1: put 1 card on the bottom — right-click it and choose Bottom.'
+  it('the first mulligan is free: keep all seven', () => {
+    expect(setupStatus({ ...base, mulligans: 1 }).note).toBe('Mulligan 1 is free: keep all 7, or mulligan again.');
+  });
+
+  it('after two mulligans, says to bottom one card and how', () => {
+    expect(setupStatus({ ...base, mulligans: 2 }).note).toBe(
+      'Mulligan 2: put 1 card on the bottom — right-click it and choose Bottom.'
     );
   });
 
-  it('after two mulligans, says to bottom two cards', () => {
-    expect(setupStatus({ ...base, mulligans: 2 }).note).toBe(
-      'Mulligan 2: put 2 cards on the bottom — right-click each and choose Bottom.'
+  it('after three mulligans, says to bottom two cards', () => {
+    expect(setupStatus({ ...base, mulligans: 3 }).note).toBe(
+      'Mulligan 3: put 2 cards on the bottom — right-click each and choose Bottom.'
     );
   });
 

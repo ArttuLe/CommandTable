@@ -48,8 +48,8 @@ Tick **Ready** when you are. The host starts the game when the table is.
 
 Everyone is dealt seven. Read your hand (hover a card to see it full size), then:
 
-- **Mulligan** shuffles your hand back and deals seven new cards. The strip says how many to put
-  on the bottom: right-click each and choose **Bottom**.
+- **Mulligan** shuffles your hand back and deals seven new cards. The first one is free; after
+  that the strip says how many to put on the bottom: right-click each and choose **Bottom**.
 - **Keep** settles your hand. The strip above your hand shows who is still deciding.
 
 Nothing in your hand can be played yet. The host presses **Start the game** to begin turn 1. They

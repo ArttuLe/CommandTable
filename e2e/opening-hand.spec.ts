@@ -38,10 +38,8 @@ test('mulligan, keep, and the host starting the game', async ({ browser }) => {
   await expect(alice.locator('.hand .card-tile')).toHaveCount(OPENING_HAND);
   await expect.poll(() => handIds(alice)).not.toEqual(before);
   await expect(alice.locator('.battlefield .card-tile')).toHaveCount(0);
-  // Redrawing seven means the extra card goes to the bottom by hand, so the step says so.
-  await expect(alice.locator('.setup-headline')).toContainText(
-    'Mulligan 1: put 1 card on the bottom — right-click it and choose Bottom.'
-  );
+  // The first mulligan is free; from the second on, the step says how many to bottom by hand.
+  await expect(alice.locator('.setup-headline')).toContainText('Mulligan 1 is free: keep all 7, or mulligan again.');
 
   // D first: the Keep's round trip lands after any draw it sent, so a hand still at seven once
   // "You kept." shows means the shortcut is off too. Keeping is reported to the other seat as well.

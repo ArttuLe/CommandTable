@@ -114,7 +114,7 @@ function describeCommanderDamage(
   const amount = Math.abs(now - was);
   const name = action.toPlayerId === actorId ? null : player(before, action.toPlayerId).displayName;
   if (now < was) {
-    return `removed ${amount} of ${name ? `${name}'s` : 'their'} commander damage from a card ${result(was, now)}`;
+    return `took back ${amount} ${name ? `of ${name}'s ` : ''}commander damage from a card ${result(was, now)}`;
   }
   return name
     ? `gave ${name} ${amount} commander damage from a card ${result(was, now)}`

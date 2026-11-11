@@ -115,8 +115,8 @@ describe('describeAction: life, poison and commander damage', () => {
         P
       );
     expect(damage(P, 0, 4)).toBe('took 4 commander damage from a card (0 → 4)');
-    expect(damage(P, 4, 3)).toBe('removed 1 of their commander damage from a card (4 → 3)');
+    expect(damage(P, 4, 3)).toBe('took back 1 commander damage from a card (4 → 3)');
     expect(damage(BOB, 17, 21)).toBe('gave Bob 4 commander damage from a card (17 → 21)');
-    expect(damage(BOB, 21, 17)).toBe("removed 4 of Bob's commander damage from a card (21 → 17)");
+    expect(damage(BOB, 21, 17)).toBe("took back 4 of Bob's commander damage from a card (21 → 17)");
   });
 });
