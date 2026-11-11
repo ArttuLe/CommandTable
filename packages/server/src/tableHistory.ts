@@ -8,7 +8,9 @@
 // also carries a `contentRevision`: the revision whose content it holds — itself for a normal
 // action, and the restored snapshot's own contentRevision for a revert, which is what makes
 // nested reverts walk backwards instead of ping-ponging. "Step back one action" is then always
-// contentRevision(last) - 1.
+// contentRevision(last) - 1. Likewise `contentActorId` is who made the action that content
+// sits on, copied forward by a revert, so naming it never depends on that action's own entry
+// still being in the buffer.
 //
 // That pointer belongs here rather than on TableState for the same reason the snapshots do: it
 // describes the room's undo history, not the game the players can see, and it must not survive
@@ -22,7 +24,7 @@ const DEFAULT_CAPACITY = 50;
 interface HistoryEntry {
   revision: number;
   contentRevision: number;
-  actorId: PlayerId;
+  contentActorId: PlayerId;
   state: TableState;
 }
 
@@ -32,14 +34,20 @@ export class TableHistory {
   constructor(private readonly initialState: TableState, private readonly capacity: number = DEFAULT_CAPACITY) {}
 
   record(actorId: PlayerId, state: TableState): void {
-    this.push({ revision: state.revision, contentRevision: state.revision, actorId, state });
+    this.push({ revision: state.revision, contentRevision: state.revision, contentActorId: actorId, state });
   }
 
   // `restoredFrom` is the revision whose snapshot was reverted to; its own content revision is
   // looked up here so callers never have to reason about reverts of reverts.
   recordRevert(actorId: PlayerId, state: TableState, restoredFrom: number): void {
     const entry = this.entries.find((e) => e.revision === restoredFrom);
-    this.push({ revision: state.revision, contentRevision: entry?.contentRevision ?? restoredFrom, actorId, state });
+    // No entry means the initial state was restored, where there is no action left to name.
+    this.push({
+      revision: state.revision,
+      contentRevision: entry?.contentRevision ?? restoredFrom,
+      contentActorId: entry?.contentActorId ?? actorId,
+      state,
+    });
   }
 
   snapshotAt(targetRevision: number): TableState | undefined {
@@ -65,9 +73,8 @@ export class TableHistory {
   undoable(): UndoableAction | null {
     const target = this.undoTarget();
     if (target < this.initialRevision() || !this.snapshotAt(target)) return null;
-    const revision = this.currentContentRevision();
-    const entry = this.entries.find((e) => e.revision === revision);
-    return entry ? { revision, actorId: entry.actorId } : null;
+    const newest = this.entries.at(-1);
+    return newest ? { revision: newest.contentRevision, actorId: newest.contentActorId } : null;
   }
 
   // Self-undo needs no consent if no other player has acted since, and since actions

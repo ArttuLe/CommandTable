@@ -139,4 +139,27 @@ describe('TableHistory', () => {
     history.record(BOB, stateAt(2));
     expect(history.undoable()).toBeNull();
   });
+  it('undoable still names the action after repeated act-and-undo pairs evict its entry', () => {
+    const history = new TableHistory(stateAt(0), 3);
+    history.record(ALICE, stateAt(1));
+    for (const revision of [2, 4]) {
+      history.record(BOB, stateAt(revision));
+      history.recordRevert(BOB, stateAt(revision + 1), revision - 1);
+    }
+    expect(history.snapshotAt(1)).toBeUndefined();
+    expect(history.undoable()).toEqual({ revision: 1, actorId: ALICE });
+    expect(history.canSelfUndo(ALICE)).toBe(true);
+  });
+
+  it('undo after a revert and a new action steps back to the earlier action, not the reverted one', () => {
+    const history = new TableHistory(stateAt(0));
+    history.record(ALICE, stateAt(1));
+    history.record(BOB, stateAt(2));
+    history.recordRevert(BOB, stateAt(3), 1);
+    history.record(ALICE, stateAt(4));
+    expect(history.undoTarget()).toBe(3);
+    history.recordRevert(ALICE, stateAt(5), 3);
+    expect(history.undoable()).toEqual({ revision: 1, actorId: ALICE });
+    expect(history.undoTarget()).toBe(0);
+  });
 });
