@@ -17,7 +17,7 @@ export const KEY_SHORTCUTS: Shortcut[] = [
   { keys: '+ / −', what: 'Gain or lose one life' },
   { keys: 'L', what: 'Open or close the log rail' },
   { keys: 'C', what: 'Open or close the chat rail' },
-  { keys: 'Z', what: 'Undo the last action (instant if it was yours, otherwise the table votes)' },
+  { keys: 'Z', what: 'Undo the last action (instant if it was yours, otherwise confirms, then the table votes)' },
   { keys: 'F', what: 'Fit the whole table on screen' },
   { keys: 'Esc', what: 'Clear the selection, or close whatever is open' },
 ];
@@ -78,7 +78,7 @@ export const HOW_TOS: HowTo[] = [
   },
   {
     task: 'Take something back',
-    how: 'Undo, or Z. Your own last action reverts at once; anything else asks the table, and everyone sees the vote.',
+    how: 'Undo, or Z. The button says what it will take back. Your own last action reverts at once; anyone else’s asks you first, then the table, and everyone sees the vote.',
   },
   {
     task: 'End your turn',

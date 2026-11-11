@@ -34,7 +34,9 @@ export type ServerMessage =
   | { t: 'joined'; playerId: PlayerId; roomState: RoomState; rejoinToken: string }
   | { t: 'room'; roomState: RoomState }
   | { t: 'deckResult'; warnings: DeckWarningKind[]; unresolved: UnresolvedLine[] }
-  | { t: 'state'; state: ClientTableState }
+  // `undoable` rides beside the state, not in it: it is the server's undo history speaking
+  // (tableHistory.ts), and the only way a client can name what its Undo would take back.
+  | { t: 'state'; state: ClientTableState; undoable: UndoableAction | null }
   | { t: 'rejected'; clientSeq: number; reason: string }
   // Sent to everyone, the requester included, and again after every ballot: `approvals` of
   // `needed` is the tally a vote is waiting on.
@@ -46,6 +48,12 @@ export type ServerMessage =
   // toast without matching on prose. Only set where that distinction matters.
   | { t: 'error'; message: string; code?: 'rejoin-failed' }
   | { t: 'pong' };
+
+/** The action Undo would take back: the revision it produced (its log lines carry it) and whose it was. */
+export interface UndoableAction {
+  revision: number;
+  actorId: PlayerId;
+}
 
 /**
  * The WebSocket close code a socket gets when its seat is opened on another socket. The client

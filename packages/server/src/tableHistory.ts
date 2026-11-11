@@ -11,10 +11,11 @@
 // contentRevision(last) - 1.
 //
 // That pointer belongs here rather than on TableState for the same reason the snapshots do: it
-// describes the room's undo history, not the game the players can see, and it must not travel to
-// clients or survive into a restored session as a promise the buffer can no longer keep.
+// describes the room's undo history, not the game the players can see, and it must not survive
+// into a restored session as a promise the buffer can no longer keep. Clients get only what it
+// resolves to, beside the state rather than in it: which action Undo would take back (undoable).
 
-import type { PlayerId, TableState } from '@command-table/common';
+import type { PlayerId, TableState, UndoableAction } from '@command-table/common';
 
 const DEFAULT_CAPACITY = 50;
 
@@ -58,12 +59,21 @@ export class TableHistory {
     return this.initialState.revision;
   }
 
+  // The action Undo would take back: the one the table's content currently sits on, which is
+  // only the newest entry while no revert is in play. Null when there is nothing behind it, or
+  // the snapshot before it has left the buffer. Sent with every state so the client can name it.
+  undoable(): UndoableAction | null {
+    const target = this.undoTarget();
+    if (target < this.initialRevision() || !this.snapshotAt(target)) return null;
+    const revision = this.currentContentRevision();
+    const entry = this.entries.find((e) => e.revision === revision);
+    return entry ? { revision, actorId: entry.actorId } : null;
+  }
+
   // Self-undo needs no consent if no other player has acted since, and since actions
-  // apply in strict arrival order, that's exactly: the action the table's content currently sits
-  // on is theirs. With no reverts in play that is the most recent entry.
+  // apply in strict arrival order, that's exactly: the action Undo would take back is theirs.
   canSelfUndo(requesterId: PlayerId): boolean {
-    const current = this.currentContentRevision();
-    return this.entries.find((e) => e.revision === current)?.actorId === requesterId;
+    return this.undoable()?.actorId === requesterId;
   }
 
   private currentContentRevision(): number {

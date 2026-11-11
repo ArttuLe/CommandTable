@@ -21,6 +21,7 @@ import type {
   ObjectId,
   PlayerId,
   RoomState,
+  UndoableAction,
   UnresolvedLine,
 } from '@command-table/common';
 import { WS_URL } from './api.js';
@@ -62,6 +63,8 @@ interface Store {
   /** Something the table should hear about that isn't an error — how an undo vote ended. */
   notice: string | null;
   pendingUndoRequest: UndoRequest | null;
+  /** The action Undo would take back, as the server's history has it; null when there is none. */
+  undoable: UndoableAction | null;
   /** What the last action touched, and the revision it touched it in — the pulse's remount key. */
   changedIds: Set<ObjectId>;
   changeRevision: number;
@@ -190,6 +193,7 @@ export const useStore = create<Store>((set, get) => {
         case 'state':
           set({
             tableState: msg.state,
+            undoable: msg.undoable,
             changedIds: changedObjectIds(get().tableState?.objects ?? {}, msg.state.objects),
             changeRevision: msg.state.revision,
           });
@@ -257,6 +261,7 @@ export const useStore = create<Store>((set, get) => {
     errorMessage: null,
     notice: null,
     pendingUndoRequest: null,
+    undoable: null,
     changedIds: new Set(),
     changeRevision: 0,
 
