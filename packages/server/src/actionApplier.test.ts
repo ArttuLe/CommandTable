@@ -620,4 +620,24 @@ describe('applyAction: what a log line is about', () => {
     if (!result.ok) throw new Error(result.reason);
     expect(lastEntry(result.state).subject).toEqual({ name: 'Zombie' });
   });
+
+  it('refers to the commander a line of commander damage came from', () => {
+    const state = makeState([card({ id: 'cmd', source, zone: { playerId: ALICE, zone: 'commandZone' }, faceVisibility: { kind: 'all' } })]);
+    const result = applyAction(
+      state,
+      { t: 'SET_COMMANDER_DAMAGE', toPlayerId: BOB, fromCommanderObjectId: 'cmd', update: { mode: 'delta', amount: 4 } },
+      BOB
+    );
+    if (!result.ok) throw new Error(result.reason);
+    expect(lastEntry(result.state)).toMatchObject({
+      text: 'took 4 commander damage from a card (0 → 4)',
+      subject: { scryfallId: 'sol' },
+    });
+  });
+
+  it('logs the amount and result of a life change, read off the table', () => {
+    const result = applyAction(makeState([]), { t: 'SET_LIFE', playerIds: [BOB], update: { mode: 'delta', amount: -3 } }, ALICE);
+    if (!result.ok) throw new Error(result.reason);
+    expect(lastEntry(result.state).text).toBe('made Bob lose 3 life (40 → 37)');
+  });
 });

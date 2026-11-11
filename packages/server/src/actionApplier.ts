@@ -67,7 +67,7 @@ export function applyAction(
     return { ok: true, state };
   }
 
-  const { text, visibility, kind } = result.log ?? { text: describeAction(action), visibility: undefined, kind: undefined };
+  const { text, visibility, kind } = result.log ?? { text: describeAction(action, state, result.state, actorId), visibility: undefined, kind: undefined };
   const subject = subjectOf(state, result.state, action);
   const entry: LogEntry = {
     revision: result.state.revision,
@@ -89,9 +89,10 @@ export function applyAction(
  * a card drawn, a morph played face down — stays "a card".
  */
 function subjectOf(before: TableState, after: TableState, action: Action): LogEntry['subject'] {
-  if (!('objectId' in action)) return undefined;
-  const was = before.objects[action.objectId];
-  const now = after.objects[action.objectId];
+  const objectId = 'objectId' in action ? action.objectId : action.t === 'SET_COMMANDER_DAMAGE' ? action.fromCommanderObjectId : null;
+  if (!objectId) return undefined;
+  const was = before.objects[objectId];
+  const now = after.objects[objectId];
   if (was?.faceVisibility.kind !== 'all' && now?.faceVisibility.kind !== 'all') return undefined;
   const source = (was ?? now)!.source;
   if ('scryfallId' in source && source.scryfallId) return { scryfallId: source.scryfallId };

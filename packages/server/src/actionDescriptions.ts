@@ -4,9 +4,20 @@
 // that dependency. A line about a card everyone could see carries a reference to it instead
 // (LogEntry.subject), which the client resolves and writes in (client/src/logText.ts). Actions
 // whose text depends on the outcome rather than the input (dice, coin flips, chat) supply their
-// own text via ApplyResult.log instead of going through this table.
+// own text via ApplyResult.log instead of going through this table. Life, poison and commander
+// damage are read off the table before and after, so the line carries the amount and the result —
+// the numbers a table argues about.
 
-import { ATTACKING_MARKER, parseBlockMarker, parseTargetMarker, type Action, type ZoneRef } from '@command-table/common';
+import {
+  ATTACKING_MARKER,
+  parseBlockMarker,
+  parseTargetMarker,
+  type Action,
+  type PlayerId,
+  type PlayerState,
+  type TableState,
+  type ZoneRef,
+} from '@command-table/common';
 
 /**
  * Where a MOVE_OBJECT put the card. The zone is the one part of a move this layer *can* name —
@@ -49,7 +60,76 @@ function describeMarker(marker: string, set: boolean): string {
   return set ? `labelled a card '${marker}'` : `took the '${marker}' label off a card`;
 }
 
-export function describeAction(action: Action): string {
+/** "(40 → 37)": the result, which is what settles an argument. */
+function result(was: number, now: number): string {
+  return `(${was} → ${now})`;
+}
+
+/** Each player's own line, or one line naming every player when a single change hit several. */
+function describeLife(action: Extract<Action, { t: 'SET_LIFE' }>, before: TableState, after: TableState, actorId: PlayerId): string {
+  const change = (id: PlayerId) => {
+    const was = player(before, id).life;
+    const now = player(after, id).life;
+    return { was, now, amount: Math.abs(now - was), lost: now < was };
+  };
+  if (action.playerIds.length === 1) {
+    const [id] = action.playerIds;
+    const { was, now, amount, lost } = change(id);
+    if (id === actorId) return `${lost ? 'lost' : 'gained'} ${amount} life ${result(was, now)}`;
+    return `made ${player(before, id).displayName} ${lost ? 'lose' : 'gain'} ${amount} life ${result(was, now)}`;
+  }
+  const each = action.playerIds.map((id) => {
+    const { was, now, amount, lost } = change(id);
+    return `${player(before, id).displayName} ${lost ? 'lost' : 'gained'} ${amount} ${result(was, now)}`;
+  });
+  return `changed ${action.playerIds.length} life totals: ${each.join(', ')}`;
+}
+
+function describePlayerCounter(
+  action: Extract<Action, { t: 'SET_PLAYER_COUNTER' }>,
+  before: TableState,
+  after: TableState,
+  actorId: PlayerId
+): string {
+  const was = player(before, action.playerId).counters[action.key] ?? 0;
+  const now = player(after, action.playerId).counters[action.key] ?? 0;
+  const name = action.playerId === actorId ? null : player(before, action.playerId).displayName;
+  if (action.key !== 'poison') {
+    return `changed ${name ? `${name}'s` : 'the'} '${action.key}' counter ${result(was, now)}`;
+  }
+  const amount = Math.abs(now - was);
+  if (now < was) return `removed ${amount} poison${name ? ` from ${name}` : ''} ${result(was, now)}`;
+  return name ? `gave ${name} ${amount} poison ${result(was, now)}` : `took ${amount} poison ${result(was, now)}`;
+}
+
+/** "a card" is the commander: the client writes its name in when everyone can see it (logText.ts). */
+function describeCommanderDamage(
+  action: Extract<Action, { t: 'SET_COMMANDER_DAMAGE' }>,
+  before: TableState,
+  after: TableState,
+  actorId: PlayerId
+): string {
+  const was = player(before, action.toPlayerId).commanderDamageTaken[action.fromCommanderObjectId] ?? 0;
+  const now = player(after, action.toPlayerId).commanderDamageTaken[action.fromCommanderObjectId] ?? 0;
+  const amount = Math.abs(now - was);
+  const name = action.toPlayerId === actorId ? null : player(before, action.toPlayerId).displayName;
+  if (now < was) {
+    return `removed ${amount} of ${name ? `${name}'s` : 'their'} commander damage from a card ${result(was, now)}`;
+  }
+  return name
+    ? `gave ${name} ${amount} commander damage from a card ${result(was, now)}`
+    : `took ${amount} commander damage from a card ${result(was, now)}`;
+}
+
+function player(state: TableState, id: PlayerId): PlayerState {
+  return state.players.find((p) => p.id === id)!;
+}
+
+/**
+ * `before` and `after` are the table either side of the action, and `actorId` who took it: a line
+ * about someone else's life names them, since the client prefixes only the actor.
+ */
+export function describeAction(action: Action, before: TableState, after: TableState, actorId: PlayerId): string {
   switch (action.t) {
     case 'MOVE_OBJECT':
       return `moved a card ${moveDestination(action.toZone, action.toPosition)}`;
@@ -106,11 +186,11 @@ export function describeAction(action: Action): string {
     case 'MOVE_ALL':
       return 'moved a group of cards';
     case 'SET_LIFE':
-      return action.playerIds.length === 1 ? 'changed a life total' : `changed ${action.playerIds.length} players' life totals`;
+      return describeLife(action, before, after, actorId);
     case 'SET_PLAYER_COUNTER':
-      return `changed the '${action.key}' counter`;
+      return describePlayerCounter(action, before, after, actorId);
     case 'SET_COMMANDER_DAMAGE':
-      return 'updated commander damage';
+      return describeCommanderDamage(action, before, after, actorId);
     case 'MULLIGAN':
       return 'took a mulligan';
     case 'KEEP_HAND':
