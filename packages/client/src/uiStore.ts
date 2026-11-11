@@ -28,6 +28,9 @@ interface UiStore {
   /** The chat rail, on the opposite side of the table from the log (see ChatRail.tsx). */
   chatRailOpen: boolean;
   toggleChatRail: () => void;
+  /** The help dialog. Here rather than in HelpButton so Table's `?` shortcut can open it too. */
+  helpOpen: boolean;
+  toggleHelp: () => void;
   /** Which zone-dock popover is open, if any. Lives here rather than inside ZoneDock so that
       searching or peeking can put the revealed cards in front of you (see ActionBar). */
   openZoneKey: string | null;
@@ -86,6 +89,8 @@ export const useUiStore = create<UiStore>((set) => ({
   toggleLogRail: () => set((s) => ({ logRailOpen: !s.logRailOpen })),
   chatRailOpen: false,
   toggleChatRail: () => set((s) => ({ chatRailOpen: !s.chatRailOpen })),
+  helpOpen: false,
+  toggleHelp: () => set((s) => ({ helpOpen: !s.helpOpen })),
   openZoneKey: null,
   openZone: (key) => set({ openZoneKey: key }),
   toggleZone: (key) => set((s) => ({ openZoneKey: s.openZoneKey === key ? null : key })),

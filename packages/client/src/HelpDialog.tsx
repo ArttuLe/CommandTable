@@ -6,11 +6,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from './Dialog.js';
+import { useUiStore } from './uiStore.js';
 import { HOW_TOS, KEY_SHORTCUTS, MOUSE_SHORTCUTS, type Shortcut } from './shortcuts.js';
 import { HelpIcon } from './icons.js';
 
 export function HelpButton() {
-  const [open, setOpen] = useState(false);
+  // In the ui store, so the `?` key (Table.tsx) opens the same dialog.
+  const open = useUiStore((s) => s.helpOpen);
+  const toggleHelp = useUiStore((s) => s.toggleHelp);
   // Focus comes back to the button on close, so a keyboard user isn't dropped at the top of the
   // document — and the next keystroke reaches the table, not nothing.
   const ref = useRef<HTMLButtonElement>(null);
@@ -22,11 +25,11 @@ export function HelpButton() {
         className={`icon-button help-button ${open ? 'open' : ''}`}
         title="Help: how to play, and shortcuts"
         aria-label="Help"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggleHelp}
       >
         <HelpIcon />
       </button>
-      {open && <HelpDialog onClose={() => setOpen(false)} buttonRef={ref} />}
+      {open && <HelpDialog onClose={toggleHelp} buttonRef={ref} />}
     </>
   );
 }

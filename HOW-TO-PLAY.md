@@ -147,6 +147,7 @@ lobby for another game. The host can also end a game at any time from the gear m
 | `Z` | Undo |
 | `F` | Fit the whole table on screen |
 | `L` / `C` | Open or close the log / chat |
+| `?` | Open help: how to play, and these shortcuts |
 | `Esc` | Close the open menu, or clear the selection |
 | `Enter` | On a focused card: play it from hand, or tap it |
 | `Shift+F10` | On a focused card: open its menu |
