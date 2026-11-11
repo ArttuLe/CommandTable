@@ -3,8 +3,9 @@
 // Two rules drive everything here, both of them borrowed from how a physical table works:
 //
 // 1. You are always bottom-left, and the other players run clockwise from you in turn order.
-//    Turn order is `PlayerState.seat` (randomized when the table is built), so the player who
-//    acts after you is the one to your left — the same relationship you'd have sitting down.
+//    Turn order is the order of the players list, shuffled when the table is built, so the
+//    player who acts after you is the one to your left — the same relationship you'd have sitting
+//    down. Not `PlayerState.seat`: that is the lobby seat, which the shuffle leaves as it was.
 // 2. A board's lands hug its *outer* edge. Lands sit in front of their owner; creatures advance
 //    toward the middle of the table. So top-row boards put lands at the top, bottom-row boards
 //    put lands at the bottom, and the middle of the table stays the contested space.
@@ -34,12 +35,12 @@ const QUADRANTS: GridArea[] = ['bottom-left', 'top-left', 'top-right', 'bottom-r
 const STACKED: GridArea[] = ['bottom', 'top'];
 
 export function seating(
-  players: readonly { id: PlayerId; seat: number }[],
+  /** In turn order, which is the order the server keeps them in. */
+  players: readonly { id: PlayerId }[],
   myId: PlayerId
 ): Seat[] {
-  const byTurnOrder = [...players].sort((a, b) => a.seat - b.seat);
-  const mine = byTurnOrder.findIndex((p) => p.id === myId);
-  const clockwise = [...byTurnOrder.slice(mine), ...byTurnOrder.slice(0, mine)];
+  const mine = players.findIndex((p) => p.id === myId);
+  const clockwise = [...players.slice(mine), ...players.slice(0, mine)];
 
   const areas = clockwise.length <= 2 ? STACKED : QUADRANTS;
   return clockwise.map((player, i) => {

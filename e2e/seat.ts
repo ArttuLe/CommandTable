@@ -14,7 +14,8 @@
 //                                              must resolve its vote before it ends, or the
 //                                              next spec's first action cancels it under them)
 //   4  context-menu, hand-fan, plane-menu,  read-only after starting play (plane-menu only moves
-//      rail-legibility, one-seat-one-tab    its own camera), and hand-fan needs all seven cards
+//      rail-legibility, one-seat-one-tab,   its own camera; turn-order passes the turn round
+//      turn-order                           to where it started), and hand-fan needs all seven
 //
 // Two rules keep that true, and both break quietly if ignored: nothing else may use 2 seats, and
 // nothing that plays a card may join the 4-seat bucket (hand-fan asserts the hand is crowded,
@@ -30,7 +31,7 @@ export function needsCardIndex(): void {
   test.skip(!existsSync(CARD_DB), 'run `npm run ingest --workspace @command-table/server` first');
 }
 
-/** The opening hand every seat is dealt (§14.1). */
+/** The opening hand every seat is dealt. */
 export const OPENING_HAND = 7;
 
 /**
@@ -78,7 +79,7 @@ export async function handIds(page: Page): Promise<(string | undefined)[]> {
 /**
  * Plays a card out of hand onto the battlefield and returns its object id.
  *
- * A double-click, as §16.2 has it: a single click on a hand card only looks at it. The last card
+ * A double-click: a single click on a hand card only looks at it. The last card
  * by default: a crowded hand overlaps its cards (styles.css), so the ones to its left are partly
  * covered and a click on them can be reported as intercepted. The id is read
  * before the click because it survives the move, which is what lets a caller name the tile

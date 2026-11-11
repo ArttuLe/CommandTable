@@ -1,4 +1,4 @@
-// A card in hand is read with a click and played with a double-click (§16.2).
+// A card in hand is read with a click and played with a double-click.
 //
 // Playing reveals the card to everyone, and nothing takes that back — undo can only say that it
 // leaked. A single click is also how people look at a card, so it must not be the gesture that

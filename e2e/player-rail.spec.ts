@@ -28,10 +28,11 @@ test('every rail hugs the outer corner of its own mat', async ({ browser }) => {
   const alice = await openSeat(browser, 3, 'Alice');
   await startPlay(alice, [await openSeat(browser, 3, 'Bob'), await openSeat(browser, 3, 'Carol')]);
 
-  // Alice sees herself bottom-left and Carol top-right (seating.ts), which is the pair that
-  // exercises both mirrors at once.
+  // Alice sees herself bottom-left, and whoever plays two turns after her top-right (seating.ts):
+  // the pair that exercises both mirrors at once. Found by where it sits, not by name — the deal
+  // shuffles turn order, so who that is changes from run to run.
   const mine = matOf(alice, 'Alice');
-  const opposite = matOf(alice, 'Carol');
+  const opposite = alice.locator('.mat[style*="top-right"]');
 
   const rect = async (locator: ReturnType<typeof matOf>, selector: string) =>
     (await locator.locator(selector).boundingBox())!;
