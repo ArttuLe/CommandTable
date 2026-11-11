@@ -122,18 +122,21 @@ The table keeps hidden information hidden. Opponents see the backs of the cards 
 nobody sees your library unless you search or peek, and a card turned face down shows its back to
 everyone but its controller. **Turn face down** and **Turn face up** are in a permanent's menu. The
 log names the cards everyone could see, such as "Alice moved Sol Ring to the battlefield", and says
-"a card" for anything someone couldn't.
+"a card" for anything someone couldn't. Life, poison and commander damage are logged with the
+amount and the result, such as "lost 3 life (40 → 37)", so the log settles any argument.
 
 ## Mistakes and undo
 
 **Undo** (or `Z`) takes back the last action, and the button says which. If it was yours and
-nobody has acted since, it is instant. Otherwise it asks you first, then the table votes: everyone sees what would be undone and how many approvals it
-needs, and approves or rejects it. The result is announced either way. An undo can't make anyone
-forget what they saw; if it hides something again, the log says so.
+nobody has acted since, it is instant. Otherwise it asks you first, then the table votes: everyone
+sees what would be undone and how many approvals it needs, and approves or rejects it. The result
+is announced either way. An undo can't make anyone forget what they saw; if it hides something
+again, the log says so.
 
 ## Ending a game
 
-**Concede** is under **More ⋯**. When only one player is left, the table says who won and shows
+**Concede** is under **More ⋯**. Your cards leave the table, and anything you control that someone
+else owns goes back to them. When only one player is left, the table says who won and shows
 everyone's standing. You can keep looking at the table, and the host can take everyone back to the
 lobby for another game. The host can also end a game at any time from the gear menu.
 
