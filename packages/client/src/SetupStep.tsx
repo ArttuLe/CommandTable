@@ -8,6 +8,7 @@
 // deciding, because a player who has walked away must not be able to hold up the table.
 
 import type { PlayerId, PlayerState } from '@command-table/common';
+import { setupStatus } from './setupStatus.js';
 import { useStore } from './store.js';
 
 export function SetupStep({
@@ -24,14 +25,19 @@ export function SetupStep({
   const act = useStore((s) => s.act);
   const me = players.find((p) => p.id === playerId);
   const waiting = players.filter((p) => !p.keptHand);
+  const status = setupStatus({
+    handCount,
+    mulligans: me?.counters.mulligan ?? 0,
+    kept: !!me?.keptHand,
+    isHost,
+    deciding: waiting.map((p) => p.displayName),
+  });
 
   return (
     <div className="setup-step">
       <div className="setup-headline">
         <strong>Opening hands</strong>
-        <span className="popover-note">
-          Mulligan until you like your {handCount === 1 ? 'card' : `${handCount} cards`}, then keep.
-        </span>
+        <span className="popover-note">{status.note}</span>
       </div>
 
       <div className="setup-actions">
@@ -56,12 +62,8 @@ export function SetupStep({
           kept." sits here rather than in among the buttons — it is a statement about the table,
           not a control. */}
       <span className="setup-status">
-        {me?.keptHand && <span className="setup-kept">You kept.</span>}
-        <span className="setup-waiting">
-          {waiting.length === 0
-            ? 'Everyone has kept.'
-            : `Still deciding: ${waiting.map((p) => p.displayName).join(', ')}`}
-        </span>
+        {status.kept && <span className="setup-kept">{status.kept}</span>}
+        <span className="setup-waiting">{status.waiting}</span>
       </span>
 
       {isHost && (
