@@ -33,10 +33,14 @@ test('mulligan, keep, and the host starting the game', async ({ browser }) => {
   await expect(alice.locator('.hand .card-tile')).toHaveCount(OPENING_HAND);
   await expect.poll(() => handIds(alice)).not.toEqual(before);
   await expect(alice.locator('.battlefield .card-tile')).toHaveCount(0);
+  // Redrawing seven means the extra card goes to the bottom by hand, so the step says so.
+  await expect(alice.locator('.setup-headline')).toContainText(
+    'Mulligan 1: put 1 card on the bottom — right-click it and choose Bottom.'
+  );
 
   // Keeping is reported to the other seat, not just this one.
   await alice.getByRole('button', { name: 'Keep', exact: true }).click();
-  await expect(alice.locator('.setup-kept')).toBeVisible();
+  await expect(alice.locator('.setup-kept')).toHaveText('You kept.');
 
   // "You kept." is prose, and sits on the line with the step's other prose rather than in among
   // the buttons — same row, same baseline, whatever the two of them say.
@@ -46,6 +50,11 @@ test('mulligan, keep, and the host starting the game', async ({ browser }) => {
 
   await expect(bob.locator('.setup-waiting')).toHaveText(/Bob/);
   await expect(bob.locator('.setup-waiting')).not.toHaveText(/Alice/);
+
+  // A non-host who has kept has nothing left to do, and is told who they are waiting on.
+  await bob.getByRole('button', { name: 'Keep', exact: true }).click();
+  await expect(bob.locator('.setup-kept')).toHaveText('You kept — waiting for the host to start the game.');
+  await expect(alice.locator('.setup-waiting')).toHaveText('Everyone has kept.');
 
   // Only the host is offered the start, and one click moves both browsers.
   await expect(bob.getByRole('button', { name: 'Start the game' })).toHaveCount(0);
