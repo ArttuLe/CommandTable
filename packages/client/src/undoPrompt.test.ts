@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { undoOutcomeText, undoPromptText, undoTallyText } from './undoPrompt.js';
+import { undoableText, undoOutcomeText, undoPromptText, undoTallyText } from './undoPrompt.js';
 
 const players = [
   { id: 'a', displayName: 'Alice' },
@@ -70,5 +70,28 @@ describe('undoOutcomeText', () => {
     expect(undoOutcomeText('cancelled', request, players, 'b')).toBe(
       'Alice’s undo was called off: someone acted before the vote finished.'
     );
+  });
+});
+
+// Undo used to be a bare button, so a misclick followed by anyone else's action turned it into a
+// vote on *their* action without a word.
+describe('undoableText', () => {
+  it('names the action Undo would take back, and whose it is', () => {
+    expect(undoableText({ revision: 42, actorId: 'b' }, log, players, 'a')).toBe('Bob moved Sol Ring to graveyard');
+  });
+
+  it('calls your own action yours', () => {
+    expect(undoableText({ revision: 41, actorId: 'a' }, log, players, 'a')).toBe('you drew a card');
+  });
+
+  it('names the card the line is about', () => {
+    const tapLog = [{ revision: 42, actorId: 'b', text: 'tapped a permanent' }];
+    expect(undoableText({ revision: 42, actorId: 'b' }, tapLog, players, 'a', 'Sol Ring')).toBe('Bob tapped Sol Ring');
+  });
+
+  // A client that joined late may not hold the line; it still knows whose action it is.
+  it("falls back to whose action it is when the line isn't in this client's log", () => {
+    expect(undoableText({ revision: 7, actorId: 'b' }, log, players, 'a')).toBe('Bob’s last action');
+    expect(undoableText({ revision: 7, actorId: 'a' }, log, players, 'a')).toBe('your last action');
   });
 });

@@ -25,7 +25,7 @@ import { ConfirmDialog } from './ConfirmDialog.js';
 import { HelpButton } from './HelpDialog.js';
 import { ManaChoice, type ManaChoicePrompt } from './ManaChoice.js';
 import { manaToRemove } from './manaSources.js';
-import { undoneEntry, undoPromptText, undoTallyText } from './undoPrompt.js';
+import { undoableText, undoneEntry, undoPromptText, undoTallyText } from './undoPrompt.js';
 import { useSubjectName } from './useCard.js';
 import { fanOverlap } from './handFan.js';
 
@@ -79,6 +79,7 @@ export function Table() {
   const playerId = useStore((s) => s.playerId)!;
   const act = useStore((s) => s.act);
   const pendingUndoRequest = useStore((s) => s.pendingUndoRequest);
+  const undoable = useStore((s) => s.undoable);
   const send = useStore((s) => s.send);
   const roomState = useStore((s) => s.roomState);
 
@@ -146,11 +147,20 @@ export function Table() {
     resetMana();
   }, [act, playerId, resetMana]);
 
-  // Which revision one step back actually is belongs to the server: a revert carries older
-  // content under a newer number, so only the history can say (see tableHistory.ts). No
-  // confirmation in front of it either — undoing your own last action is the common case and is
-  // instant, and anything further back already has the table's vote in front of it.
-  const undoLast = useCallback(() => send({ t: 'undo' }), [send]);
+  // Which action one step back takes back belongs to the server: a revert carries older content
+  // under a newer number, so only the history can say (see tableHistory.ts), and it sends that
+  // with each state. Your own action undoes at once, the common case. Someone else's asks you
+  // first: a misclick followed by anyone else acting used to turn Undo into a vote on *their*
+  // action without a word.
+  const undoingName = useSubjectName(undoable ? tableState.log.find((e) => e.revision === undoable.revision)?.subject : undefined);
+  const undoing = undoable ? undoableText(undoable, tableState.log, tableState.players, playerId, undoingName) : null;
+  const [confirmingUndo, setConfirmingUndo] = useState(false);
+  const undoMine = undoable?.actorId === playerId;
+  const undoLast = useCallback(() => {
+    if (!undoable) return;
+    if (undoMine) send({ t: 'undo' });
+    else setConfirmingUndo(true);
+  }, [send, undoable, undoMine]);
 
   // Keyboard shortcuts for the high-frequency actions, listed by the `?` in the status bar
   // (HelpDialog). Gated on not-typing-in-an-input so it doesn't fire while the chat box or a
@@ -479,7 +489,7 @@ export function Table() {
             onPassTurn={requestPassTurn}
             onUntapAll={untapAll}
             onUndo={undoLast}
-            canUndo={tableState.revision > 0}
+            undoing={undoing}
           />
           {/* Overlapping fan rather than a second row: a big hand must not steal height from
               the table — and the overlap tightens only as far as it has to, so it doesn't steal
@@ -538,6 +548,19 @@ export function Table() {
             passTurn();
           }}
           onCancel={() => setConfirmingPass(false)}
+        />
+      )}
+
+      {confirmingUndo && (
+        <ConfirmDialog
+          title="Undo someone else’s action?"
+          message={`Undo: ${undoing ?? 'the last action'}. It isn’t your action, so the table votes on it.`}
+          confirmLabel="Ask the table"
+          onConfirm={() => {
+            setConfirmingUndo(false);
+            send({ t: 'undo' });
+          }}
+          onCancel={() => setConfirmingUndo(false)}
         />
       )}
 

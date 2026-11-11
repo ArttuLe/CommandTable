@@ -27,13 +27,13 @@ interface ActionBarProps {
   onPassTurn: () => void;
   /** Also owned by Table: untapping everything empties the mana pad with it. */
   onUntapAll: () => void;
-  /** Table's too: the rewind is a table-wide thing, not one of your own actions. */
+  /** Table's too: the rewind is a table-wide thing, and someone else's action asks first. */
   onUndo: () => void;
-  /** False at revision 0, where there is nothing behind the table to go back to. */
-  canUndo: boolean;
+  /** What Undo would take back ("Bob drew a card"), or null when there is nothing to. */
+  undoing: string | null;
 }
 
-export function ActionBar({ playerId, isMyTurn, onPassTurn, onUntapAll, onUndo, canUndo }: ActionBarProps) {
+export function ActionBar({ playerId, isMyTurn, onPassTurn, onUntapAll, onUndo, undoing }: ActionBarProps) {
   const act = useStore((s) => s.act);
 
   return (
@@ -43,13 +43,17 @@ export function ActionBar({ playerId, isMyTurn, onPassTurn, onUntapAll, onUndo, 
       </button>
       {/* Out here rather than in the menu: it is the control you reach for the instant you
           notice a mistake, and a mistake is exactly when hunting through a popover is worst. */}
+      {/* Says what it would take back: after a misclick, anyone else acting first moves it on to
+          their action. The full line is the title; the button only has room for its start. */}
       <button
         className="btn btn-lg"
-        title="Take back the last action — instant if it was yours, otherwise the table votes"
-        disabled={!canUndo}
+        title={undoing ? `Undo: ${undoing}` : 'Nothing to undo'}
+        aria-label={undoing ? `Undo: ${undoing}` : 'Undo'}
+        disabled={!undoing}
         onClick={onUndo}
       >
         Undo
+        {undoing && <span className="undo-what">{undoing}</span>}
       </button>
       <button className="btn btn-lg" title="Shortcut: U" onClick={onUntapAll}>
         Untap all

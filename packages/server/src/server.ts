@@ -117,12 +117,17 @@ function broadcastRoomState(room: Room): void {
 }
 
 function broadcastTableState(roomId: RoomId): void {
-  const table = tablesByRoom.get(roomId);
   const sockets = socketsByRoom.get(roomId);
-  if (!table || !sockets) return;
+  if (!sockets) return;
   for (const [playerId, socket] of sockets) {
-    send(socket, { t: 'state', state: projectFor(table, playerId) });
+    sendTableState(socket, roomId, playerId);
   }
+}
+
+function sendTableState(socket: WebSocket, roomId: RoomId, playerId: PlayerId): void {
+  const table = tablesByRoom.get(roomId);
+  if (!table) return;
+  send(socket, { t: 'state', state: projectFor(table, playerId), undoable: historiesByRoom.get(roomId)?.undoable() ?? null });
 }
 
 function registerSocket(roomId: RoomId, playerId: PlayerId, socket: WebSocket): void {
@@ -174,9 +179,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
       send(socket, { t: 'joined', playerId: result.playerId, roomState: room.toState(), rejoinToken: result.rejoinToken });
       broadcastRoomState(room);
       sessions.markDirty();
-      if (tablesByRoom.has(room.roomId)) {
-        send(socket, { t: 'state', state: projectFor(tablesByRoom.get(room.roomId)!, result.playerId) });
-      }
+      sendTableState(socket, room.roomId, result.playerId);
       // A returning player changes the tally, and has to be shown a vote that opened while they
       // were away — or nobody can vote on it, and the requester can't ask again until someone acts.
       progressUndo(room);

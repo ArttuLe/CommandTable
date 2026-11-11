@@ -20,10 +20,7 @@ export function applyUndo(current: TableState, target: TableState, actorId: Play
   const revision = current.revision + 1;
   const timestamp = Date.now();
 
-  const entries: LogEntry[] = [
-    ...current.log,
-    { revision, timestamp, actorId, text: 'reverted the game to an earlier point', visibility: { kind: 'all' }, undoable: false },
-  ];
+  const entries: LogEntry[] = [...current.log, { revision, timestamp, actorId, ...undoneLine(current, target), visibility: { kind: 'all' }, undoable: false }];
   if (leakedTo.length > 0) {
     entries.push({
       revision,
@@ -36,6 +33,15 @@ export function applyUndo(current: TableState, target: TableState, actorId: Play
   }
 
   return { state: { ...target, log: entries, revision }, leakedTo };
+}
+
+// Names what was taken back — the action that produced the revision after the target — in the
+// words its own line used, keeping its card reference so the client can name the card (logText.ts).
+function undoneLine(current: TableState, target: TableState): Pick<LogEntry, 'text' | 'subject'> {
+  const undone = current.log.find((e) => e.revision === target.revision + 1);
+  if (!undone) return { text: 'reverted the game to an earlier point' };
+  const who = current.players.find((p) => p.id === undone.actorId)?.displayName ?? undone.actorId;
+  return { text: `undid: ${who} ${undone.text}`, subject: undone.subject };
 }
 
 function computeLeakedViewers(current: TableState, target: TableState): PlayerId[] {

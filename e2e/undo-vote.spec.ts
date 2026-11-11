@@ -15,9 +15,10 @@ test('the whole table sees the vote, its tally, and how it ended', async ({ brow
   const carol = await openSeat(browser, 3, 'Carol');
   await startPlay(alice, [bob, carol]);
 
-  // Alice's action, so Bob can't take it back on his own: it goes to a vote.
+  // Alice's action, so Bob can't take it back on his own: he is asked, then it goes to a vote.
   await playFromHand(alice);
   await bob.keyboard.press('z');
+  await bob.getByRole('dialog').getByRole('button', { name: 'Ask the table' }).click();
 
   // Bob's own approval is already in, so he waits rather than votes.
   await expect(bob.locator('.undo-request')).toContainText('Waiting for the table to approve your undo');

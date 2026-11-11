@@ -63,7 +63,20 @@ describe('applyUndo', () => {
     const outcome = applyUndo(current, target, ALICE);
 
     expect(outcome.state.log[0].text).toBe('did a thing');
-    expect(outcome.state.log.at(-1)?.text).toContain('reverted');
+    expect(outcome.state.log.at(-1)?.revision).toBe(3);
+  });
+
+  // "reverted the game to an earlier point" said nothing about what had been taken back.
+  it('says which action the revert took back, and keeps its card reference', () => {
+    const target = makeState([], 1);
+    const current = makeState([], 2);
+    current.log = [
+      { revision: 2, timestamp: 0, actorId: BOB, text: 'tapped a permanent', visibility: { kind: 'all' }, undoable: true, subject: { name: 'Sol Ring' } },
+    ];
+
+    const line = applyUndo(current, target, ALICE).state.log.at(-1);
+
+    expect(line).toMatchObject({ actorId: ALICE, text: 'undid: Bob tapped a permanent', subject: { name: 'Sol Ring' } });
   });
 
   it('reports no leaked viewers when nothing hidden changes visibility', () => {

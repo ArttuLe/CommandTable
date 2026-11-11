@@ -113,4 +113,30 @@ describe('TableHistory', () => {
     expect(history.canSelfUndo(ALICE)).toBe(false);
     expect(history.canSelfUndo(BOB)).toBe(true);
   });
+
+  // What the client names on its Undo button, and whether it asks before a vote.
+  it('undoable names the action the table sits on, and whose it is', () => {
+    const history = new TableHistory(stateAt(0));
+    expect(history.undoable()).toBeNull();
+    history.record(ALICE, stateAt(1));
+    history.record(BOB, stateAt(2));
+    expect(history.undoable()).toEqual({ revision: 2, actorId: BOB });
+  });
+
+  it('undoable follows a revert back to the action it left the table on', () => {
+    const history = new TableHistory(stateAt(0));
+    history.record(ALICE, stateAt(1));
+    history.record(BOB, stateAt(2));
+    history.recordRevert(ALICE, stateAt(3), 1);
+    expect(history.undoable()).toEqual({ revision: 1, actorId: ALICE });
+    history.recordRevert(ALICE, stateAt(4), 0);
+    expect(history.undoable()).toBeNull();
+  });
+
+  it('undoable is null once the snapshot to go back to has left the buffer', () => {
+    const history = new TableHistory(stateAt(0), 1);
+    history.record(ALICE, stateAt(1));
+    history.record(BOB, stateAt(2));
+    expect(history.undoable()).toBeNull();
+  });
 });
