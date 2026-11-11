@@ -25,3 +25,18 @@ test('names and life totals stay readable at Fit', async ({ browser }) => {
     for (const px of heights) expect(px, selector).toBeGreaterThanOrEqual(floor);
   }
 });
+
+test('the unread badge is at least 11px', async ({ browser }) => {
+  // Four seats: a chat line is the only thing written, and no spec in the bucket reads chat.
+  const alice = await openSeat(browser, 4, 'Alice');
+  const bob = await openSeat(browser, 4, 'Bob');
+  await startPlay(alice, [bob]);
+
+  await bob.keyboard.press('c');
+  await bob.getByPlaceholder('Say something…').fill('gg');
+  await bob.getByRole('button', { name: 'Send' }).click();
+
+  const badge = alice.locator('.chat-strip .unread-badge');
+  await expect(badge).toBeVisible();
+  expect(await badge.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(11);
+});

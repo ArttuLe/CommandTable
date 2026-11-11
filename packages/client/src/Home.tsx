@@ -51,12 +51,10 @@ export function Home() {
           same size and loses only the accent — hosting is a normal thing to do, not a fallback. */}
       <div className="home-actions">
         <div className="home-join">
-          <input
-            value={roomCode}
-            onChange={(e) => setRoomCode(e.target.value)}
-            placeholder="Room code"
-            maxLength={6}
-          />
+          <label>
+            Room code
+            <input value={roomCode} onChange={(e) => setRoomCode(e.target.value)} maxLength={6} />
+          </label>
           <button className="btn btn-lg btn-primary" disabled={!canJoin || !roomCode.trim()} onClick={handleJoin}>
             Join room
           </button>
@@ -68,6 +66,8 @@ export function Home() {
           {busy ? 'Creating…' : 'Create room'}
         </button>
       </div>
+
+      {!canJoin && <p className="popover-note">Enter your name and the passphrase to join or create a room.</p>}
     </div>
   );
 }

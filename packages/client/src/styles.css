@@ -236,12 +236,16 @@ input[type='checkbox'] {
 
 .home-join {
    display: flex;
+   align-items: flex-end;
    gap: 0.5rem;
 }
 
-.home-join input {
+.home-join label {
    flex: 1;
    min-width: 0;
+}
+
+.home-join input {
    font-family: monospace;
    letter-spacing: 0.12em;
    text-transform: uppercase;
@@ -2330,7 +2334,7 @@ button.vital:hover {
 .unread-badge {
    background: var(--accent);
    color: #0c1116;
-   font-size: 0.65rem;
+   font-size: 0.7rem;
    font-weight: 700;
    border-radius: 999px;
    padding: 0.05rem 0.3rem;
