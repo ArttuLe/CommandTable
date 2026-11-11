@@ -17,6 +17,8 @@ export function HelpButton() {
   // Focus comes back to the button on close, so a keyboard user isn't dropped at the top of the
   // document — and the next keystroke reaches the table, not nothing.
   const ref = useRef<HTMLButtonElement>(null);
+  // The store outlives the table: help left open when the game ends must not greet the next one.
+  useEffect(() => () => useUiStore.setState({ helpOpen: false }), []);
 
   return (
     <>
