@@ -5,4 +5,5 @@ data/
 test-results/
 playwright-report/
 .claude/*
-.claude/.impeccable/
+.claude/
+.impeccable/
