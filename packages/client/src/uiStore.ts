@@ -9,6 +9,9 @@ import type { ReplaceableZone } from './commanderPrompt.js';
 
 export type ManaColor = 'W' | 'U' | 'B' | 'R' | 'G' | 'C';
 
+/** What a colour is called aloud: an emblem or a lone "W" says nothing to a screen reader. */
+export const MANA_NAMES: Record<ManaColor, string> = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green', C: 'colourless' };
+
 const EMPTY_MANA_POOL: Record<ManaColor, number> = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
 
 interface UiStore {
