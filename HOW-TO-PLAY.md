@@ -48,7 +48,8 @@ Tick **Ready** when you are. The host starts the game when the table is.
 
 Everyone is dealt seven. Read your hand (hover a card to see it full size), then:
 
-- **Mulligan** shuffles your hand back and deals seven new cards.
+- **Mulligan** shuffles your hand back and deals seven new cards. The strip says how many to put
+  on the bottom: right-click each and choose **Bottom**.
 - **Keep** settles your hand. The strip above your hand shows who is still deciding.
 
 Nothing in your hand can be played yet. The host presses **Start the game** to begin turn 1. They
@@ -125,8 +126,8 @@ log names the cards everyone could see, such as "Alice moved Sol Ring to the bat
 
 ## Mistakes and undo
 
-**Undo** (or `Z`) takes back the last action. If it was yours and nobody has acted since, it is
-instant. Otherwise the table votes: everyone sees what would be undone and how many approvals it
+**Undo** (or `Z`) takes back the last action, and the button says which. If it was yours and
+nobody has acted since, it is instant. Otherwise it asks you first, then the table votes: everyone sees what would be undone and how many approvals it
 needs, and approves or rejects it. The result is announced either way. An undo can't make anyone
 forget what they saw; if it hides something again, the log says so.
 

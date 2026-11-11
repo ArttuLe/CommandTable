@@ -110,7 +110,8 @@ npm run test:e2e     # Playwright, e2e/
 and the specs with `npx tsc -p e2e`.
 
 The Playwright suite starts its own server and client on ports 8091/5174, so it doesn't disturb a
-`npm run dev` already running. It needs the card index and skips itself without one. It runs in
+`npm run dev` already running (`E2E_SERVER_PORT` and `E2E_CLIENT_PORT` override them, so two
+checkouts can run it at once). It needs the card index and skips itself without one. It runs in
 about fifteen seconds. Specs share one dev table per seat count, so read the comment at the top of
 `e2e/seat.ts` before adding one.
 
