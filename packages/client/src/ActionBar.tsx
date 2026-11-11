@@ -22,6 +22,8 @@ import { CommanderDamageIcon, LifeIcon, ManaEmblem, PoisonIcon, TotalIcon } from
 
 interface ActionBarProps {
   playerId: PlayerId;
+  /** False during opening hands: there is no turn yet to draw for, untap in or pass. */
+  gameStarted: boolean;
   isMyTurn: boolean;
   /** Owned by Table: passing out of turn has a dialog in front of it (see ConfirmDialog). */
   onPassTurn: () => void;
@@ -33,12 +35,14 @@ interface ActionBarProps {
   undoing: string | null;
 }
 
-export function ActionBar({ playerId, isMyTurn, onPassTurn, onUntapAll, onUndo, undoing }: ActionBarProps) {
+export function ActionBar({ playerId, gameStarted, isMyTurn, onPassTurn, onUntapAll, onUndo, undoing }: ActionBarProps) {
   const act = useStore((s) => s.act);
+  // One title for the three turn actions while there is no turn, so a dead button says why.
+  const turnTitle = (shortcut: string) => (gameStarted ? `Shortcut: ${shortcut}` : 'Not until the game starts');
 
   return (
     <div className="action-bar">
-      <button className="btn btn-lg" title="Shortcut: D" onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>
+      <button className="btn btn-lg" title={turnTitle('D')} disabled={!gameStarted} onClick={() => act({ t: 'DRAW', playerId, count: 1 })}>
         Draw
       </button>
       {/* Out here rather than in the menu: it is the control you reach for the instant you
@@ -55,12 +59,15 @@ export function ActionBar({ playerId, isMyTurn, onPassTurn, onUntapAll, onUndo, 
         Undo
         {undoing && <span className="undo-what">{undoing}</span>}
       </button>
-      <button className="btn btn-lg" title="Shortcut: U" onClick={onUntapAll}>
+      <button className="btn btn-lg" title={turnTitle('U')} disabled={!gameStarted} onClick={onUntapAll}>
         Untap all
       </button>
+      {/* Primary only when it is the thing to press: on someone else's turn it still works (with a
+          confirm), but it is the button you should not reach for. */}
       <button
-        className={`btn btn-lg btn-primary ${isMyTurn ? 'urgent' : ''}`}
-        title="Shortcut: P"
+        className={`btn btn-lg ${isMyTurn ? 'btn-primary' : ''}`}
+        title={turnTitle('P')}
+        disabled={!gameStarted}
         onClick={onPassTurn}
       >
         Pass turn

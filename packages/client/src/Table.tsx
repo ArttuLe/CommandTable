@@ -120,7 +120,8 @@ export function Table() {
 
   // Before the host starts the game, whose turn it is doesn't mean anything yet (the pill says
   // "Opening hands"), so nothing may glow at you to end it.
-  const isMyTurn = tableState.setupComplete && tableState.turn.activePlayerId === playerId;
+  const { setupComplete } = tableState;
+  const isMyTurn = setupComplete && tableState.turn.activePlayerId === playerId;
   // The card a pending undo is about, named for the voters (see logText.ts).
   const undoneName = useSubjectName(pendingUndoRequest ? undoneEntry(pendingUndoRequest, tableState.log)?.subject : undefined);
 
@@ -174,13 +175,17 @@ export function Table() {
       // A dialog answers its own keys; the table's shortcuts stay out of the way while one is up.
       if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target) || dialogOpen) return;
       switch (e.key.toLowerCase()) {
+        // The turn actions wait for the game, as their buttons do (ActionBar).
         case 'd':
+          if (!setupComplete) return;
           act({ t: 'DRAW', playerId, count: 1 });
           break;
         case 'u':
+          if (!setupComplete) return;
           untapAll();
           break;
         case 'p':
+          if (!setupComplete) return;
           requestPassTurn();
           break;
         case '+':
@@ -215,7 +220,7 @@ export function Table() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [act, playerId, dialogOpen, requestPassTurn, toggleChatRail, toggleLogRail, undoLast, untapAll]);
+  }, [act, playerId, setupComplete, dialogOpen, requestPassTurn, toggleChatRail, toggleLogRail, undoLast, untapAll]);
 
   const objects = Object.values(tableState.objects);
 
@@ -485,6 +490,7 @@ export function Table() {
         <div className="hud-row">
           <ActionBar
             playerId={playerId}
+            gameStarted={setupComplete}
             isMyTurn={isMyTurn}
             onPassTurn={requestPassTurn}
             onUntapAll={untapAll}
