@@ -70,7 +70,7 @@ export function ZoneDock({
           key={zone.key}
           className={`zone-tile ${openKey === zone.key ? 'open' : ''}`}
           // `count`, not `objects.length`: for the library the two differ. `count` is the real
-          // size, while `objects` holds only what a search or peek revealed (§9.2) — so a freshly
+          // size, while `objects` holds only what a search or peek revealed — so a freshly
           // shuffled 99-card library shows nothing here and must still be openable.
           disabled={zone.count === 0}
           title={zone.count === 0 ? `${zone.label} — empty` : `Open ${zone.label.toLowerCase()}`}

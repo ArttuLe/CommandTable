@@ -98,7 +98,7 @@ describe('applyAction: MOVE_OBJECT', () => {
     expect(state.objects['c1'].zone).toEqual({ playerId: ALICE, zone: 'library' });
   });
 
-  it('increments the owner\'s commander tax count when a commander is cast from the command zone (§12.2)', () => {
+  it('increments the owner\'s commander tax count when a commander is cast from the command zone', () => {
     const state = makeState([card({ id: 'cmd1', zone: { playerId: ALICE, zone: 'commandZone' } })]);
     state.players[0].commanderIds = ['cmd1'];
 
@@ -324,7 +324,7 @@ describe('applyAction: PASS_TURN', () => {
     expect(result.state.turn.activePlayerId).toBe('carol');
   });
 
-  it('untaps the new active player\'s battlefield permanents (§16.3 "untap bundle")', () => {
+  it('untaps the new active player\'s battlefield permanents (untap bundle)', () => {
     const state = makeState([
       card({ id: 'bobTapped', controllerId: BOB, zone: { playerId: BOB, zone: 'battlefield' }, tapped: true }),
       card({ id: 'aliceTapped', controllerId: ALICE, zone: { playerId: ALICE, zone: 'battlefield' }, tapped: true }),
@@ -377,7 +377,7 @@ describe('applyAction: PASS_TURN', () => {
   });
 
   it('leaves a vigilant attacker untapped if the player already untapped it', () => {
-    // Nothing here enforces rules (§1.1) — tapping is a convenience, and a player who says a
+    // Nothing here enforces rules — tapping is a convenience, and a player who says a
     // creature has vigilance just untaps it. What must not happen is the tap coming back.
     const state = makeState([
       card({ id: 'attacker', controllerId: ALICE, zone: { playerId: ALICE, zone: 'battlefield' }, markers: ['attacking'], tapped: true }),
@@ -419,7 +419,7 @@ describe('applyAction: PASS_TURN', () => {
   });
 });
 
-describe('log entries (§15.1: every action produces one)', () => {
+describe('log entries (every action produces one)', () => {
   it('appends a public log entry attributed to the given actor, at the new revision', () => {
     const state = makeState([card({ id: 'c1' })]);
     const result = applyAction(state, { t: 'TAP', objectId: 'c1' }, BOB);
@@ -538,7 +538,7 @@ describe('applyAction: an action that changes nothing', () => {
   });
 });
 
-// §9.3: opening dev tools shouldn't spoil a game. A card everyone saw on the battlefield kept its id
+// Opening dev tools shouldn't spoil a game. A card everyone saw on the battlefield kept its id
 // when it went to a hand or turned face down, so the redacted object each opponent received still
 // said exactly which card it was.
 describe('fresh ids when a card goes out of sight', () => {

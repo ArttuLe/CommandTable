@@ -1,6 +1,6 @@
-// Card reference index, per design doc §5.2. Persisted on disk (not user state — see §4's
-// clarification), with the game process holding only what a given game touches in RAM (§5.2.3,
-// handled by the OS page cache / SQLite itself rather than a bespoke LRU for now).
+// Card reference index. Persisted on disk (static public reference data, not user state), with
+// the game process holding only what a given game touches in RAM (handled by the OS page cache
+// / SQLite itself rather than a bespoke LRU for now).
 
 import type Database from 'better-sqlite3';
 import type { Card, CardFace } from '@command-table/common';

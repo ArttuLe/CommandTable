@@ -1,6 +1,5 @@
-// The projection boundary is the one place the design doc calls out for thorough testing (§9.1,
-// §18): "for any state and any viewer, assert that no hidden object's source appears anywhere
-// in the projected output."
+// The projection boundary is the one place that calls for thorough testing: for any state and
+// any viewer, assert that no hidden object's source appears anywhere in the projected output.
 
 import { describe, expect, it } from 'vitest';
 import { projectFor } from './projection.js';
@@ -171,7 +170,7 @@ describe('projectFor', () => {
     }
   });
 
-  it('filters log entries by visibility just like objects (§15.1: private entries are projected)', () => {
+  it('filters log entries by visibility just like objects (private entries are projected)', () => {
     const state = makeState(
       [],
       [

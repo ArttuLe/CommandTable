@@ -127,7 +127,7 @@ export function Table() {
   // turn — one dialog in front of both the button and the shortcut (see turnStatus.ts).
   const [confirmingPass, setConfirmingPass] = useState(false);
   // Floating mana does not survive the end of a turn, so passing empties the pad the same way
-  // untapping does. It is client-local either way (§8.4), so this is a local reset and not an
+  // untapping does. It is client-local either way, so this is a local reset and not an
   // action — nobody else's pad is anyone's business.
   const passTurn = useCallback(() => {
     act({ t: 'PASS_TURN' });
@@ -152,7 +152,7 @@ export function Table() {
   // instant, and anything further back already has the table's vote in front of it.
   const undoLast = useCallback(() => send({ t: 'undo' }), [send]);
 
-  // §16.2 keyboard shortcuts for the high-frequency actions, listed by the `?` in the status bar
+  // Keyboard shortcuts for the high-frequency actions, listed by the `?` in the status bar
   // (HelpDialog). Gated on not-typing-in-an-input so it doesn't fire while the chat box or a
   // dialog's own field has focus.
   useEffect(() => {
@@ -216,7 +216,7 @@ export function Table() {
   const myHand = inZone(playerId, 'hand');
   const fan = useFanOverlap(myHand.length);
 
-  // §12.3: every commander on the table, for the boards' damage badges and the commander
+  // Every commander on the table, for the boards' damage badges and the commander
   // prompt; your own HUD only offers the ones that can actually hit you.
   const allCommanders: CommanderRef[] = tableState.players.flatMap((owner) =>
     owner.commanderIds.map((id) => ({
@@ -238,7 +238,7 @@ export function Table() {
   const me = tableState.players.find((p) => p.id === playerId)!;
   const opposingCommanders = allCommanders.filter((c) => c.ownerId !== playerId);
 
-  // §12: your own commanders only — whether one goes to the command zone instead of staying dead
+  // Your own commanders only — whether one goes to the command zone instead of staying dead
   // is its owner's call, and nobody else's to be nagged about.
   const prompts = commanderPrompts(tableState.objects, me.commanderIds, dismissedCommanders);
   // A "Leave it" lasts as long as the commander stays where it was left (see spentDismissals).
@@ -256,7 +256,7 @@ export function Table() {
       label: 'Library',
       count: tableState.libraryCounts[playerId],
       // Only cards SEARCH_LIBRARY/PEEK_TOP made visible are in tableState.objects at all —
-      // everything else in a library is omitted from the projection entirely (§9.2).
+      // everything else in a library is omitted from the projection entirely.
       objects: inZone(playerId, 'library'),
       note: 'Only cards you searched or peeked at are shown.',
       onMove: (move, obj) =>
@@ -373,7 +373,7 @@ export function Table() {
                   seat={seat}
                   // No turn has started during opening hands, so no mat is lit for one either.
                   turn={tableState.setupComplete ? turnHighlight(player.id, tableState.turn, playerId) : null}
-                  // Hand and library are counted by the server (§9.2); graveyard and exile are
+                  // Hand and library are counted by the server; graveyard and exile are
                   // public zones and counted off the projection, the same way the dock does it.
                   counts={{
                     hand: tableState.handCounts[player.id],
@@ -386,7 +386,7 @@ export function Table() {
                   allCommanders={allCommanders}
                   commanderCastCount={player.commanderCastCount}
                   // Tapping your own permanent also fills your mana pad with what it makes
-                  // (§8.4 — the pad is client-local, so this never leaves the browser). One
+                  // (the pad is client-local, so this never leaves the browser). One
                   // symbol goes straight in; a dual asks which, at the cursor.
                   onTapToggle={(obj, produces, e) => {
                     act({ t: obj.tapped ? 'UNTAP' : 'TAP', objectId: obj.id });
@@ -406,9 +406,9 @@ export function Table() {
                   onCastCommander={
                     isSelf
                       ? (obj) => {
-                          // Two steps so §12.2's tax tracking (command zone -> stack) fires; the
-                          // doc treats the stack itself as a non-goal (§1.3: "no stack
-                          // resolution"), so resolving straight to the battlefield is fair.
+                          // Two steps so commander tax tracking (command zone -> stack) fires;
+                          // the stack itself is a non-goal (no stack resolution), so resolving
+                          // straight to the battlefield is fair.
                           act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: { zone: 'stack' } });
                           act({ t: 'MOVE_OBJECT', objectId: obj.id, toZone: { playerId, zone: 'battlefield' } });
                         }
@@ -461,7 +461,7 @@ export function Table() {
             onPoisonDelta={(amount) =>
               act({ t: 'SET_PLAYER_COUNTER', playerId, key: 'poison', update: { mode: 'delta', amount } })
             }
-            // Commander damage is also life lost (§12.3), and tracking it twice by hand is how
+            // Commander damage is also life lost, and tracking it twice by hand is how
             // the two readouts drift apart. Both halves are separate actions, so one undo reverts
             // one half — acceptable next to always having to remember the second click.
             onCommanderDamageDelta={(fromCommanderObjectId, amount) => {
@@ -495,7 +495,7 @@ export function Table() {
               <CardTile
                 key={obj.id}
                 obj={obj}
-                // A double-click, per §16.2: playing reveals the card to everyone and can't be taken
+                // A double-click: playing reveals the card to everyone and can't be taken
                 // back, and a single click is how people look at one. Not at all during opening
                 // hands — the hand is there to be judged, and a card played then is a misclick.
                 onDoubleClick={

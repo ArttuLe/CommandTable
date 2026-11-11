@@ -1,7 +1,7 @@
-// Maps a raw Scryfall bulk-data card object to our display-only Card type, per design doc §5.1.
+// Maps a raw Scryfall bulk-data card object to our display-only Card type.
 // Multi-faced layouts (transform/MDFC/flip/split/adventure) put most display fields on
-// `card_faces` instead of the top level — we prefer the front face for those (§5.1's card_faces
-// row), since the client shows the front face by default (`currentFace: 0`, §7.1).
+// `card_faces` instead of the top level — we prefer the front face for those, since the client
+// shows the front face by default (`currentFace: 0`).
 
 import type { Card, CardFace, ImageUris } from '@command-table/common';
 

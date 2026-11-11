@@ -1,7 +1,6 @@
-// Builds the initial TableState when the host starts the game, per design doc §12.1 (commanders
-// start in the command zone), §12.5 (life 40, turn order randomized), §13 (server-side RNG), and
-// §14.1 step 5 (opening hand of 7). Sideboard/maybeboard lines are reference-only and never make
-// it to the table.
+// Builds the initial TableState when the host starts the game: commanders start in the command
+// zone, life 40, turn order randomized, server-side RNG, and an opening hand of 7.
+// Sideboard/maybeboard lines are reference-only and never make it to the table.
 
 import { randomInt as cryptoRandomInt, randomUUID } from 'node:crypto';
 import { SYSTEM_ACTOR, type Card, type GameObject, type PlayerId, type PlayerState, type ResolvedDeckLine, type ResolvedDecklist, type TableState } from '@command-table/common';
@@ -40,7 +39,7 @@ export function createTableState(params: CreateTableParams, deps: CreateTableDep
     );
     const shuffledLibrary = fisherYatesShuffle(libraryObjects, deps.randomInt);
 
-    // §14.1 step 5: "Opening hands: each player draws 7." A too-small deck just deals what's
+    // Each player draws an opening hand of 7. A too-small deck just deals what's
     // there, same as DRAW does mid-game rather than erroring.
     const handSize = Math.min(OPENING_HAND_SIZE, shuffledLibrary.length);
     const hand = shuffledLibrary.splice(0, handSize).map((obj) => ({
@@ -83,7 +82,7 @@ export function createTableState(params: CreateTableParams, deps: CreateTableDep
     // The deal is done; nobody has decided on their hand yet, and the host has not started play.
     setupComplete: false,
     // Both of these happened above, server-side and unobservably. With no engine arbitrating
-    // (§15.1, "the log is the referee"), a table that cannot see the shuffle has to be told it
+    // (the log is the referee), a table that cannot see the shuffle has to be told it
     // happened — players asked.
     log: [
       {

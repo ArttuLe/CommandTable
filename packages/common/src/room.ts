@@ -1,5 +1,5 @@
-// Lobby-scoped state, per design doc §14.1. Distinct from the in-game TableState (§7.3),
-// which doesn't exist until the host starts the game (Phase 2).
+// Lobby-scoped state. Distinct from the in-game TableState, which doesn't exist until the host
+// starts the game.
 
 import type { PlayerId, RoomId } from './ids.js';
 

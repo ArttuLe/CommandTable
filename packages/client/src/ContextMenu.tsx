@@ -1,7 +1,7 @@
-// §16.2: "Right-click (or long-press) opens a context menu with every action applicable to
-// that object." Freeform play means there's no restriction on *whose* object this can act on
-// (§10) — the menu targets the object's controller for zone moves, since that's visible even on
-// a redacted (hidden) object, unlike ownerId.
+// Right-click (or long-press) opens a context menu with every action applicable to that
+// object. Freeform play means there's no restriction on *whose* object this can act on — the
+// menu targets the object's controller for zone moves, since that's visible even on a redacted
+// (hidden) object, unlike ownerId.
 
 import { useLayoutEffect, useRef, useState } from 'react';
 import { blockMarker, isRedacted, parseTargetMarker, targetMarker, type Action, type Card, type ProjectedObject } from '@command-table/common';
@@ -172,7 +172,7 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
         )}
         {shape.transform && <button onClick={() => run(() => act({ t: 'TRANSFORM', objectId: obj.id }))}>Transform</button>}
         {/* One toggle where the object tells us which way it is facing. A redacted object doesn't
-            carry `faceDown` (§9.2 omits it), so there both directions stay on offer. */}
+            carry `faceDown` (the projection omits it), so there both directions stay on offer. */}
         {shape.faceToggle &&
           (isRedacted(obj) ? (
             <>
@@ -248,7 +248,7 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
 
         {!isRedacted(obj) && <button onClick={() => setDialog('annotation')}>Set annotation…</button>}
 
-        {/* §16.3's "create N copies of a token", minus the five prompts. */}
+        {/* Create copies of a token in one click, minus the five prompts. */}
         {duplicate && <button onClick={() => run(() => act(duplicate))}>Duplicate</button>}
 
         {!isRedacted(obj) && (obj.source.kind === 'token' || obj.source.kind === 'copy') && (

@@ -251,7 +251,7 @@ function MoreMenu({
   );
 }
 
-// §8.3 life and poison, and §12.3 commander damage, for yourself. The readouts in the board
+// Life and poison, and commander damage, for yourself. The readouts in the board
 // headers (Board.tsx) are the scoreboard everyone reads; this is the one place you write to your
 // own row of it, sat with the hand where your cursor already is rather than out on the plane.
 export function VitalsPad({
@@ -346,7 +346,7 @@ function VitalPill({
 }
 
 /**
- * §12.3 commander damage, from the side that takes it.
+ * Commander damage, from the side that takes it.
  *
  * With one opponent there is only ever one commander the damage can be coming from, so asking
  * which is a question with one answer: the pill takes −/+ directly and is the poison pill in
@@ -446,8 +446,8 @@ const MANA_COLORS: ManaColor[] = ['W', 'U', 'B', 'R', 'G', 'C'];
 /** What the steppers are called aloud: a lone "W" and two unlabelled "−"/"+" said nothing. */
 const MANA_NAMES: Record<ManaColor, string> = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green', C: 'colourless' };
 
-// §8.4 client-local mana pad: bumped as lands are tapped, spent as spells are cast, reset at
-// will. Purely client-side (uiStore) — the server has no concept of mana, per the doc.
+// Client-local mana pad: bumped as lands are tapped, spent as spells are cast, reset at
+// will. Purely client-side (uiStore) — the server has no concept of mana.
 export function ManaPad() {
   const manaPad = useUiStore((s) => s.manaPad);
   const bumpMana = useUiStore((s) => s.bumpMana);
@@ -536,8 +536,8 @@ function AddMana() {
   );
 }
 
-// §16.2 multi-select: shift-click a battlefield object to toggle it into the selection, then
-// apply a bulk action — "tap five lands" or "sacrifice all my tokens" (§16.3) as one gesture.
+// Multi-select: shift-click a battlefield object to toggle it into the selection, then
+// apply a bulk action — "tap five lands" or "sacrifice all my tokens" as one gesture.
 // Floats over the table instead of living in the layout, so its appearance doesn't shove the
 // other controls sideways mid-game.
 export function SelectionBar() {
@@ -559,7 +559,7 @@ export function SelectionBar() {
   }
 
   // Each object keeps its own controller for the graveyard move, matching the single-object
-  // context menu (§10: freeform play has no restriction on whose object an action targets).
+  // context menu (freeform play has no restriction on whose object an action targets).
   function graveyardAll() {
     live.forEach((id) => {
       const obj = objects[id];

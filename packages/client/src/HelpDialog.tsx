@@ -1,4 +1,4 @@
-// §16.2's shortcuts, written down somewhere. They were previously discoverable only as `title`
+// The keyboard shortcuts, written down somewhere. They were previously discoverable only as `title`
 // hints on three of the buttons they duplicate, which left the other half of them a secret.
 //
 // The `?` sits beside the gear in the status bar: both are about the table rather than about a

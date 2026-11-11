@@ -7,7 +7,6 @@ a log of every action, and undo.
 
 - **Playing:** [HOW-TO-PLAY.md](HOW-TO-PLAY.md)
 - **Hosting a game for friends:** [playing-with-a-friend.md](playing-with-a-friend.md)
-- **The full design:** [commander-arena-design-doc-v0.2.md](commander-arena-design-doc-v0.2.md)
 
 ## Setup
 

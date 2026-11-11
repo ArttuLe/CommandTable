@@ -1,4 +1,4 @@
-// Resolves a parsed decklist against the card index, per design doc §6.2: warn, never block.
+// Resolves a parsed decklist against the card index: warn, never block.
 
 import type { Card, DeckLine, DeckWarningKind, ParsedDecklist, ResolvedDecklist, ResolvedDeckLine } from '@command-table/common';
 

@@ -1,5 +1,5 @@
-// The single projection boundary, per design doc §9.1: "No other code path may serialize a
-// GameObject." Every outbound table-state message must go through this function.
+// The single projection boundary: no other code path may serialize a GameObject. Every
+// outbound table-state message must go through this function.
 
 import type { ClientTableState, GameObject, ObjectId, PlayerId, ProjectedObject, TableState, Visibility } from '@command-table/common';
 
@@ -28,7 +28,7 @@ function redact(obj: GameObject): ProjectedObject {
 }
 
 // Library and hand cards a viewer can't see aren't sent as redacted per-object entries at all —
-// just folded into libraryCounts/handCounts (§9.2: "do not send library object IDs in order").
+// just folded into libraryCounts/handCounts (library object IDs must not be sent in order).
 function isCountOnlyZone(obj: GameObject): boolean {
   return 'playerId' in obj.zone && (obj.zone.zone === 'library' || obj.zone.zone === 'hand');
 }

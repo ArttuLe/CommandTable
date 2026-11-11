@@ -1,4 +1,4 @@
-// The log (§15.1: "with no engine arbitrating, the log is the referee") docked beside the table
+// The log (with no engine arbitrating, it is the referee) docked beside the table
 // instead of inside a modal.
 //
 // It records play — actions and random results. The talking lives in the chat rail on the other

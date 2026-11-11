@@ -1,8 +1,7 @@
 // Ephemeral, purely client-side UI state — never mirrors the server, unlike store.ts. Currently
-// the hover-zoom preview (§16.1: "non-negotiable... players need to read cards constantly"), the
-// mana pad (§8.4: "client-local... resets at will and never leaves their browser"), and
-// multi-select (§16.2: "tap five lands" or "sacrifice all my tokens" as one gesture), plus
-// whether the log rail is docked open.
+// the hover-zoom preview (players need to read cards constantly), the mana pad (resets at will
+// and never leaves the browser), and multi-select ("tap five lands" or "sacrifice all my tokens"
+// as one gesture), plus whether the log rail is docked open.
 
 import { create } from 'zustand';
 import type { Card, ObjectId } from '@command-table/common';

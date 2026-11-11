@@ -1,7 +1,7 @@
 // Reading combat off the markers.
 //
 // None of this is a new data structure: attacking, blocking and targeting are all `markers`
-// (§7.3, "no combat state in the model"), with the block and target ones carrying the other end's
+// (no combat state in the model), with the block and target ones carrying the other end's
 // id inside the string — see packages/common/src/markers.ts, which owns that format. This module
 // is the client's read side: it turns a bag of marker strings into the relationships the arrows
 // and the badges are drawn from, in one place, so no component parses a marker itself.

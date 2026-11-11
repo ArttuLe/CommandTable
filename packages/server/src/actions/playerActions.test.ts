@@ -166,7 +166,7 @@ describe('the opening-hand step', () => {
     expect(unwrap(state, { t: 'BEGIN_PLAY' }).setupComplete).toBe(true);
   });
 
-  // §1.1: never block a legal play. A player who has wandered off must not be able to hold the
+  // Never block a legal play. A player who has wandered off must not be able to hold the
   // table hostage — the client warns the host instead.
   it('lets the host begin play even with hands still unkept', () => {
     const state = { ...makeState([]), setupComplete: false };

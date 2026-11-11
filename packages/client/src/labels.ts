@@ -1,4 +1,4 @@
-// Labels are `markers` (§8.1) — freeform strings the table agrees on, with nothing enforcing them.
+// Labels are `markers` — freeform strings the table agrees on, with nothing enforcing them.
 // This is the client's opinion about the handful that come up constantly: which ones to offer in
 // the picker, and what colour to draw them.
 //

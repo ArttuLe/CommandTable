@@ -207,7 +207,7 @@ describe('CHANGE_CONTROLLER', () => {
     const next = unwrap(state, { t: 'CHANGE_CONTROLLER', objectId: 'c1', newControllerId: BOB });
     expect(next.objects['c1'].controllerId).toBe(BOB);
     expect(next.objects['c1'].zone).toEqual({ playerId: BOB, zone: 'battlefield' });
-    expect(next.objects['c1'].ownerId).toBe(ALICE); // ownership never changes (§7.1)
+    expect(next.objects['c1'].ownerId).toBe(ALICE); // ownership never changes
   });
 });
 
@@ -267,7 +267,7 @@ describe('DELETE_OBJECT', () => {
 });
 
 describe('CHANGE_CONTROLLER', () => {
-  // Who may see a face-down permanent follows its controller (§9): the old one kept seeing it and
+  // Who may see a face-down permanent follows its controller: the old one kept seeing it and
   // the new one, who now controls a morph, couldn't look at their own card.
   it('hands the right to see a face-down permanent to its new controller', () => {
     const state = makeState([

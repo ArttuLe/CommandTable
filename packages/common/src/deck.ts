@@ -1,5 +1,5 @@
-// Decklist import, per design doc §6. Parsing is separate from resolution against the card index:
-// the parser never touches network/DB, so it stays trivially unit-testable (§18).
+// Decklist import. Parsing is separate from resolution against the card index:
+// the parser never touches network/DB, so it stays trivially unit-testable.
 
 export type DeckSection = 'commander' | 'deck' | 'sideboard' | 'maybeboard';
 

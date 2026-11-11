@@ -1,6 +1,6 @@
-// Server: lobby (Phase 1, §11/§14.1) plus in-game table state (Phase 2, §7-§9). 'start' builds
-// the initial TableState from each seat's resolved decklist; 'action' applies §8 actions to it.
-// Every outbound table snapshot goes through projectFor (§9.1) — never send a TableState raw.
+// Server: lobby plus in-game table state. 'start' builds the initial TableState from each seat's
+// resolved decklist; 'action' applies actions to it. Every outbound table snapshot goes through
+// projectFor — never send a TableState raw.
 
 import { createServer } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
@@ -37,7 +37,7 @@ const historiesByRoom = new Map<RoomId, TableHistory>();
 // the sweep below forgets idle rooms by.
 const lastActivityByRoom = new Map<RoomId, number>();
 
-// Saved games (§14.5). The callback is what gets written on every markDirty — the whole file is
+// Saved games. The callback is what gets written on every markDirty — the whole file is
 // rewritten from live state each time, so there is nothing to keep in sync by hand.
 const sessions = new SessionStore(SESSION_PATH, () => ({
   hostSecret: HOST_SECRET,
@@ -66,9 +66,9 @@ if (restored) {
   }
 }
 
-// A rewind (§15.2: rolling back further, or after others have acted) needs majority consent of
-// connected players. The doc specifies the requester-facing `undoRequest` broadcast but not how
-// players vote — `votes` fills that gap (see protocol.ts's `undoVote`/`undoResolved`).
+// A rewind (rolling back further, or after others have acted) needs majority consent of
+// connected players: the `undoRequest` broadcast puts it to the table, and `votes` collects the
+// answers (see protocol.ts's `undoVote`/`undoResolved`).
 interface PendingUndo {
   targetRevision: number;
   requesterId: PlayerId;
@@ -327,7 +327,7 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
     }
 
     // Host's escape hatch for a seat left behind by someone who is not coming back under the
-    // same name. Lobby only — mid-game a disconnected seat is sacred (§14.2).
+    // same name. Lobby only — mid-game a disconnected seat is sacred.
     case 'freeSeat': {
       const room = requireRoom(socket, state);
       if (!room || !state.playerId) return;
@@ -439,7 +439,7 @@ function requireRoom(socket: WebSocket, state: ConnectionState): Room | undefine
 }
 
 const httpServer = createServer((req, res) => {
-  // Permissive CORS: per design doc §2 this is a private, non-commercial, known-friend-group
+  // Permissive CORS: this is a private, non-commercial, known-friend-group
   // tool, and the client is served from a different origin (Vite's port) than this one, on a
   // hostname that varies with whoever is hosting. An origin allowlist can't be written down
   // ahead of time; the passphrase below is what actually gates access.
@@ -582,7 +582,7 @@ wss.on('connection', (socket) => {
       if (room && wasLive) {
         room.setConnected(state.playerId, false);
         broadcastRoomState(room);
-        // Fewer connected players can settle a vote that was waiting on them (§15.2).
+        // Fewer connected players can settle a vote that was waiting on them.
         progressUndo(room);
       }
     }

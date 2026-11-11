@@ -1,4 +1,4 @@
-// The one piece of authentication in the stack (§2 otherwise assumes a known friend group on a
+// The one piece of authentication in the stack (which otherwise assumes a known friend group on a
 // trusted network). It exists because the host runs this on their own laptop: the transport
 // decides who can reach the port, this decides who can sit down at the table.
 

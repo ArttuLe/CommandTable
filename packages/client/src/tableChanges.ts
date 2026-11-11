@@ -34,7 +34,7 @@ export function changedObjectIds(
 
 /** Only the fields a tile actually draws (see CardTile) — everything else moves nothing. */
 function sameOnTile(a: ProjectedObject, b: ProjectedObject): boolean {
-  // A redacted projection omits fields rather than sending them blank (§9.2), so read the ones
+  // A redacted projection omits fields rather than sending them blank, so read the ones
   // only a full object has through its absence.
   const fullA = isRedacted(a) ? null : a;
   const fullB = isRedacted(b) ? null : b;

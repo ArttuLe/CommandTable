@@ -1,5 +1,5 @@
-// In-game table state, per design doc §7.3 and §10. Distinct from the lobby's RoomState
-// (room.ts), which is what exists before the host starts the game.
+// In-game table state. Distinct from the lobby's RoomState (room.ts), which is what exists
+// before the host starts the game.
 
 import type { PlayerId } from './ids.js';
 import type { GameObject, ObjectId, Visibility } from './objects.js';
@@ -44,16 +44,16 @@ export interface TableState {
   /**
    * False between the deal and the host starting play — the mulligan step.
    *
-   * §14.1 deals opening hands and drops straight into turn 1, which left no moment to mulligan
+   * Dealing opening hands used to drop straight into turn 1, which left no moment to mulligan
    * in: the game was already underway, so a mulligan was something you did *during* your first
-   * turn. This marks out that moment. It gates nothing — per §1.1 the host can begin whenever
+   * turn. This marks out that moment. It gates nothing — the host can begin whenever
    * they like, whatever anyone has or hasn't kept — it only tells the client to show the
    * mulligan step instead of the usual turn chrome.
    */
   setupComplete: boolean;
 }
 
-// The redacted shape sent to a client for an object it may not see, per design doc §9.2:
+// The redacted shape sent to a client for an object it may not see:
 // omit `source`, `ownerId`, and `annotation` entirely rather than send them with a flag.
 export interface RedactedObject {
   id: ObjectId;

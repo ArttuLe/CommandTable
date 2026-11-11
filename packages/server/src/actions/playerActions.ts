@@ -1,5 +1,5 @@
-// §8.3 player actions (Phase 3). ROLL_DICE/FLIP_COIN/CONCEDE/SAY are deferred to Phase 4 —
-// the doc ties their results to the game log, which doesn't exist yet.
+// Player actions. ROLL_DICE/FLIP_COIN/CONCEDE/SAY are in metaActions.ts instead, since their
+// results go into the game log.
 
 import type { Action, PlayerState, TableState } from '@command-table/common';
 import { applyCounterUpdate, err, ok, requirePlayer, withObject, type ApplyResult } from './helpers.js';
@@ -100,7 +100,7 @@ export function keepHand(state: TableState, action: Extract<Action, { t: 'KEEP_H
 /**
  * Ends the opening-hand step and starts turn 1.
  *
- * Deliberately not conditional on everyone having kept (§1.1, "never block a legal play"): a
+ * Deliberately not conditional on everyone having kept (never block a legal play): a
  * player who has wandered off shouldn't be able to hold the table hostage, and the client warns
  * the host rather than disabling the button.
  */

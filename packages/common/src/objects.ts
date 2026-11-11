@@ -1,6 +1,6 @@
-// The table's core model, per design doc §7.1-7.2. Everything on the table is a GameObject;
-// zones are a field on the object, not arrays objects are spliced between (§7.1's rationale:
-// this makes zone changes a single-field write and eliminates duplicate-on-move bugs).
+// The table's core model. Everything on the table is a GameObject; zones are a field on the
+// object, not arrays objects are spliced between, which makes zone changes a single-field
+// write and eliminates duplicate-on-move bugs.
 
 import type { PlayerId } from './ids.js';
 

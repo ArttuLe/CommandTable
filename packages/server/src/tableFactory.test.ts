@@ -71,7 +71,7 @@ describe('createTableState', () => {
     expect(aliceLibrary).toHaveLength(0);
   });
 
-  it('deals each player an opening hand of 7, visible only to them (§14.1 step 5)', () => {
+  it('deals each player an opening hand of 7, visible only to them', () => {
     const bigDeck = makeResolved('Atraxa', Array.from({ length: 20 }, (_, i) => [`Card ${i}`, 1] as [string, number]));
     const state = createTableState(
       { roomId: 'ROOM1', seats: [{ playerId: 'alice', displayName: 'Alice', seat: 0, resolved: bigDeck }] },

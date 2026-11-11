@@ -1,4 +1,4 @@
-// Card display data, per design doc §5.1. Display-only: nothing here encodes what a card does.
+// Card display data. Display-only: nothing here encodes what a card does.
 
 export interface CardFace {
   name: string;

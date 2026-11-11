@@ -1,10 +1,9 @@
-// Bounded snapshot history for undo, per design doc §15.2: "Server keeps a bounded ring buffer
-// (say 50) of full TableState snapshots... trivially cheap and avoids the bug surface of
-// inverse-action undo." Not part of TableState itself — this is server session state, kept per
-// room alongside the current table.
+// Bounded snapshot history for undo: a ring buffer of full TableState snapshots, which is
+// trivially cheap and avoids the bug surface of inverse-action undo. Not part of TableState
+// itself — this is server session state, kept per room alongside the current table.
 //
 // A revision number is not a position in that history. A revert produces a *new, higher* revision
-// carrying an *older* revision's content (see undo.ts: clients treat revision as monotonic, §7.3),
+// carrying an *older* revision's content (see undo.ts: clients treat revision as monotonic),
 // so after one undo the table's number and its content have drifted apart. Each entry therefore
 // also carries a `contentRevision`: the revision whose content it holds — itself for a normal
 // action, and the restored snapshot's own contentRevision for a revert, which is what makes
@@ -59,7 +58,7 @@ export class TableHistory {
     return this.initialState.revision;
   }
 
-  // Self-undo (§15.2) needs no consent "provided no other player has acted since" — since actions
+  // Self-undo needs no consent if no other player has acted since, and since actions
   // apply in strict arrival order, that's exactly: the action the table's content currently sits
   // on is theirs. With no reverts in play that is the most recent entry.
   canSelfUndo(requesterId: PlayerId): boolean {

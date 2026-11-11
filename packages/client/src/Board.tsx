@@ -59,7 +59,7 @@ export function Board({
 }: BoardProps) {
   // Type lines have to be known here, not down in each tile, to decide which zone a permanent
   // belongs to. A card whose data is still loading lands in the middle zone and moves itself
-  // once it arrives (§16.1's original note about async card data still applies).
+  // once it arrives.
   const cards = useCards(battlefield);
   const zones = groupByZone(battlefield, (obj) => typeLineOf(obj, cards.get(obj.id) ?? null));
 

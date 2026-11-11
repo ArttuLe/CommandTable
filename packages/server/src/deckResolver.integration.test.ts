@@ -1,4 +1,4 @@
-// Exercises the parser + resolver against the real ingested SQLite card index (§18: decklist
+// Exercises the parser + resolver against the real ingested SQLite card index (decklist
 // parser tests should run against real exports). Skips if `npm run ingest` hasn't been run yet,
 // since this suite is meant to catch real-data surprises (see cardIndex.ts's alias table, added
 // after this surfaced that Oracle Cards stores DFCs under their combined name).

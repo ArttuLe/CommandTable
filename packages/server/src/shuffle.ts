@@ -1,4 +1,4 @@
-// Fisher-Yates shuffle, per design doc §13. `randomInt` is injected so callers supply
+// Fisher-Yates shuffle. `randomInt` is injected so callers supply
 // crypto.randomInt in production and a deterministic stub in tests.
 
 export function fisherYatesShuffle<T>(items: T[], randomInt: (exclusiveMax: number) => number): T[] {

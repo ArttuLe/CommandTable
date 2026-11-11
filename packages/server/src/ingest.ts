@@ -1,6 +1,6 @@
-// Scryfall bulk ingestion, per design doc §5.2. Run via `npm run ingest --workspace server`,
-// and thereafter as a weekly job. Stream-parses the gzip'd JSONL bulk file line by line so the
-// process never holds the whole file in memory (§5.2's "do not JSON.parse the whole file").
+// Scryfall bulk ingestion. Run via `npm run ingest --workspace server`, and thereafter as a
+// weekly job. Stream-parses the gzip'd JSONL bulk file line by line so the process never holds
+// the whole file in memory (JSON.parse on the whole file would blow the heap).
 
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';

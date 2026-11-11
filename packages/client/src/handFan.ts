@@ -7,7 +7,7 @@
 // instead, and "crowded" is its consequence: a hand that fits doesn't overlap at all, and one
 // that doesn't overlaps exactly enough to fit and no more.
 //
-// That matters at seven cards, which is every opening hand (§14.1): seven cards are a shade
+// That matters at seven cards, which is every opening hand: seven cards are a shade
 // wider than the room the HUD gives them, so under the old threshold they wrapped onto a second
 // row — the one thing the fan exists to prevent — because seven is not more than eight.
 //

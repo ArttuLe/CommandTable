@@ -1,4 +1,4 @@
-// Shared plumbing for action modules, split out of actionApplier.ts so each §8 subsection
+// Shared plumbing for action modules, split out of actionApplier.ts so each action category
 // (object/zone/player actions) can live in its own file without duplicating this.
 
 import { randomUUID } from 'node:crypto';
@@ -164,7 +164,7 @@ function seenBy(visibility: Visibility, playerIds: PlayerId[]): PlayerId[] {
 /**
  * Gives an object a fresh id if `before` → its current state took it out of anyone's sight.
  *
- * §9.3: opening dev tools shouldn't spoil a game. Ids are what every client tracks objects by, and
+ * Opening dev tools shouldn't spoil a game. Ids are what every client tracks objects by, and
  * the projection keeps a hidden object's id — so a card everyone saw on the battlefield, bounced to
  * a hand or turned face down under the same id, was still plainly that card to anyone who looked.
  * A new id makes it a new object as far as anyone watching can tell, which is what CR 400.7 says

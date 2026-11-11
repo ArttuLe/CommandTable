@@ -1,4 +1,4 @@
-// §8.1 object actions (Phase 3), continuing from MOVE_OBJECT in actionApplier.ts.
+// Object actions, continuing from MOVE_OBJECT in actionApplier.ts.
 
 import { randomUUID } from 'node:crypto';
 import {
@@ -43,8 +43,8 @@ export function untapAll(state: TableState, action: Extract<Action, { t: 'UNTAP_
   return ok({ ...next, revision: next.revision + 1 });
 }
 
-// Shared with PASS_TURN's untap bundle (§16.3: "pass turn, with untap bundle") — doesn't bump
-// revision itself so the caller can fold it into one action's single revision bump.
+// Shared with PASS_TURN's untap bundle — doesn't bump revision itself so the caller can fold it
+// into one action's single revision bump.
 export function untapControlledBy(state: TableState, playerId: PlayerId): TableState {
   const toUntap = Object.values(state.objects).filter(
     (o) => o.controllerId === playerId && 'playerId' in o.zone && o.zone.zone === 'battlefield'
@@ -150,7 +150,7 @@ export function clearMarkerFromControlledBy(state: TableState, playerId: PlayerI
  * A creature that attacked or blocked is tapped by the time the turn is over, and doing it by
  * hand for every combatant was the most repetitive click in a game of Commander. Anything already
  * untapped by its controller — vigilance, an untap effect — is left alone rather than re-tapped:
- * nothing here enforces rules (§1.1), so a player's own correction has to win.
+ * nothing here enforces rules, so a player's own correction has to win.
  */
 export function tapCombatants(state: TableState): TableState {
   let next = state;
@@ -197,7 +197,7 @@ export function changeController(state: TableState, action: Extract<Action, { t:
     'playerId' in existing.zone && existing.zone.zone === 'battlefield'
       ? { playerId: action.newControllerId, zone: 'battlefield' as const }
       : existing.zone;
-  // A face-down permanent is seen by whoever controls it (§9), so the right to look goes with it.
+  // A face-down permanent is seen by whoever controls it, so the right to look goes with it.
   const faceVisibility = existing.faceDown ? defaultVisibilityFor(zone, action.newControllerId, true) : existing.faceVisibility;
   return ok(rekeyIfHidden(withObject(state, { ...existing, controllerId: action.newControllerId, zone, faceVisibility }), existing, existing.id));
 }

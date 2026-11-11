@@ -13,7 +13,7 @@ interface CardTileProps {
   obj: ProjectedObject;
   selected?: boolean;
   onClick?: (e: React.MouseEvent) => void;
-  /** The hand's gesture for playing a card (§16.2); a single click there only looks at it. */
+  /** The hand's gesture for playing a card; a single click there only looks at it. */
   onDoubleClick?: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
   /** Omitted where a tile is a picture rather than a control — the zone popovers, mainly. */
@@ -102,7 +102,7 @@ export function CardTile({ obj, selected, onClick, onDoubleClick, onContextMenu,
   }
 
   const label = isRedacted(obj) ? null : cardLabel(obj, card);
-  // Two ways to be looking at a back: the projection withheld the card from you (§9.2), or the
+  // Two ways to be looking at a back: the projection withheld the card from you, or the
   // card is face down and you happen to be the one allowed to see it anyway. The second used to
   // render its art as normal, which made TURN_FACE_DOWN look like it had done nothing.
   const showsBack = isRedacted(obj) || obj.faceDown;

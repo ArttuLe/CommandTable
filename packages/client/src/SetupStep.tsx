@@ -1,10 +1,10 @@
 // The opening-hand step: the moment between the deal and turn 1.
 //
-// §14.1 deals seven cards and drops straight into the game, so a mulligan was something you took
+// The deal used to drop straight into the game, so a mulligan was something you took
 // *during* your first turn, after the table had already started moving. This is that moment made
 // explicit — everyone decides on their hand, and the host starts the game when the table is ready.
 //
-// It gates nothing (§1.1). The host's button is always live; it only warns when someone is still
+// It gates nothing. The host's button is always live; it only warns when someone is still
 // deciding, because a player who has walked away must not be able to hold up the table.
 
 import type { PlayerId, PlayerState } from '@command-table/common';

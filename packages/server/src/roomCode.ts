@@ -1,4 +1,4 @@
-// Unguessable room codes, per design doc §14.1.2. Crypto-random, not sequential.
+// Unguessable room codes. Crypto-random, not sequential.
 
 import { randomBytes } from 'node:crypto';
 

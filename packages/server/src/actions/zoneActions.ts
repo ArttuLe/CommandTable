@@ -1,4 +1,4 @@
-// §8.2 zone actions (Phase 3), continuing from SHUFFLE_LIBRARY/DRAW in actionApplier.ts.
+// Zone actions, continuing from SHUFFLE_LIBRARY/DRAW in actionApplier.ts.
 
 import type { Action, TableState } from '@command-table/common';
 import {

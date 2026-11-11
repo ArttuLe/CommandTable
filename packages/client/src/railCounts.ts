@@ -14,7 +14,7 @@ export interface RailCount {
   value: number;
 }
 
-/** Hand and library are counted by the server (§9.2); graveyard and exile are public and counted
+/** Hand and library are counted by the server; graveyard and exile are public and counted
     off the projection. The caller does that counting — this only decides what is shown. */
 export interface ZoneCounts {
   hand: number;

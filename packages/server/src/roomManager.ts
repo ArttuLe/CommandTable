@@ -1,7 +1,7 @@
-// Lobby room/seat management, per design doc §14.1. A Room holds no card data itself — it
-// only tracks who's seated and each seat's deck-resolution status; the resolved decklist and
-// its warnings go back to that player only, via a private `deckResult` message (§9's hidden-
-// information posture extended to pre-game info the doc doesn't explicitly cover).
+// Lobby room/seat management. A Room holds no card data itself — it only tracks who's seated and
+// each seat's deck-resolution status; the resolved decklist and its warnings go back to that
+// player only, via a private `deckResult` message (the table's hidden-information posture,
+// extended to pre-game info).
 
 import { randomUUID } from 'node:crypto';
 import type { PlayerId, ResolvedDecklist, RoomId, RoomState } from '@command-table/common';
@@ -21,7 +21,7 @@ export interface Seat {
   resolvedDeck: ResolvedDecklist | null;
 }
 
-// What a Room needs to survive a server restart (design doc §14.5). `seats` carries the resolved
+// What a Room needs to survive a server restart. `seats` carries the resolved
 // decklists so nobody re-pastes one, and `rejoinTokens` is the flattened token→player map —
 // without it a restored room would be visible but unrejoinable, which is worse than no snapshot.
 export interface RoomSnapshot {
@@ -63,13 +63,13 @@ export class Room {
     // ready flag and decklist, and gets dealt into the game as a phantom player. Matching on name
     // in the lobby is weak identification, but the room is already behind a passphrase and a
     // shared table, and the alternative is a broken game. Never after the game starts: a
-    // disconnected seat is then sacred (§14.2), so this must not become a way to take one over.
+    // disconnected seat is then sacred, so this must not become a way to take one over.
     const reclaimable = params.seat === undefined && !this.started ? this.disconnectedSeatNamed(params.displayName) : undefined;
     if (reclaimable !== undefined) {
       return this.reseat(reclaimable, params.displayName);
     }
 
-    // A game in progress is closed to new seats (§14.1): a newcomer would sit at a table they have
+    // A game in progress is closed to new seats: a newcomer would sit at a table they have
     // no cards on, and still count in — and could decide — its undo votes.
     if (this.started) {
       return { ok: false, reason: 'This game has already started. Only the players seated in it can rejoin.' };

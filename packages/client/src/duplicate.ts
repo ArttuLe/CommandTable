@@ -1,6 +1,6 @@
 // "Make another one of those."
 //
-// §16.3 asks for "create N copies of a token" in one click; retyping the thing into the
+// Creating N copies of a token should take one click; retyping the thing into the
 // "Create token…" form is not that. Both branches produce a real token rather than a `copy` object:
 // CREATE_COPY needs a scryfallId (so it can't reproduce an ad-hoc token at all) and its output
 // is a `copy`, which the server then refuses to copy again — a token you can duplicate once but

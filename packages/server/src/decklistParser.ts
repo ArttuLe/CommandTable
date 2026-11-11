@@ -1,5 +1,5 @@
-// Decklist text parser, per design doc §6.1. Pure function: no network/DB access, so it's
-// cheaply unit-testable and has no opinion on whether a resolved card exists.
+// Decklist text parser. Pure function: no network/DB access, so it's cheaply unit-testable and
+// has no opinion on whether a resolved card exists.
 
 import type { DeckLine, DeckSection, ParsedDecklist } from '@command-table/common';
 

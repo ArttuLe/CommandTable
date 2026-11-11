@@ -1,15 +1,13 @@
-// Player action catalog, per design doc §8 and §10. Phase 2 covered MOVE_OBJECT/SHUFFLE_LIBRARY/
-// DRAW/PASS_TURN, Phase 3 the rest of §8 except ROLL_DICE/FLIP_COIN/CONCEDE/SAY (the doc ties
-// their output to the game log, "results go into the public log", so they wait for Phase 4's
-// log system, added alongside them here).
+// Player action catalog. ROLL_DICE/FLIP_COIN/CONCEDE/SAY put their results into the public game
+// log, so they were added alongside the log system.
 //
-// Two doc actions are deliberately collapsed here rather than given one type each:
-// - SCRY/SURVEIL/PEEK_TOP (§8.2) are the same server primitive (reveal top N to the owner);
+// Two actions are deliberately collapsed here rather than given one type each:
+// - SCRY/SURVEIL/PEEK_TOP are the same server primitive (reveal top N to the owner);
 //   the difference between scry/surveil/peek is purely client-side labeling of what the player
 //   does next with MOVE_OBJECT, so they share PEEK_TOP.
-// - SET_LIFE takes `playerIds: PlayerId[]` instead of a single id, since §8.3 explicitly
-//   requires bulk support ("must support bulk (Blasphemous Act hitting four players)") — a
-//   single-player change is just an array of length 1, rather than a second near-duplicate action.
+// - SET_LIFE takes `playerIds: PlayerId[]` instead of a single id, since life changes must
+//   support bulk (Blasphemous Act hitting four players) — a single-player change is just an
+//   array of length 1, rather than a second near-duplicate action.
 
 import type { PlayerId } from './ids.js';
 import type { AdhocFace, ObjectId, Visibility, ZoneRef } from './objects.js';

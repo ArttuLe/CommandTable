@@ -1,6 +1,6 @@
 // What a permanent puts in your mana pad when you tap it, and takes back when you untap it.
 //
-// The pad (§8.4) is client-local and the server has no concept of mana, so this is read off the
+// The pad is client-local and the server has no concept of mana, so this is read off the
 // card's own oracle text rather than tracked anywhere: every "Add …" clause on the card, reduced
 // to the distinct symbols it could produce. One symbol is added on the spot; more than one is a
 // choice (see ManaChoice), because a dual is a choice.

@@ -1,7 +1,7 @@
-// Snapshot of in-flight games to disk, per design doc §14.5: "periodically write TableState
-// snapshots to a local file so a crash or deploy can restore rooms... doesn't require a database
-// or violate the 'no user persistence' requirement, since it's transient operational state with
-// a short TTL." That last clause is the TTL below.
+// Snapshot of in-flight games to disk: TableState snapshots are written to a local file
+// periodically, so a crash or deploy can restore rooms. That needs no database and doesn't
+// violate the 'no user persistence' requirement, since it's transient operational state with a
+// short TTL — the TTL below.
 //
 // A plain JSON file, not SQLite: TableState is already plain JSON (common/src/table.ts holds no
 // Maps or class instances), and the card DB is opened readonly so reusing it would mean giving

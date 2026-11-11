@@ -1,4 +1,4 @@
-// §12's commander replacement: a commander heading to the graveyard or exile may be put into the
+// The commander replacement: a commander heading to the graveyard or exile may be put into the
 // command zone instead, and it's the owner's choice every time — so this offers, never moves.
 //
 // It reads the table rather than watching for the moment it died: the offer stands for as long as

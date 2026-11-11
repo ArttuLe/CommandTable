@@ -125,7 +125,7 @@ describe('RoomManager', () => {
     expect(room.canStart()).toBe(false);
   });
 
-  // A started game is closed to new seats (§14.1). An open seat used to take anyone with the
+  // A started game is closed to new seats. An open seat used to take anyone with the
   // passphrase, who was then counted in — and could decide — the table's undo votes.
   it('refuses a new seat once the game has started, but still lets a seated player back in', () => {
     const room = new RoomManager().createRoom();
@@ -365,7 +365,7 @@ describe('reclaiming a seat by name', () => {
     expect(result.seat).toBe(2);
   });
 
-  // Mid-game a disconnected seat is sacred (§14.2): the board stays and play continues, so
+  // Mid-game a disconnected seat is sacred: the board stays and play continues, so
   // handing it to whoever types the right name would be a way to take over someone's position.
   it('does not reclaim by name once the game has started', () => {
     const { room } = lobbyWithDisconnectedBob();

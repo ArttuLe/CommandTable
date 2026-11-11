@@ -1,6 +1,6 @@
 // Which of the card menu's items a card actually gets, by where it is.
 //
-// §16.2 asks for "every action applicable to that object" — applicable being the operative word.
+// A card gets every action applicable to it — applicable being the operative word.
 // The menu used to offer the same twenty items wherever a card was, so a card in hand offered
 // Tap, Transform, Turn face down and "move to Hand" ahead of the moves it could really make.
 

@@ -1,17 +1,16 @@
-// Wire protocol, per design doc §11. Phase 1 (lobby) + Phase 2 (table state) + Phase 4 (undo).
+// Wire protocol. Phase 1 (lobby) + Phase 2 (table state) + Phase 4 (undo).
 //
-// The doc specifies `undo`/`undoRequest` (§11.1, §15.2) but not how players vote on a rewind
-// that needs majority consent — it only says rewinds "apply on majority consent of connected
-// players." `undoVote` and `undoResolved` fill that gap.
+// A rewind needs majority consent of connected players: `undoRequest` puts it to the table,
+// players answer with `undoVote`, and `undoResolved` announces the outcome.
 //
-// §11.1 gives `undo` a `targetRevision`; ours carries none. A revert holds older content under a
-// newer revision number, so where "one step back" lands is only knowable from the history the
-// server keeps (see tableHistory.ts) — a client naming a revision could only ever be guessing.
-// The other three undo messages keep their `targetRevision`: by then the server has decided.
+// `undo` carries no `targetRevision`. A revert holds older content under a newer revision
+// number, so where "one step back" lands is only knowable from the history the server keeps
+// (see tableHistory.ts) — a client naming a revision could only ever be guessing. The other
+// three undo messages keep their `targetRevision`: by then the server has decided.
 //
-// `endGame`/`gameEnded` are likewise unspecified: §14.5 gained a save file, so a table now needs
-// a way to say it is finished. It ends the game, not the room — everyone returns to that room's
-// lobby still seated, and the host can start another game.
+// `endGame`/`gameEnded`: now that games are saved to a file, a table needs a way to say it is
+// finished. It ends the game, not the room — everyone returns to that room's lobby still seated,
+// and the host can start another game.
 
 import type { PlayerId, RoomId } from './ids.js';
 import type { RoomState } from './room.js';

@@ -14,7 +14,7 @@ export interface CommanderRef {
 }
 
 /**
- * Card data resolves asynchronously (§4's thin client, no cache warm-up), so a commander needs a
+ * Card data resolves asynchronously (a thin client, no cache warm-up), so a commander needs a
  * name to wear until its card lands — one that still says whose it is.
  */
 export function useCommanderName(commander: CommanderRef): string {

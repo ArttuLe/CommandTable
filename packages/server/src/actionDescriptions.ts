@@ -1,5 +1,5 @@
-// Generic, action-type-derived log text, per design doc §15.1 ("human-readable, not raw action
-// dumps"). Never names a specific card: GameObjects only carry a scryfallId, not a display name
+// Generic, action-type-derived log text (human-readable, not raw action
+// dumps). Never names a specific card: GameObjects only carry a scryfallId, not a display name
 // (that lives in the DB-backed CardIndex), and the pure action-application layer stays free of
 // that dependency. A line about a card everyone could see carries a reference to it instead
 // (LogEntry.subject), which the client resolves and writes in (client/src/logText.ts). Actions

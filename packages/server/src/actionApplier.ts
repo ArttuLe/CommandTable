@@ -1,8 +1,7 @@
-// Applies an Action to a TableState, per design doc §3 ("the server validates only structural
-// legality... never rules legality") and §8. Pure and immutable: returns a new state rather
-// than mutating the one it's given, which keeps undo (§15.2, later) a matter of swapping
-// snapshots. Dispatches to per-§8-subsection modules in ./actions/; MOVE_OBJECT/SHUFFLE_LIBRARY/
-// DRAW/PASS_TURN (Phase 2) stay here since they predate that split.
+// Applies an Action to a TableState, validating only structural legality, never rules legality.
+// Pure and immutable: returns a new state rather than mutating the one it's given, which keeps
+// undo a matter of swapping snapshots. Dispatches to per-category modules in ./actions/;
+// MOVE_OBJECT/SHUFFLE_LIBRARY/DRAW/PASS_TURN stay here since they predate that split.
 
 import { randomInt as cryptoRandomInt } from 'node:crypto';
 import {
@@ -45,9 +44,9 @@ interface ApplyDeps {
 
 const defaultDeps: ApplyDeps = { randomInt: cryptoRandomInt };
 
-// Public entry point: applies the action, then appends a LogEntry describing it (§15.1 — every
+// Public entry point: applies the action, then appends a LogEntry describing it (every
 // action produces one). `actorId` only affects the log; structural validation doesn't care who's
-// acting (§10: "anyone can take any action at any time"). Defaults to a placeholder so tests
+// acting (anyone can take any action at any time). Defaults to a placeholder so tests
 // that don't care about log authorship don't need to supply one — server.ts always passes the
 // real connection's playerId.
 export function applyAction(
@@ -84,7 +83,7 @@ export function applyAction(
 }
 
 /**
- * What the log line is about, if everyone could see it before or after the action (§15.1: the log
+ * What the log line is about, if everyone could see it before or after the action (the log
  * is the referee, and "tapped a permanent" referees nothing). A reference, not a name: the action
  * layer has no card data by design, so the client resolves it. Anything someone couldn't see —
  * a card drawn, a morph played face down — stays "a card".
@@ -214,7 +213,7 @@ function moveObject(state: TableState, action: Extract<Action, { t: 'MOVE_OBJECT
     return ok(next);
   }
 
-  // §12.2: commander tax is a display hint, incremented here so the client doesn't have to
+  // Commander tax is a display hint, incremented here so the client doesn't have to
   // infer "was that a commander cast" itself; the player still pays the tax themselves.
   return ok({
     ...next,
@@ -256,8 +255,8 @@ function draw(state: TableState, action: Extract<Action, { t: 'DRAW' }>): ApplyR
     .filter((o) => 'playerId' in o.zone && o.zone.playerId === playerId && o.zone.zone === 'library')
     .sort((a, b) => a.position - b.position);
 
-  // Drawing from an empty library takes what's there rather than erroring: §3 leaves losing the
-  // game to the players.
+  // Drawing from an empty library takes what's there rather than erroring: the server leaves
+  // losing the game to the players.
   let next = state;
   for (const obj of library.slice(0, action.count)) {
     next = withObject(
@@ -281,7 +280,7 @@ function passTurn(state: TableState): ApplyResult {
   const nextIndex = findNextActiveIndex(order, currentIndex);
   const nextPlayerId = order[nextIndex].id;
 
-  // §16.3 "pass turn (with untap bundle)": the new active player's permanents untap as part of
+  // Pass turn with untap bundle: the new active player's permanents untap as part of
   // passing turn, rather than needing a separate UNTAP_ALL click, and the combat markers from
   // the turn that just ended are swept up in the same beat.
   //

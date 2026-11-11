@@ -1,8 +1,8 @@
-// Thin client-side mirror of server state, per design doc §4: "no complex local logic needed."
+// Thin client-side mirror of server state: no complex local logic needed.
 // The store just holds the last message of each kind and exposes `send`; every screen renders
-// straight off it. No optimistic updates (§3.1) — we wait for the server's next 'state'/'room'.
+// straight off it. No optimistic updates — we wait for the server's next 'state'/'room'.
 //
-// The one piece of real logic here is the connection lifecycle (§14.2). A dropped socket
+// The one piece of real logic here is the connection lifecycle. A dropped socket
 // reconnects on its own and replays the stored rejoin token, so a Wi-Fi blip, a laptop waking up,
 // or the host restarting their server all recover without anyone touching the page.
 //
@@ -179,7 +179,7 @@ export const useStore = create<Store>((set, get) => {
           // game never gets `gameEnded`, and kept rendering the old table, every action rejected.
           set(msg.roomState.started ? { roomState: msg.roomState } : { roomState: msg.roomState, tableState: null });
           break;
-        // §11.2: a refused action is surfaced, not dropped — a stale card or a finished game
+        // A refused action is surfaced, not dropped — a stale card or a finished game
         // otherwise looks like a frozen table.
         // The server's reason is written for the log ("no such object: 3f2a…"); the player gets what
         // it means for them, which is nearly always that the table moved under a stale click.

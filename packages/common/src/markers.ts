@@ -1,9 +1,9 @@
-// Markers are freeform strings (§8.1) and stay that way — but a few of them are understood by
+// Markers are freeform strings and stay that way — but a few of them are understood by
 // both ends, and this is where the two agree on what they mean.
 //
-// Combat is the reason the list grew. §7.3 is explicit that there is no combat state in the
-// model: "Attackers and blockers are `markers` on objects, set and cleared by players." Blocking
-// still has to say *which* attacker is being blocked, so that relationship is
+// Combat is the reason the list grew. There is no combat state in the model: attackers and
+// blockers are `markers` on objects, set and cleared by players. Blocking still has to say
+// *which* attacker is being blocked, so that relationship is
 // encoded into the marker string rather than added to GameObject as a field. That keeps every
 // existing mechanism working untouched — the server syncs markers already, undo covers them
 // already, the projection ships them already — at the cost of a parse step, which lives here so
