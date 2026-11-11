@@ -13,8 +13,8 @@ import { defineConfig } from '@playwright/test';
 // — starting them anyway would bury the reason under a SQLite stack trace.
 const hasCardIndex = existsSync(new URL('./packages/server/data/cards.sqlite3', import.meta.url));
 
-const SERVER_PORT = 8091;
-const CLIENT_PORT = 5174;
+const SERVER_PORT = Number(process.env.E2E_SERVER_PORT ?? 8091);
+const CLIENT_PORT = Number(process.env.E2E_CLIENT_PORT ?? 5174);
 
 export default defineConfig({
   testDir: 'e2e',
