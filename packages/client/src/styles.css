@@ -110,17 +110,6 @@ button {
    background: #36719f;
 }
 
-/* Your turn: the one button worth pulling the eye. */
-.btn-primary.urgent {
-   background: #8a6a15;
-   border-color: var(--accent-turn);
-   box-shadow: 0 0 0 1px rgba(232, 179, 60, 0.35);
-}
-
-.btn-primary.urgent:hover:not(:disabled) {
-   background: #a07d1a;
-}
-
 /* One focus ring for the whole app, in the accent. Left to the browser it was Chrome's own blue,
    which belonged to no part of this table — and keyboard focus is how cards are now played too. */
 :focus-visible {

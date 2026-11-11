@@ -64,9 +64,10 @@ export function SetupStep({
         </span>
       </span>
 
+      {/* Keep is the step's one primary until everyone has; only then is starting the thing to do. */}
       {isHost && (
         <button
-          className={`btn btn-primary ${waiting.length === 0 ? 'urgent' : ''}`}
+          className={`btn ${waiting.length === 0 ? 'btn-primary' : ''}`}
           onClick={() => act({ t: 'BEGIN_PLAY' })}
           title={
             waiting.length === 0

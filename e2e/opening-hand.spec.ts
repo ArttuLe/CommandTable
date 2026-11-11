@@ -17,8 +17,13 @@ test('mulligan, keep, and the host starting the game', async ({ browser }) => {
   await expect(alice.locator('.setup-waiting')).toHaveText(/Alice/);
   await expect(alice.locator('.setup-waiting')).toHaveText(/Bob/);
 
-  // Nobody's turn has started, so nothing should be urging anyone to end it.
-  await expect(alice.getByRole('button', { name: 'Pass turn' })).not.toHaveClass(/urgent/);
+  // Nobody's turn has started, so the turn actions are off — buttons and shortcuts alike — and
+  // the one primary button is Keep. Start the game waits its turn until everyone has kept.
+  const passTurn = alice.locator('.action-bar').getByRole('button', { name: 'Pass turn' });
+  for (const name of ['Draw', 'Untap all', 'Pass turn']) {
+    await expect(alice.locator('.action-bar').getByRole('button', { name })).toBeDisabled();
+  }
+  await expect(alice.locator('.btn-primary')).toHaveText(['Keep']);
   await expect(alice.locator('.hud')).not.toHaveClass(/my-turn/);
   await expect(alice.locator('.turn-badge')).toHaveCount(0);
 
@@ -34,9 +39,12 @@ test('mulligan, keep, and the host starting the game', async ({ browser }) => {
   await expect.poll(() => handIds(alice)).not.toEqual(before);
   await expect(alice.locator('.battlefield .card-tile')).toHaveCount(0);
 
-  // Keeping is reported to the other seat, not just this one.
+  // D first: the Keep's round trip lands after any draw it sent, so a hand still at seven once
+  // "You kept." shows means the shortcut is off too. Keeping is reported to the other seat as well.
+  await alice.keyboard.press('d');
   await alice.getByRole('button', { name: 'Keep', exact: true }).click();
   await expect(alice.locator('.setup-kept')).toBeVisible();
+  await expect(alice.locator('.hand .card-tile')).toHaveCount(OPENING_HAND);
 
   // "You kept." is prose, and sits on the line with the step's other prose rather than in among
   // the buttons — same row, same baseline, whatever the two of them say.
@@ -47,10 +55,28 @@ test('mulligan, keep, and the host starting the game', async ({ browser }) => {
   await expect(bob.locator('.setup-waiting')).toHaveText(/Bob/);
   await expect(bob.locator('.setup-waiting')).not.toHaveText(/Alice/);
 
-  // Only the host is offered the start, and one click moves both browsers.
+  // Only the host is offered the start, and it becomes the primary once everyone has kept.
   await expect(bob.getByRole('button', { name: 'Start the game' })).toHaveCount(0);
-  await alice.getByRole('button', { name: 'Start the game' }).click();
+  const start = alice.getByRole('button', { name: 'Start the game' });
+  await expect(start).not.toHaveClass(/btn-primary/);
+  await bob.getByRole('button', { name: 'Keep', exact: true }).click();
+  await expect(start).toHaveClass(/btn-primary/);
+
+  // One click moves both browsers.
+  await start.click();
   await expect(alice.locator('.setup-step')).toHaveCount(0);
   await expect(bob.locator('.setup-step')).toHaveCount(0);
   await expect(alice.locator('.turn-pill')).not.toHaveText('Opening hands');
+
+  // In play, Pass turn is primary for whoever's turn it is and an ordinary button for everyone
+  // else — and the emphasis moves when the turn does.
+  const bobPass = bob.locator('.action-bar').getByRole('button', { name: 'Pass turn' });
+  await expect(passTurn).toBeEnabled();
+  const [mine, theirs] = (await alice.locator('.hud.my-turn').count()) ? [passTurn, bobPass] : [bobPass, passTurn];
+  await expect(mine).toHaveClass(/btn-primary/);
+  await expect(theirs).toBeEnabled();
+  await expect(theirs).not.toHaveClass(/btn-primary/);
+  await mine.click();
+  await expect(theirs).toHaveClass(/btn-primary/);
+  await expect(mine).not.toHaveClass(/btn-primary/);
 });
