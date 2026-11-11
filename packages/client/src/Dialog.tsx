@@ -2,8 +2,9 @@
 // the keyboard — Escape closes it, and while it is up the table's shortcuts stand down (a
 // dialog registers itself in the ui store, which Table reads before handling a key).
 //
-// Enter is deliberately not handled here. A form submits on Enter by itself, and a dialog whose
-// primary button holds focus activates on Enter by itself; handling it here would fight both.
+// Enter is deliberately not handled here. A form submits on Enter by itself, and whichever button
+// holds focus activates on Enter by itself (ConfirmDialog picks which); handling it here would
+// fight both.
 
 import { useEffect } from 'react';
 import { useUiStore } from './uiStore.js';

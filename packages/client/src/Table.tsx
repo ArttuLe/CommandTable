@@ -16,7 +16,7 @@ import { ChatRail } from './ChatRail.js';
 import { chatEntries, tableEntries } from './logStreams.js';
 import { ZoneDock, type DockZone } from './ZoneDock.js';
 import { seating } from './seating.js';
-import { PASS_TURN_WARNING, turnHighlight, turnLabel } from './turnStatus.js';
+import { passTurnWarning, turnHighlight, turnLabel } from './turnStatus.js';
 import { libraryMoveAction } from './libraryMoves.js';
 import { commanderPrompts, spentDismissals } from './commanderPrompt.js';
 import { SettingsMenu } from './SettingsMenu.js';
@@ -541,8 +541,11 @@ export function Table() {
       {confirmingPass && (
         <ConfirmDialog
           title="Pass turn"
-          message={PASS_TURN_WARNING}
+          message={passTurnWarning(
+            tableState.players.find((p) => p.id === tableState.turn.activePlayerId)?.displayName ?? 'the active player'
+          )}
           confirmLabel="Pass turn"
+          focus="cancel"
           onConfirm={() => {
             setConfirmingPass(false);
             passTurn();

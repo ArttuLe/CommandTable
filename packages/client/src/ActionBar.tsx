@@ -152,8 +152,9 @@ function usePlayerActions(playerId: PlayerId, act: (action: Action) => void) {
       {dialog === 'concede' && (
         <ConfirmDialog
           title="Concede"
-          message="You will be out of the game. Your cards stay on the table for everyone to see."
+          message="You will be out of the game. Your cards leave the table, and anything you control that someone else owns goes back to them."
           confirmLabel="Concede"
+          focus="cancel"
           onConfirm={() => {
             close();
             act({ t: 'CONCEDE', playerId });
@@ -167,6 +168,7 @@ function usePlayerActions(playerId: PlayerId, act: (action: Action) => void) {
           title="Mulligan"
           message="Your hand is shuffled back into your library and you draw a new seven, in the middle of the game."
           confirmLabel="Mulligan"
+          focus="cancel"
           onConfirm={() => {
             close();
             act({ t: 'MULLIGAN', playerId });
@@ -180,6 +182,7 @@ function usePlayerActions(playerId: PlayerId, act: (action: Action) => void) {
           title="Clear markers & counters"
           message={clearSweepMessage(Object.values(objects ?? {}))}
           confirmLabel="Clear"
+          focus="cancel"
           onConfirm={() => {
             close();
             act({ t: 'CLEAR_MARKERS_AND_COUNTERS' });

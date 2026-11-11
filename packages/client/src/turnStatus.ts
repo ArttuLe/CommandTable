@@ -30,5 +30,6 @@ export function turnLabel(
  * ends *their* turn — a misclick (or a stray "P") that nothing undoes for them. On your own turn
  * it stays a single click.
  */
-export const PASS_TURN_WARNING =
-  "It is not your turn. Passing now ends the active player's turn. Pass anyway?";
+export function passTurnWarning(activeName: string): string {
+  return `It is ${activeName}'s turn. Passing now ends ${activeName}'s turn. Pass anyway?`;
+}
