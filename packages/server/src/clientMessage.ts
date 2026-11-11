@@ -24,12 +24,13 @@ function valid(m: Json): boolean {
       return typeof m.ready === 'boolean';
     case 'action':
       return typeof m.action === 'object' && m.action !== null && isString((m.action as Json).t) && Number.isInteger(m.clientSeq);
+    case 'undo':
+      return Number.isInteger(m.revision);
     case 'undoVote':
       return Number.isInteger(m.targetRevision) && typeof m.approve === 'boolean';
     case 'freeSeat':
       return isSeat(m.seat);
     case 'start':
-    case 'undo':
     case 'endGame':
     case 'ping':
       return true;

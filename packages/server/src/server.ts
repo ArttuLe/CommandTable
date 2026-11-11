@@ -284,6 +284,13 @@ function handleMessage(socket: WebSocket, state: ConnectionState, raw: ClientMes
         return;
       }
 
+      // The client decided between undoing at once and asking first from the action it saw named.
+      // If another has landed since, that decision was about a different action.
+      if (history.undoable()?.revision !== raw.revision) {
+        send(socket, { t: 'error', message: 'The table has moved on since you pressed Undo. Check what Undo would take back now.' });
+        return;
+      }
+
       if (history.canSelfUndo(state.playerId)) {
         performUndo(room, table, target, state.playerId);
         return;

@@ -155,13 +155,14 @@ export function Table() {
   // action without a word.
   const undoingName = useSubjectName(undoable ? tableState.log.find((e) => e.revision === undoable.revision)?.subject : undefined);
   const undoing = undoable ? undoableText(undoable, tableState.log, tableState.players, playerId, undoingName) : null;
-  const [confirmingUndo, setConfirmingUndo] = useState(false);
-  const undoMine = undoable?.actorId === playerId;
+  // Captured when Undo is pressed: the dialog keeps naming the action the player agreed to, and
+  // the server refuses if the table has moved past it by the time the answer arrives.
+  const [confirmingUndo, setConfirmingUndo] = useState<{ revision: number; text: string | null } | null>(null);
   const undoLast = useCallback(() => {
     if (!undoable) return;
-    if (undoMine) send({ t: 'undo' });
-    else setConfirmingUndo(true);
-  }, [send, undoable, undoMine]);
+    if (undoable.actorId === playerId) send({ t: 'undo', revision: undoable.revision });
+    else setConfirmingUndo({ revision: undoable.revision, text: undoing });
+  }, [send, undoable, undoing, playerId]);
 
   // Keyboard shortcuts for the high-frequency actions, listed by the `?` in the status bar
   // (HelpDialog). Gated on not-typing-in-an-input so it doesn't fire while the chat box or a
@@ -566,13 +567,13 @@ export function Table() {
       {confirmingUndo && (
         <ConfirmDialog
           title="Undo someone else’s action?"
-          message={`Undo: ${undoing ?? 'the last action'}. It isn’t your action, so the table votes on it.`}
+          message={`Undo: ${confirmingUndo.text ?? 'the last action'}. It isn’t your action, so the table votes on it.`}
           confirmLabel="Ask the table"
           onConfirm={() => {
-            setConfirmingUndo(false);
-            send({ t: 'undo' });
+            setConfirmingUndo(null);
+            send({ t: 'undo', revision: confirmingUndo.revision });
           }}
-          onCancel={() => setConfirmingUndo(false)}
+          onCancel={() => setConfirmingUndo(null)}
         />
       )}
 

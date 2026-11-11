@@ -28,4 +28,12 @@ describe('parseClientMessage', () => {
       expect(parseClientMessage(text), text).toBeNull();
     }
   });
+
+  // `undo` names the action the client believes it is undoing, so the server can refuse it once
+  // the table has moved on (see server.ts).
+  it('accepts undo only with the revision it means to take back', () => {
+    expect(parseClientMessage('{"t":"undo","revision":3}')).toEqual({ t: 'undo', revision: 3 });
+    expect(parseClientMessage('{"t":"undo"}')).toBeNull();
+    expect(parseClientMessage('{"t":"undo","revision":"3"}')).toBeNull();
+  });
 });

@@ -5,8 +5,11 @@
 //
 // `undo` carries no `targetRevision`. A revert holds older content under a newer revision
 // number, so where "one step back" lands is only knowable from the history the server keeps
-// (see tableHistory.ts) — a client naming a revision could only ever be guessing. The other
-// three undo messages keep their `targetRevision`: by then the server has decided.
+// (see tableHistory.ts) — a client naming a revision could only ever be guessing. It carries
+// instead the `revision` of the action the client believes it is taking back (the `undoable` it
+// last saw), so the server can refuse once another action has landed in between rather than
+// undo, or put to a vote, an action the player never saw named. The other three undo messages
+// keep their `targetRevision`: by then the server has decided.
 //
 // `endGame`/`gameEnded`: now that games are saved to a file, a table needs a way to say it is
 // finished. It ends the game, not the room — everyone returns to that room's lobby still seated,
@@ -24,7 +27,7 @@ export type ClientMessage =
   | { t: 'ready'; ready: boolean }
   | { t: 'start' }
   | { t: 'action'; action: Action; clientSeq: number }
-  | { t: 'undo' }
+  | { t: 'undo'; revision: number }
   | { t: 'undoVote'; targetRevision: number; approve: boolean }
   | { t: 'endGame' }
   | { t: 'freeSeat'; seat: number }
