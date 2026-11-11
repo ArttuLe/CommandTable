@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TurnTracker } from '@command-table/common';
-import { turnHighlight, turnLabel } from './turnStatus.js';
+import { passTurnWarning, turnHighlight, turnLabel } from './turnStatus.js';
 
 const turn = (activePlayerId: string, turnNumber = 1): TurnTracker => ({
   turnNumber,
@@ -39,5 +39,11 @@ describe('turnLabel', () => {
 
   it('degrades gracefully if the active player is not in the list', () => {
     expect(turnLabel(turn('ghost', 2), players, 'me')).toBe('Turn 2 — unknown player');
+  });
+});
+
+describe('passTurnWarning', () => {
+  it('names whose turn passing would end', () => {
+    expect(passTurnWarning('Bob')).toBe("It is Bob's turn. Passing now ends Bob's turn. Pass anyway?");
   });
 });

@@ -10,21 +10,28 @@ interface ConfirmDialogProps {
   confirmLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
+  /**
+   * Which button holds focus on open, and so answers Enter. 'cancel' for the confirms a stray
+   * Enter must not carry out (conceding, ending someone else's turn): taking those is then a
+   * deliberate Tab or click.
+   */
+  focus?: 'confirm' | 'cancel';
 }
 
-export function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel }: ConfirmDialogProps) {
+export function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel, focus = 'confirm' }: ConfirmDialogProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   // Focused on open, which is also what makes Enter answer the question.
   useEffect(() => {
-    confirmRef.current?.focus();
-  }, []);
+    (focus === 'cancel' ? cancelRef : confirmRef).current?.focus();
+  }, [focus]);
 
   return (
     <Dialog title={title} onCancel={onCancel}>
       <p className="dialog-message">{message}</p>
       <div className="dialog-actions">
-        <button className="btn btn-ghost" onClick={onCancel}>
+        <button className="btn btn-ghost" ref={cancelRef} onClick={onCancel}>
           Cancel
         </button>
         <button className="btn btn-primary" ref={confirmRef} onClick={onConfirm}>
