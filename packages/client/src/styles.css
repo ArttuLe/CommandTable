@@ -2,6 +2,9 @@
    rather than in a dozen rules. Buttons get a baseline below for the same reason: every control
    used to inherit the browser's default grey, which made the UI read as a form, not a game. */
 :root {
+   /* Native parts follow the table rather than the browser's light default: number spinners,
+      scrollbars where the OS draws them, autofill. */
+   color-scheme: dark;
    --bg: #16181c;
    --surface: #202329;
    --surface-raised: #272b33;
@@ -14,7 +17,16 @@
    /* you */
    --accent-turn: #e8b33c;
    /* whoever is active */
-   --danger: #c4544c;
+   /* 4.6:1 under white text (the error toast, the -1/-1 badge, a hovered danger row); #c4544c
+      was 4.45. */
+   --danger: #c0524a;
+   /* Hover and the one primary button, so they move with the surfaces above rather than apart. */
+   --surface-hover: #31363f;
+   --border-hover: #5d6675;
+   --row-hover: #343a44;
+   --primary: #2d5f8a;
+   --primary-border: #4682b4;
+   --primary-hover: #36719f;
    --radius: 6px;
    --radius-lg: 10px;
    --shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
@@ -79,8 +91,8 @@ button {
 }
 
 .btn:hover:not(:disabled) {
-   background: #31363f;
-   border-color: #5d6675;
+   background: var(--surface-hover);
+   border-color: var(--border-hover);
 }
 
 .btn:disabled {
@@ -100,14 +112,14 @@ button {
 }
 
 .btn-primary {
-   background: #2d5f8a;
-   border-color: #4682b4;
+   background: var(--primary);
+   border-color: var(--primary-border);
    color: #fff;
    font-weight: 600;
 }
 
 .btn-primary:hover:not(:disabled) {
-   background: #36719f;
+   background: var(--primary-hover);
 }
 
 /* One focus ring for the whole app, in the accent. Left to the browser it was Chrome's own blue,
@@ -646,7 +658,7 @@ input[type='checkbox'] {
 }
 
 .settings-popover label:hover {
-   background: #343a44;
+   background: var(--row-hover);
 }
 
 .settings-popover input {
@@ -1224,7 +1236,7 @@ input[type='checkbox'] {
 }
 
 .more-popover button:hover {
-   background: #343a44;
+   background: var(--row-hover);
 }
 
 .more-popover button.danger {
@@ -1286,7 +1298,7 @@ input[type='checkbox'] {
 }
 
 .popover-action:hover {
-   background: #343a44;
+   background: var(--row-hover);
 }
 
 .popover-action.danger {
@@ -1583,7 +1595,8 @@ input[type='checkbox'] {
 }
 
 .counter-buff {
-   background: #2f9e5e;
+   /* 4.7:1 under the white count; #2f9e5e was 3.4. */
+   background: #27844e;
 }
 
 .counter-debuff {
@@ -1790,7 +1803,8 @@ input[type='checkbox'] {
 }
 
 .label-blue {
-   background: #2a7fc4;
+   /* 4.6:1 under white at 0.6rem; #2a7fc4 was 4.3. */
+   background: #2879bc;
    color: #fff;
 }
 
@@ -2139,11 +2153,6 @@ button.vital:hover {
    color: var(--text);
    border: 1px solid var(--border-strong);
    border-radius: var(--radius);
-}
-
-.field input:focus {
-   outline: none;
-   border-color: var(--accent);
 }
 
 .field-row {
@@ -2568,7 +2577,7 @@ button.vital:hover {
 }
 
 .context-menu button:hover:not(:disabled) {
-   background: #343a44;
+   background: var(--row-hover);
 }
 
 /* The plane menu offers zoom in both directions, and either end of the scale can be reached. */
@@ -2616,7 +2625,7 @@ button.vital:hover {
 }
 
 .context-menu .menu-chips button:hover {
-   background: #343a44;
+   background: var(--row-hover);
    border-color: var(--accent);
 }
 
