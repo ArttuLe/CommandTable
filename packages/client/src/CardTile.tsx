@@ -8,6 +8,7 @@ import { isCreature, powerToughness, typeLineOf } from './battlefieldZones.js';
 import { useUiStore } from './uiStore.js';
 import { isAttacking, isLabelMarker, isSummoningSick } from './combat.js';
 import { SummoningSickIcon } from './icons.js';
+import { tileName } from './tileName.js';
 
 interface CardTileProps {
   obj: ProjectedObject;
@@ -124,7 +125,7 @@ export function CardTile({ obj, selected, onClick, onDoubleClick, onContextMenu,
       className={`card-tile ${obj.tapped ? 'tapped' : ''} ${showsBack ? 'face-down' : ''} ${selected ? 'selected' : ''} ${isAttacking(obj) ? 'attacking' : ''}`}
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
-      aria-label={`${label ?? (showsBack ? 'Face-down card' : 'Card')}${obj.tapped ? ', tapped' : ''}`}
+      aria-label={tileName({ name: label, showsBack, tapped: obj.tapped, pt, attacking: isAttacking(obj), sick, counters: obj.counters, labels })}
       onKeyDown={interactive ? handleKeyDown : undefined}
       onMouseDown={(e) => {
         if (e.detail === 1) pointedThisGesture.current = false;
