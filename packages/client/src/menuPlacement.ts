@@ -32,6 +32,8 @@ export function placeMenu(cursor: Point, menu: Size, viewport: Size): { left: nu
 function place(at: number, extent: number, available: number): number {
   const flipped = at - extent;
   if (at + extent <= available - MARGIN) return at;
-  if (flipped >= MARGIN) return flipped;
+  // Kept clear of the far edge too: asked for beyond the window (the keyboard asks at a card's
+  // centre, wherever that card has scrolled to), the flip alone left the menu off-screen.
+  if (flipped >= MARGIN) return Math.max(MARGIN, Math.min(flipped, available - MARGIN - extent));
   return Math.max(MARGIN, available - MARGIN - extent);
 }

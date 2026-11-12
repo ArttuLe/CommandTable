@@ -27,4 +27,10 @@ describe('placeMenu', () => {
     // Taller than the viewport itself: pinned to the top margin and scrolled, never off-screen.
     expect(placeMenu({ x: 100, y: 10 }, { width: 200, height: 900 }, viewport).top).toBe(8);
   });
+
+  it('keeps a flipped menu on screen when it was asked for below the window', () => {
+    // The keyboard asks at the card's centre, wherever the card is (Shift+F10 on a tile scrolled out
+    // of a short window). Flipped above that point, the menu still hung off the bottom.
+    expect(placeMenu({ x: 100, y: 1100 }, menu, viewport).top).toBe(492);
+  });
 });
