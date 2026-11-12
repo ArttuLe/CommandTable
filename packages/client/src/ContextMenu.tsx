@@ -16,6 +16,7 @@ import { Dialog } from './Dialog.js';
 import { TextDialog } from './TextDialog.js';
 import { LABEL_PRESETS, labelTone } from './labels.js';
 import { useCloseOnEscape } from './useCloseOnEscape.js';
+import { useMenuKeys } from './menuKeys.js';
 import { cardMenuShape, isTransformable, type MoveTarget } from './cardMenu.js';
 
 interface ContextMenuProps {
@@ -75,6 +76,7 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
   // stays mounted — unmounting it (via onClose) would take the dialog down with it.
   const [dialog, setDialog] = useState<MenuDialog>(null);
   useCloseOnEscape(true, onClose);
+  const onMenuKey = useMenuKeys(ref, pos !== null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -104,6 +106,9 @@ export function ContextMenu({ obj, x, y, onClose }: ContextMenuProps) {
       <div
         ref={ref}
         className="context-menu"
+        role="group"
+        aria-label={menuTitle(obj, card)}
+        onKeyDown={onMenuKey}
         style={{ left: pos?.left ?? x, top: pos?.top ?? y, visibility: pos ? 'visible' : 'hidden' }}
       >
         {/* Which card you actually hit. On a thirty-permanent board zoomed out to fit, the tile

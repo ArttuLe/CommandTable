@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { placeMenu } from './menuPlacement.js';
 import { useCloseOnEscape } from './useCloseOnEscape.js';
+import { useMenuKeys } from './menuKeys.js';
 import { MAX_SCALE, MIN_SCALE, fitView, focusView, zoomAt, type View } from './planeView.js';
 
 const FIT_PADDING = 24;
@@ -293,6 +294,7 @@ function PlaneMenu({
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   useCloseOnEscape(true, onClose);
+  const onMenuKey = useMenuKeys(ref, pos !== null);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -312,6 +314,9 @@ function PlaneMenu({
       <div
         ref={ref}
         className="context-menu"
+        role="group"
+        aria-label="The table"
+        onKeyDown={onMenuKey}
         style={{ left: pos?.left ?? at.x, top: pos?.top ?? at.y, visibility: pos ? 'visible' : 'hidden' }}
       >
         <div className="context-menu-title">The table</div>

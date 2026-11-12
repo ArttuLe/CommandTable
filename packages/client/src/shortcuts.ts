@@ -21,7 +21,7 @@ export const KEY_SHORTCUTS: Shortcut[] = [
   { keys: 'F', what: 'Fit the whole table on screen' },
   { keys: '?', what: 'Open this help' },
   { keys: 'Enter / Space on a card', what: 'Play it from your hand; anywhere else, the same as clicking it' },
-  { keys: 'Shift+F10 / Menu on a card', what: 'Open its right-click menu' },
+  { keys: 'Shift+F10 / Menu on a card', what: 'Open its right-click menu; ↑ / ↓ move through it' },
   { keys: 'Esc', what: 'Clear the selection, or close whatever is open' },
 ];
 
