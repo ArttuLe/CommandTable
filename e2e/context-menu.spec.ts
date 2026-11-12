@@ -144,3 +144,30 @@ test('Escape closes only the menu on top', async ({ browser }) => {
   await page.keyboard.press('Escape');
   await expect(page.locator('.zone-popover')).toHaveCount(0);
 });
+
+// The keyboard's round trip through a card's menu (menuKeys.ts). Focus going into the menu, along
+// it and back out to the card is the behaviour; a dialog raised from the menu used to close onto
+// <body>, so the next Tab started over from the top of the page.
+test('the keyboard goes into a card menu, along it, and back to the card', async ({ browser }) => {
+  // Four seats, read-only: the dialog is cancelled, so no label is ever written.
+  const page = await openSeat(browser, 4, 'Alice');
+  await startPlay(page);
+  const card = page.locator('.hand .card-tile').last();
+
+  await card.focus();
+  await page.keyboard.press('Shift+F10');
+  const buttons = page.locator('.context-menu button:not([disabled])');
+  await expect(buttons.first()).toBeFocused();
+
+  await page.keyboard.press('ArrowDown');
+  await expect(buttons.nth(1)).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await expect(buttons.last()).toBeFocused();
+
+  await page.getByRole('button', { name: 'Add label…' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(card).toBeFocused();
+});

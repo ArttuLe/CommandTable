@@ -154,7 +154,7 @@ lobby for another game. The host can also end a game at any time from the gear m
 | `?` | Open help: how to play, and these shortcuts |
 | `Esc` | Close the open menu, or clear the selection |
 | `Enter` | On a focused card: play it from hand, or tap it |
-| `Shift+F10` | On a focused card: open its menu |
+| `Shift+F10` | On a focused card: open its menu. `↑` / `↓` move through it |
 
 Cards can be reached with `Tab`, so the whole game can be played from the keyboard. Shortcuts stand
 down while you are typing or a dialog is open.
